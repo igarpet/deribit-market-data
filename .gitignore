@@ -1,0 +1,29 @@
+# Secrets
+.env
+
+# Market data
+data/
+*.parquet
+*.duckdb
+*.db
+
+# Logs
+logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environments
+.venv/
+venv/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
