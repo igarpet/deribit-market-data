@@ -105,10 +105,10 @@ if __name__ == "__main__":
 
     print(f"Total active options: {len(instruments)}")
 
-    print("\nOptions by currency:")
+    print("\nOptions by API currency:")
     print(
         instruments
-        .groupby("currency")
+        .groupby("api_currency")
         .size()
         .sort_values(ascending=False)
     )
