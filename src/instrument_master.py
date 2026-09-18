@@ -35,6 +35,9 @@ def build_instrument_master() -> pd.DataFrame:
             if not df.empty:
 
                 df["api_currency"] = currency
+
+		df["underlying"] = df["base_currency"]
+		
                 option_frames.append(df)
 
                 print(f"{currency}: {len(df)} active options")
@@ -113,4 +116,12 @@ if __name__ == "__main__":
         .sort_values(ascending=False)
     )
 
+    print("-" * 40)
+    print("\nOptions by underlying:")
+    print(
+	instruments
+	.groupby("underlying")
+	.size()
+        .sort_values(ascending=False)
+    )
     save_instrument_master(instruments)
