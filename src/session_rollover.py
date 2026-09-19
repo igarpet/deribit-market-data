@@ -47,7 +47,7 @@ DATABASE_FILE = (
     / "deribit.duckdb"
 )
 
-EXPECTED_SNAPSHOTS = 96
+EXPECTED_SNAPSHOTS = 288
 
 
 # --------------------------------------------------

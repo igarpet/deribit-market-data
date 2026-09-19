@@ -42,7 +42,7 @@ TEST_SNAPSHOT_ROOT = (
     / "test_snapshots"
 )
 
-SNAPSHOT_INTERVAL_SECONDS = 15 * 60
+SNAPSHOT_INTERVAL_SECONDS = 5 * 60
 
 INITIALIZATION_TIMEOUT_SECONDS = 120
 
@@ -53,16 +53,16 @@ MINIMUM_INITIALIZATION_PCT = 99.0
 # Timing
 # --------------------------------------------------
 
-def next_quarter_hour(
+def next_snapshot_time(
     now: datetime | None = None
 ) -> datetime:
     """
-    Return the next exact 15-minute UTC boundary.
+    Return the next exact 5-minute UTC boundary.
 
     Examples:
-        14:03 -> 14:15
-        14:15:02 -> 14:30
-        14:59 -> 15:00
+        14:03 -> 14:05
+        14:05:02 -> 14:10
+        14:10:01 -> 15:15
     """
 
     if now is None:
@@ -443,7 +443,7 @@ async def snapshot_writer(
     while not stop_event.is_set():
 
         scheduled_time = (
-            next_quarter_hour()
+            next_snapshot_time()
         )
 
         # Do not write the old session at/after expiry.
