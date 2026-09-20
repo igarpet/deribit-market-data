@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from pathlib import Path
+import argparse
 import os
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import duckdb
 from dotenv import load_dotenv
@@ -47,7 +48,10 @@ DATABASE_FILE = (
     / "deribit.duckdb"
 )
 
+# 24 hours * 12 snapshots/hour
 EXPECTED_SNAPSHOTS = 288
+
+SETTLEMENT_HOUR_UTC = 8
 
 
 # --------------------------------------------------
@@ -62,6 +66,7 @@ def initialize_database(
         CREATE TABLE IF NOT EXISTS sessions (
             expiry_date DATE PRIMARY KEY,
             session_id VARCHAR,
+
             session_start TIMESTAMPTZ,
             session_end TIMESTAMPTZ,
 
@@ -79,6 +84,23 @@ def initialize_database(
             created_at TIMESTAMPTZ
         )
     """)
+
+
+def session_is_registered(
+    connection: duckdb.DuckDBPyConnection,
+    expiry_date: str
+) -> bool:
+
+    result = connection.execute(
+        """
+        SELECT COUNT(*)
+        FROM sessions
+        WHERE expiry_date = ?
+        """,
+        [expiry_date]
+    ).fetchone()
+
+    return result[0] > 0
 
 
 def refresh_option_grid_view(
@@ -104,7 +126,139 @@ def refresh_option_grid_view(
 
 
 # --------------------------------------------------
-# Session paths
+# Session-date helpers
+# --------------------------------------------------
+
+def expiry_datetime(
+    expiry_date: str
+) -> datetime:
+    """
+    Convert YYYY-MM-DD into the Deribit
+    08:00 UTC expiration timestamp.
+    """
+
+    return datetime.strptime(
+        expiry_date,
+        "%Y-%m-%d"
+    ).replace(
+        hour=SETTLEMENT_HOUR_UTC,
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=timezone.utc
+    )
+
+
+def parse_expiry_folder(
+    folder: Path
+) -> str | None:
+
+    name = folder.name
+
+    if not name.startswith(
+        "expiry="
+    ):
+        return None
+
+    expiry_date = name.replace(
+        "expiry=",
+        ""
+    )
+
+    try:
+        datetime.strptime(
+            expiry_date,
+            "%Y-%m-%d"
+        )
+
+    except ValueError:
+        return None
+
+    return expiry_date
+
+
+# --------------------------------------------------
+# Automatic session discovery
+# --------------------------------------------------
+
+def find_latest_completed_session(
+    connection: duckdb.DuckDBPyConnection
+) -> str:
+    """
+    Find the newest raw snapshot session whose expiry
+    has already occurred and which has not already been
+    registered in DuckDB.
+
+    This deliberately ignores the newly-started session,
+    because its expiry is still in the future.
+    """
+
+    now = datetime.now(
+        timezone.utc
+    )
+
+    candidates = []
+
+    for folder in RAW_SNAPSHOT_ROOT.glob(
+        "expiry=*"
+    ):
+
+        if not folder.is_dir():
+            continue
+
+        expiry_date = parse_expiry_folder(
+            folder
+        )
+
+        if expiry_date is None:
+            continue
+
+        expiry_time = expiry_datetime(
+            expiry_date
+        )
+
+        # Session has not expired yet.
+        if expiry_time > now:
+            continue
+
+        # No production snapshots.
+        snapshot_files = list(
+            folder.glob(
+                "snapshot_*.parquet"
+            )
+        )
+
+        if not snapshot_files:
+            continue
+
+        # Already successfully registered.
+        if session_is_registered(
+            connection,
+            expiry_date
+        ):
+            continue
+
+        candidates.append(
+            (
+                expiry_time,
+                expiry_date
+            )
+        )
+
+    if not candidates:
+        raise RuntimeError(
+            "No completed, unregistered "
+            "0DTE sessions were found."
+        )
+
+    candidates.sort()
+
+    # Most recent completed session
+    return candidates[-1][1]
+
+
+# --------------------------------------------------
+# Paths
 # --------------------------------------------------
 
 def get_session_folder(
@@ -128,8 +282,32 @@ def get_daily_folder(
 
 
 # --------------------------------------------------
-# Validation
+# Session validation
 # --------------------------------------------------
+
+def validate_completed_expiry(
+    expiry_date: str
+) -> None:
+
+    expiry_time = expiry_datetime(
+        expiry_date
+    )
+
+    now = datetime.now(
+        timezone.utc
+    )
+
+    if expiry_time > now:
+
+        raise RuntimeError(
+            "\nRefusing to finalize an active "
+            "or future session.\n"
+            f"Requested expiry: "
+            f"{expiry_time.isoformat()}\n"
+            f"Current UTC time: "
+            f"{now.isoformat()}"
+        )
+
 
 def inspect_session(
     connection: duckdb.DuckDBPyConnection,
@@ -163,11 +341,20 @@ def inspect_session(
     """).fetchone()
 
     return {
-        "total_rows": result[0],
-        "snapshot_count": result[1],
-        "unique_instruments": result[2],
-        "first_snapshot": result[3],
-        "last_snapshot": result[4]
+        "total_rows":
+            result[0],
+
+        "snapshot_count":
+            result[1],
+
+        "unique_instruments":
+            result[2],
+
+        "first_snapshot":
+            result[3],
+
+        "last_snapshot":
+            result[4]
     }
 
 
@@ -217,7 +404,7 @@ def compact_session(
     if not session_folder.exists():
 
         raise RuntimeError(
-            f"Session folder does not exist:\n"
+            "Session folder does not exist:\n"
             f"{session_folder}"
         )
 
@@ -230,7 +417,7 @@ def compact_session(
     if not files:
 
         raise RuntimeError(
-            f"No production snapshots found in:\n"
+            "No production snapshots found in:\n"
             f"{session_folder}"
         )
 
@@ -249,14 +436,12 @@ def compact_session(
         source_glob
     )
 
-    duplicates = count_duplicate_rows(
+    diagnostics[
+        "duplicate_groups"
+    ] = count_duplicate_rows(
         connection,
         source_glob
     )
-
-    diagnostics[
-        "duplicate_groups"
-    ] = duplicates
 
     daily_folder = get_daily_folder(
         expiry_date
@@ -280,10 +465,9 @@ def compact_session(
     if temporary_file.exists():
         temporary_file.unlink()
 
-    # --------------------------------------------------
-    # Merge + deduplicate + sort using DuckDB itself.
-    # --------------------------------------------------
-
+    # Merge all snapshots.
+    # If a duplicate somehow exists, keep the most
+    # recently captured copy.
     connection.execute(f"""
         COPY (
 
@@ -332,25 +516,22 @@ def compact_session(
     if not temporary_file.exists():
 
         raise RuntimeError(
-            "DuckDB did not create "
-            "the temporary daily Parquet."
+            "Temporary daily Parquet "
+            "was not created."
         )
 
-    # --------------------------------------------------
-    # Verify newly-created daily file.
-    # --------------------------------------------------
-
-    final_validation = connection.execute(f"""
+    # Validate the newly-created daily file.
+    validation = connection.execute(f"""
         SELECT
-            COUNT(*) AS rows,
+            COUNT(*),
 
             COUNT(
                 DISTINCT scheduled_snapshot_time
-            ) AS snapshots,
+            ),
 
             COUNT(
                 DISTINCT instrument_name
-            ) AS instruments
+            )
 
         FROM read_parquet(
             '{temporary_file.as_posix()}'
@@ -359,26 +540,29 @@ def compact_session(
 
     diagnostics[
         "final_rows"
-    ] = final_validation[0]
+    ] = validation[0]
 
     diagnostics[
         "final_snapshot_count"
-    ] = final_validation[1]
+    ] = validation[1]
 
     diagnostics[
         "final_unique_instruments"
-    ] = final_validation[2]
+    ] = validation[2]
 
-    # Atomic finalization.
+    # Atomic replacement.
     temporary_file.replace(
         final_file
     )
 
-    return final_file, diagnostics
+    return (
+        final_file,
+        diagnostics
+    )
 
 
 # --------------------------------------------------
-# Register completed session
+# Session registration
 # --------------------------------------------------
 
 def register_session(
@@ -389,19 +573,9 @@ def register_session(
     source_file_count: int
 ) -> None:
 
-    expiry = datetime.strptime(
-        expiry_date,
-        "%Y-%m-%d"
-    ).replace(
-        hour=8,
-        tzinfo=timezone.utc
+    expiry = expiry_datetime(
+        expiry_date
     )
-
-    session_start = (
-        expiry.replace()
-    )
-
-    from datetime import timedelta
 
     session_start = (
         expiry
@@ -423,7 +597,7 @@ def register_session(
         == EXPECTED_SNAPSHOTS
     )
 
-    # Makes rerunning rollover idempotent.
+    # Allows --force reprocessing safely.
     connection.execute(
         """
         DELETE FROM sessions
@@ -437,6 +611,7 @@ def register_session(
         INSERT INTO sessions (
             expiry_date,
             session_id,
+
             session_start,
             session_end,
 
@@ -455,7 +630,8 @@ def register_session(
         )
 
         VALUES (
-            ?, ?, ?, ?,
+            ?, ?,
+            ?, ?,
             ?, ?, ?, ?,
             ?, ?,
             ?, ?,
@@ -465,6 +641,7 @@ def register_session(
         [
             expiry_date,
             f"expiry={expiry_date}",
+
             session_start,
             expiry,
 
@@ -473,7 +650,10 @@ def register_session(
             missing_snapshots,
             is_complete,
 
-            diagnostics["final_rows"],
+            diagnostics[
+                "final_rows"
+            ],
+
             diagnostics[
                 "final_unique_instruments"
             ],
@@ -489,7 +669,7 @@ def register_session(
 
 
 # --------------------------------------------------
-# Console summary
+# Summary
 # --------------------------------------------------
 
 def print_rollover_summary(
@@ -501,6 +681,12 @@ def print_rollover_summary(
     snapshot_count = diagnostics[
         "final_snapshot_count"
     ]
+
+    missing = max(
+        0,
+        EXPECTED_SNAPSHOTS
+        - snapshot_count
+    )
 
     print(
         "\nSESSION FINALIZED"
@@ -523,7 +709,12 @@ def print_rollover_summary(
 
     print(
         f"Missing snapshots:   "
-        f"{max(0, EXPECTED_SNAPSHOTS - snapshot_count)}"
+        f"{missing}"
+    )
+
+    print(
+        f"Complete:            "
+        f"{snapshot_count == EXPECTED_SNAPSHOTS}"
     )
 
     print(
@@ -566,12 +757,112 @@ def print_rollover_summary(
 
 
 # --------------------------------------------------
-# Main rollover function
+# Main finalization
 # --------------------------------------------------
 
 def finalize_session(
-    expiry_date: str
+    connection: duckdb.DuckDBPyConnection,
+    expiry_date: str,
+    force: bool = False
 ) -> Path:
+
+    validate_completed_expiry(
+        expiry_date
+    )
+
+    if (
+        session_is_registered(
+            connection,
+            expiry_date
+        )
+        and not force
+    ):
+
+        raise RuntimeError(
+            "\nSession is already registered "
+            "in DuckDB:\n"
+            f"{expiry_date}\n\n"
+            "Use --force only if you "
+            "intentionally want to rebuild it."
+        )
+
+    session_folder = (
+        get_session_folder(
+            expiry_date
+        )
+    )
+
+    source_files = list(
+        session_folder.glob(
+            "snapshot_*.parquet"
+        )
+    )
+
+    daily_file, diagnostics = (
+        compact_session(
+            connection,
+            expiry_date
+        )
+    )
+
+    register_session(
+        connection=connection,
+        expiry_date=expiry_date,
+        daily_file=daily_file,
+        diagnostics=diagnostics,
+        source_file_count=len(
+            source_files
+        )
+    )
+
+    refresh_option_grid_view(
+        connection
+    )
+
+    print_rollover_summary(
+        expiry_date,
+        daily_file,
+        diagnostics
+    )
+
+    return daily_file
+
+
+# --------------------------------------------------
+# CLI
+# --------------------------------------------------
+
+def main():
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Finalize completed Deribit "
+            "0DTE sessions."
+        )
+    )
+
+    parser.add_argument(
+        "expiry_date",
+        nargs="?",
+        default=None,
+        help=(
+            "Optional expiry date in "
+            "YYYY-MM-DD format. "
+            "If omitted, the latest completed "
+            "unregistered session is selected."
+        )
+    )
+
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Allow deliberate rebuilding of "
+            "an already-registered session."
+        )
+    )
+
+    args = parser.parse_args()
 
     DATABASE_ROOT.mkdir(
         parents=True,
@@ -588,75 +879,41 @@ def finalize_session(
             connection
         )
 
-        session_folder = (
-            get_session_folder(
-                expiry_date
-            )
+        expiry_date = (
+            args.expiry_date
         )
 
-        source_files = list(
-            session_folder.glob(
-                "snapshot_*.parquet"
-            )
-        )
+        if expiry_date is None:
 
-        daily_file, diagnostics = (
-            compact_session(
-                connection,
-                expiry_date
+            expiry_date = (
+                find_latest_completed_session(
+                    connection
+                )
             )
-        )
 
-        register_session(
+            print(
+                "\nAutomatically selected "
+                f"completed session: "
+                f"{expiry_date}"
+            )
+
+        else:
+
+            print(
+                "\nManually selected session: "
+                f"{expiry_date}"
+            )
+
+        finalize_session(
             connection=connection,
             expiry_date=expiry_date,
-            daily_file=daily_file,
-            diagnostics=diagnostics,
-            source_file_count=len(
-                source_files
-            )
+            force=args.force
         )
-
-        refresh_option_grid_view(
-            connection
-        )
-
-        print_rollover_summary(
-            expiry_date,
-            daily_file,
-            diagnostics
-        )
-
-        return daily_file
 
     finally:
 
         connection.close()
 
 
-# --------------------------------------------------
-# CLI
-# --------------------------------------------------
-
 if __name__ == "__main__":
-
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description=(
-            "Finalize a Deribit 0DTE session"
-        )
-    )
-
-    parser.add_argument(
-        "expiry_date",
-        help=(
-            "Expiry date in YYYY-MM-DD format"
-        )
-    )
-
-    args = parser.parse_args()
-
-    finalize_session(
-        args.expiry_date
-    )
+    main()
