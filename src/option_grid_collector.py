@@ -51,8 +51,9 @@ INITIALIZATION_TIMEOUT_SECONDS = 120
 
 MINIMUM_INITIALIZATION_PCT = 99.0
 
-# Only allow the opening 08:00 snapshot to be back-labelled
-# if initialization completes within 2 minutes of session start.
+# The orchestrator can request an opening 08:00 snapshot.
+# We only allow it to be labelled as 08:00 if cache
+# initialization finishes within 2 minutes of session start.
 OPENING_SNAPSHOT_MAX_DELAY_SECONDS = 120
 
 
@@ -67,9 +68,9 @@ def next_snapshot_time(
     Return the next exact 5-minute UTC boundary.
 
     Examples:
-        14:03 -> 14:05
+        14:03    -> 14:05
         14:05:02 -> 14:10
-        14:59 -> 15:00
+        14:59    -> 15:00
     """
 
     if now is None:
@@ -104,7 +105,9 @@ async def sleep_until(
     """
     Sleep until target time.
 
-    Returns False if shutdown was requested first.
+    Returns:
+        True  -> target time was reached.
+        False -> shutdown was requested first.
     """
 
     now = datetime.now(
@@ -219,10 +222,11 @@ def save_grid_snapshot(
     test_mode: bool = False
 ) -> Path:
     """
-    Freeze the complete cache into one Parquet file.
+    Freeze the complete option-state cache into one
+    Parquet file.
 
     Every expected instrument is represented by one row,
-    even if a ticker is missing.
+    even if no ticker state has been received for it.
     """
 
     actual_capture_time = datetime.now(
@@ -285,15 +289,11 @@ def save_grid_snapshot(
 
     if test_mode:
 
-        root = (
-            TEST_SNAPSHOT_ROOT
-        )
+        root = TEST_SNAPSHOT_ROOT
 
     else:
 
-        root = (
-            SNAPSHOT_ROOT
-        )
+        root = SNAPSHOT_ROOT
 
     output_folder = (
         root
@@ -334,8 +334,7 @@ def save_grid_snapshot(
         )
     )
 
-    # Prevent accidental duplicate
-    # production snapshots.
+    # Prevent duplicate production snapshots.
     if (
         output_file.exists()
         and not test_mode
@@ -351,6 +350,12 @@ def save_grid_snapshot(
 
         return output_file
 
+    # Remove an abandoned temporary file
+    # from a previous interrupted write.
+    if temporary_file.exists():
+
+        temporary_file.unlink()
+
     grid.to_parquet(
         temporary_file,
         index=False,
@@ -364,7 +369,7 @@ def save_grid_snapshot(
             "was not created."
         )
 
-    # Atomic finalization
+    # Atomic finalization.
     temporary_file.replace(
         output_file
     )
@@ -484,12 +489,46 @@ async def snapshot_writer(
             next_snapshot_time()
         )
 
-        # Do not write the expired session
-        # at or after 08:00 UTC.
+        # --------------------------------------------------
+        # End-of-session handling
+        #
+        # After the 07:55 snapshot, the next scheduled
+        # boundary is 08:00. We do NOT write that snapshot
+        # into the expiring session.
+        #
+        # Instead, stay alive until exactly 08:00 and then
+        # stop so the orchestrator can:
+        #
+        #   1. compact the expired session
+        #   2. refresh instruments
+        #   3. start the new expiry
+        #   4. capture its opening 08:00 snapshot
+        # --------------------------------------------------
+
         if (
             scheduled_time
             >= cache.session.session_expiry
         ):
+
+            print(
+                "\nFinal 5-minute snapshot "
+                "completed."
+            )
+
+            print(
+                f"Waiting until session expiry: "
+                f"{cache.session.session_expiry.isoformat()}"
+            )
+
+            continue_running = (
+                await sleep_until(
+                    cache.session.session_expiry,
+                    stop_event
+                )
+            )
+
+            if not continue_running:
+                return
 
             print(
                 "\nSession expiry reached."
@@ -566,11 +605,13 @@ def configure_signals(
             stop_event.set
         )
 
+    # Ctrl+C
     signal.signal(
         signal.SIGINT,
         request_shutdown
     )
 
+    # Linux/systemd termination
     if hasattr(
         signal,
         "SIGTERM"
@@ -581,6 +622,7 @@ def configure_signals(
             request_shutdown
         )
 
+    # Windows Ctrl+Break
     if hasattr(
         signal,
         "SIGBREAK"
@@ -672,9 +714,9 @@ async def run(
 
         return
 
-    # ----------------------------------------------
+    # --------------------------------------------------
     # One-off test mode
-    # ----------------------------------------------
+    # --------------------------------------------------
 
     if once:
 
@@ -694,9 +736,14 @@ async def run(
 
         return
 
-    # ----------------------------------------------
+    # --------------------------------------------------
     # Opening 08:00 snapshot
-    # ----------------------------------------------
+    #
+    # Used by session_orchestrator.py immediately after
+    # rollover. The actual WebSocket cache takes some
+    # seconds to initialize, but the snapshot is assigned
+    # to the intended 08:00 session boundary.
+    # --------------------------------------------------
 
     if opening_snapshot:
 
@@ -722,7 +769,9 @@ async def run(
 
             save_grid_snapshot(
                 cache=cache,
-                scheduled_time=session.session_start,
+                scheduled_time=(
+                    session.session_start
+                ),
                 test_mode=False
             )
 
@@ -738,9 +787,16 @@ async def run(
                 f"seconds ago."
             )
 
-    # ----------------------------------------------
+            print(
+                f"Maximum allowed opening "
+                f"delay is "
+                f"{OPENING_SNAPSHOT_MAX_DELAY_SECONDS} "
+                f"seconds."
+            )
+
+    # --------------------------------------------------
     # Continuous mode
-    # ----------------------------------------------
+    # --------------------------------------------------
 
     writer_task = asyncio.create_task(
         snapshot_writer(
@@ -751,6 +807,7 @@ async def run(
 
     await stop_event.wait()
 
+    # Wait for both components to shut down cleanly.
     for task in [
         writer_task,
         cache_task
@@ -817,4 +874,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()
