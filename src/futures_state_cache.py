@@ -44,21 +44,6 @@ BOOK_METRIC_NAMES = (
 
 
 # --------------------------------------------------
-# Exceptions
-# --------------------------------------------------
-
-class BookSequenceGap(RuntimeError):
-    """
-    Raised when Deribit order-book sequencing
-    indicates that an update was missed.
-
-    The connection is deliberately restarted so
-    all books receive fresh snapshots.
-    """
-    pass
-
-
-# --------------------------------------------------
 # Generic helpers
 # --------------------------------------------------
 
@@ -140,12 +125,12 @@ def discover_perpetuals(
     option_instruments: pd.DataFrame
 ) -> pd.DataFrame:
     """
-    Select one perpetual future for each underlying
+    Select one perpetual future for every underlying
     represented in the current 0DTE option session.
 
     Preference:
         1. Linear USDC perpetual
-        2. Inverse perpetual
+        2. Inverse/reversed perpetual
         3. Any remaining perpetual
     """
 
@@ -307,7 +292,7 @@ def discover_perpetuals(
         "_selection_rank"
     ] = 2
 
-    # Prefer linear USDC.
+    # Prefer linear USDC perpetuals.
     futures.loc[
         (
             instrument_type.eq(
@@ -439,13 +424,13 @@ class FuturesStateCache:
             dict
         ] = {}
 
-        # Latest L2 top-20 state only.
+        # Latest complete top-20 L2 snapshot only.
         self.order_book_state: dict[
             str,
             dict
         ] = {}
 
-        # Current OHLCV/trade accumulators.
+        # Current trade/OHLCV accumulators.
         self.bars: dict[
             tuple[str, int],
             dict
@@ -456,7 +441,7 @@ class FuturesStateCache:
             set
         ] = {}
 
-        # Time-weighted L2 statistics.
+        # Time-weighted L2 metric state.
         self.book_metric_state: dict[
             str,
             dict
@@ -467,8 +452,7 @@ class FuturesStateCache:
             dict
         ] = {}
 
-        # Bars affected by a WebSocket outage /
-        # sequence-loss event.
+        # Bars crossed by a WebSocket interruption.
         self.incomplete_bar_keys: set[
             tuple[str, int]
         ] = set()
@@ -477,7 +461,7 @@ class FuturesStateCache:
         self.trades_received = 0
         self.book_messages_received = 0
 
-        self.book_sequence_gaps = 0
+        self.book_parse_errors = 0
         self.ignored_late_trades = 0
 
         self.connection_count = 0
@@ -499,6 +483,12 @@ class FuturesStateCache:
         self,
         instrument: str
     ) -> str:
+        """
+        Public depth-limited aggregated order book.
+
+        Every notification is a complete depth-20
+        snapshot, not an incremental delta.
+        """
 
         return (
             f"book."
@@ -611,9 +601,11 @@ class FuturesStateCache:
         self
     ) -> None:
         """
-        Preserve trade/bar accumulators but force
-        fresh ticker/book initialization after a
-        connection restart.
+        Trade/bar accumulators are preserved.
+
+        Ticker and L2 state are discarded so the
+        new WebSocket connection seeds them again
+        with fresh snapshots.
         """
 
         self.ticker_state.clear()
@@ -680,73 +672,36 @@ class FuturesStateCache:
         ] = state
 
     # --------------------------------------------------
-    # L2 order-book helpers
+    # L2 parsing
     # --------------------------------------------------
 
-    def _new_book_state(
-        self
-    ) -> dict:
-
-        return {
-            "bids": {},
-            "asks": {},
-            "change_id": None,
-            "timestamp": None,
-            "_received_timestamp_ms": None,
-            "valid": False
-        }
-
-    def _parse_book_level(
+    def _parse_grouped_level(
         self,
         level
-    ) -> tuple[str, float, float] | None:
+    ) -> tuple[
+        float,
+        float
+    ] | None:
         """
-        Supports both:
-
-            ["new", price, amount]
-
-        and defensive support for:
+        Grouped depth-limited Deribit book feeds
+        normally provide:
 
             [price, amount]
+
+        We also defensively accept:
+
+            [action, price, amount]
+
+        even though our selected grouped channel
+        is treated as a complete snapshot.
         """
 
-        if (
-            not isinstance(
-                level,
-                (list, tuple)
-            )
+        if not isinstance(
+            level,
+            (list, tuple)
         ):
 
             return None
-
-        if len(level) >= 3:
-
-            action = str(
-                level[0]
-            ).lower()
-
-            try:
-
-                price = float(
-                    level[1]
-                )
-
-                amount = float(
-                    level[2]
-                )
-
-            except (
-                TypeError,
-                ValueError
-            ):
-
-                return None
-
-            return (
-                action,
-                price,
-                amount
-            )
 
         if len(level) == 2:
 
@@ -767,160 +722,86 @@ class FuturesStateCache:
 
                 return None
 
-            return (
-                "new",
-                price,
-                amount
-            )
+        elif len(level) >= 3:
 
-        return None
+            try:
 
-    def _apply_book_levels(
+                price = float(
+                    level[-2]
+                )
+
+                amount = float(
+                    level[-1]
+                )
+
+            except (
+                TypeError,
+                ValueError
+            ):
+
+                return None
+
+        else:
+
+            return None
+
+        if (
+            price <= 0
+            or amount <= 0
+        ):
+
+            return None
+
+        return (
+            price,
+            amount
+        )
+
+    def _parse_grouped_side(
         self,
-        levels: list,
-        side: dict
-    ) -> None:
+        levels
+    ) -> list[
+        tuple[
+            float,
+            float
+        ]
+    ]:
 
-        for raw_level in levels:
+        result = []
+
+        if not isinstance(
+            levels,
+            list
+        ):
+
+            return result
+
+        for level in levels:
 
             parsed = (
-                self._parse_book_level(
-                    raw_level
+                self._parse_grouped_level(
+                    level
                 )
             )
 
             if parsed is None:
                 continue
 
-            action, price, amount = (
+            result.append(
                 parsed
             )
 
-            if (
-                action == "delete"
-                or amount <= 0
-            ):
+        return result
 
-                side.pop(
-                    price,
-                    None
-                )
-
-            else:
-
-                side[
-                    price
-                ] = amount
-
-    def _trim_book(
+    def _calculate_metrics_from_levels(
         self,
-        state: dict
-    ) -> None:
-
-        bid_prices = sorted(
-            state[
-                "bids"
-            ].keys(),
-            reverse=True
-        )[
-            :BOOK_DEPTH
+        bids: list[
+            tuple[float, float]
+        ],
+        asks: list[
+            tuple[float, float]
         ]
-
-        ask_prices = sorted(
-            state[
-                "asks"
-            ].keys()
-        )[
-            :BOOK_DEPTH
-        ]
-
-        state[
-            "bids"
-        ] = {
-            price:
-                state[
-                    "bids"
-                ][price]
-
-            for price
-            in bid_prices
-        }
-
-        state[
-            "asks"
-        ] = {
-            price:
-                state[
-                    "asks"
-                ][price]
-
-            for price
-            in ask_prices
-        }
-
-    def _sorted_book_levels(
-        self,
-        instrument: str
-    ) -> tuple[
-        list[tuple[float, float]],
-        list[tuple[float, float]]
-    ]:
-
-        state = (
-            self.order_book_state.get(
-                instrument
-            )
-        )
-
-        if (
-            not state
-            or not state.get(
-                "valid",
-                False
-            )
-        ):
-
-            return (
-                [],
-                []
-            )
-
-        bids = sorted(
-            state[
-                "bids"
-            ].items(),
-            key=lambda item:
-                item[0],
-            reverse=True
-        )[
-            :BOOK_DEPTH
-        ]
-
-        asks = sorted(
-            state[
-                "asks"
-            ].items(),
-            key=lambda item:
-                item[0]
-        )[
-            :BOOK_DEPTH
-        ]
-
-        return (
-            bids,
-            asks
-        )
-
-    def _calculate_book_metrics(
-        self,
-        instrument: str
     ) -> dict | None:
-
-        bids, asks = (
-            self._sorted_book_levels(
-                instrument
-            )
-        )
 
         if (
             not bids
@@ -929,11 +810,21 @@ class FuturesStateCache:
 
             return None
 
-        best_bid = bids[0][0]
-        best_ask = asks[0][0]
+        best_bid = (
+            bids[0][0]
+        )
 
-        bid_size_1 = bids[0][1]
-        ask_size_1 = asks[0][1]
+        best_ask = (
+            asks[0][0]
+        )
+
+        bid_size_1 = (
+            bids[0][1]
+        )
+
+        ask_size_1 = (
+            asks[0][1]
+        )
 
         spread = (
             best_ask
@@ -1028,24 +919,33 @@ class FuturesStateCache:
     ) -> dict:
 
         return {
-            "valid_duration_ms": 0.0,
+            "valid_duration_ms":
+                0.0,
 
             "weighted_sum": {
-                metric: 0.0
+                metric:
+                    0.0
+
                 for metric
                 in BOOK_METRIC_NAMES
             },
 
             "weighted_duration": {
-                metric: 0.0
+                metric:
+                    0.0
+
                 for metric
                 in BOOK_METRIC_NAMES
             },
 
-            "update_count": 0,
+            "update_count":
+                0,
 
-            "min_obi_20": None,
-            "max_obi_20": None
+            "min_obi_20":
+                None,
+
+            "max_obi_20":
+                None
         }
 
     def _get_book_accumulator(
@@ -1238,46 +1138,57 @@ class FuturesStateCache:
             )
         )
 
-        if obi_20 is not None:
+        if obi_20 is None:
+            return
 
-            current_min = (
-                accumulator[
-                    "min_obi_20"
-                ]
-            )
+        current_min = (
+            accumulator[
+                "min_obi_20"
+            ]
+        )
 
-            current_max = (
-                accumulator[
-                    "max_obi_20"
-                ]
-            )
+        current_max = (
+            accumulator[
+                "max_obi_20"
+            ]
+        )
 
-            if (
-                current_min is None
-                or obi_20 < current_min
-            ):
+        if (
+            current_min is None
+            or obi_20 < current_min
+        ):
 
-                accumulator[
-                    "min_obi_20"
-                ] = obi_20
+            accumulator[
+                "min_obi_20"
+            ] = obi_20
 
-            if (
-                current_max is None
-                or obi_20 > current_max
-            ):
+        if (
+            current_max is None
+            or obi_20 > current_max
+        ):
 
-                accumulator[
-                    "max_obi_20"
-                ] = obi_20
+            accumulator[
+                "max_obi_20"
+            ] = obi_20
 
     # --------------------------------------------------
-    # L2 message processing
+    # Grouped L2 processing
     # --------------------------------------------------
 
     def process_book(
         self,
         data: dict
     ) -> None:
+        """
+        Process one complete grouped depth-20 snapshot.
+
+        IMPORTANT:
+        book.<instrument>.none.20.100ms is not treated
+        as an incremental raw feed.
+
+        Every message replaces the complete stored
+        top-20 state.
+        """
 
         instrument_name = (
             data.get(
@@ -1287,6 +1198,7 @@ class FuturesStateCache:
 
         if not instrument_name:
 
+            self.book_parse_errors += 1
             return
 
         received_timestamp_ms = int(
@@ -1294,184 +1206,112 @@ class FuturesStateCache:
             * 1000
         )
 
-        timestamp_ms = int(
+        timestamp_raw = (
             data.get(
                 "timestamp"
             )
-            or received_timestamp_ms
         )
 
-        update_type = str(
-            data.get(
-                "type",
-                ""
-            )
-        ).lower()
+        if timestamp_raw is None:
 
-        state = (
-            self.order_book_state.get(
-                instrument_name
-            )
-        )
-
-        if state is None:
-
-            state = (
-                self._new_book_state()
+            timestamp_ms = (
+                received_timestamp_ms
             )
 
-            self.order_book_state[
-                instrument_name
-            ] = state
+        else:
 
-        # Previous valid book remained in effect
-        # up to this exchange timestamp.
+            try:
+
+                timestamp_ms = int(
+                    timestamp_raw
+                )
+
+            except (
+                TypeError,
+                ValueError
+            ):
+
+                timestamp_ms = (
+                    received_timestamp_ms
+                )
+
+        # The previous book remained active until
+        # this new exchange timestamp.
         self._advance_book_stats(
             instrument_name,
             timestamp_ms
         )
 
-        if update_type == "snapshot":
-
-            state[
-                "bids"
-            ] = {}
-
-            state[
-                "asks"
-            ] = {}
-
-            self._apply_book_levels(
+        bids = (
+            self._parse_grouped_side(
                 data.get(
                     "bids",
                     []
-                ),
-                state[
-                    "bids"
-                ]
+                )
             )
+        )
 
-            self._apply_book_levels(
+        asks = (
+            self._parse_grouped_side(
                 data.get(
                     "asks",
                     []
-                ),
-                state[
-                    "asks"
-                ]
-            )
-
-            state[
-                "valid"
-            ] = True
-
-        elif update_type == "change":
-
-            if not state.get(
-                "valid",
-                False
-            ):
-
-                self.book_sequence_gaps += 1
-
-                raise BookSequenceGap(
-                    f"No valid L2 snapshot "
-                    f"for {instrument_name}"
-                )
-
-            previous_change_id = (
-                data.get(
-                    "prev_change_id"
                 )
             )
-
-            last_change_id = (
-                state.get(
-                    "change_id"
-                )
-            )
-
-            if (
-                previous_change_id
-                is not None
-                and last_change_id
-                is not None
-                and previous_change_id
-                != last_change_id
-            ):
-
-                state[
-                    "valid"
-                ] = False
-
-                self.book_metric_state.pop(
-                    instrument_name,
-                    None
-                )
-
-                self.book_sequence_gaps += 1
-
-                raise BookSequenceGap(
-                    f"L2 sequence gap "
-                    f"for {instrument_name}: "
-                    f"expected prev_change_id "
-                    f"{last_change_id}, got "
-                    f"{previous_change_id}"
-                )
-
-            self._apply_book_levels(
-                data.get(
-                    "bids",
-                    []
-                ),
-                state[
-                    "bids"
-                ]
-            )
-
-            self._apply_book_levels(
-                data.get(
-                    "asks",
-                    []
-                ),
-                state[
-                    "asks"
-                ]
-            )
-
-        else:
-
-            return
-
-        self._trim_book(
-            state
         )
 
-        state[
-            "change_id"
-        ] = data.get(
-            "change_id"
-        )
+        # Be defensive about ordering.
+        bids = sorted(
+            bids,
+            key=lambda item:
+                item[0],
+            reverse=True
+        )[
+            :BOOK_DEPTH
+        ]
 
-        state[
-            "timestamp"
-        ] = timestamp_ms
-
-        state[
-            "_received_timestamp_ms"
-        ] = received_timestamp_ms
+        asks = sorted(
+            asks,
+            key=lambda item:
+                item[0]
+        )[
+            :BOOK_DEPTH
+        ]
 
         metrics = (
-            self._calculate_book_metrics(
-                instrument_name
+            self._calculate_metrics_from_levels(
+                bids,
+                asks
             )
         )
 
         if metrics is None:
 
-            state[
-                "valid"
-            ] = False
+            self.book_parse_errors += 1
+
+            self.order_book_state[
+                instrument_name
+            ] = {
+                "bids":
+                    [],
+
+                "asks":
+                    [],
+
+                "change_id":
+                    data.get(
+                        "change_id"
+                    ),
+
+                "timestamp":
+                    timestamp_ms,
+
+                "_received_timestamp_ms":
+                    received_timestamp_ms,
+
+                "valid":
+                    False
+            }
 
             self.book_metric_state.pop(
                 instrument_name,
@@ -1480,9 +1320,30 @@ class FuturesStateCache:
 
             return
 
-        state[
-            "valid"
-        ] = True
+        # Entire grouped top-20 state is replaced.
+        self.order_book_state[
+            instrument_name
+        ] = {
+            "bids":
+                bids,
+
+            "asks":
+                asks,
+
+            "change_id":
+                data.get(
+                    "change_id"
+                ),
+
+            "timestamp":
+                timestamp_ms,
+
+            "_received_timestamp_ms":
+                received_timestamp_ms,
+
+            "valid":
+                True
+        }
 
         self.book_metric_state[
             instrument_name
@@ -1518,7 +1379,6 @@ class FuturesStateCache:
         )
 
         if not instrument_name:
-
             return
 
         timestamp_ms = (
@@ -1662,11 +1522,6 @@ class FuturesStateCache:
             )
         ).lower()
 
-        # Linear futures:
-        # amount is base-coin quantity.
-        #
-        # Reversed/inverse futures:
-        # amount is USD quantity.
         if instrument_type == "linear":
 
             volume_base = (
@@ -1876,7 +1731,7 @@ class FuturesStateCache:
         self.trades_received += 1
 
     # --------------------------------------------------
-    # L2 boundary snapshot
+    # L2 boundary state
     # --------------------------------------------------
 
     def _book_boundary_fields(
@@ -1961,15 +1816,22 @@ class FuturesStateCache:
 
             return fields
 
-        bids, asks = (
-            self._sorted_book_levels(
-                instrument
-            )
+        bids = (
+            state[
+                "bids"
+            ]
+        )
+
+        asks = (
+            state[
+                "asks"
+            ]
         )
 
         metrics = (
-            self._calculate_book_metrics(
-                instrument
+            self._calculate_metrics_from_levels(
+                bids,
+                asks
             )
         )
 
@@ -2203,7 +2065,7 @@ class FuturesStateCache:
         return result
 
     # --------------------------------------------------
-    # Finalize within-bar L2 statistics
+    # Finalize L2 statistics
     # --------------------------------------------------
 
     def finalize_book_stats(
@@ -2213,9 +2075,8 @@ class FuturesStateCache:
         bar_end_ms: int
     ) -> dict:
 
-        # If no post-boundary update has yet
-        # advanced the metric state, extend the
-        # latest valid book to the bar boundary.
+        # Carry the most recent book state forward
+        # to the precise 5-minute boundary.
         self._advance_book_stats(
             instrument,
             bar_end_ms
@@ -2277,7 +2138,6 @@ class FuturesStateCache:
             "book_stats_coverage_ms"
         ] = coverage_ms
 
-        # Allow a tiny timestamp rounding tolerance.
         result[
             "book_stats_complete"
         ] = (
@@ -2337,7 +2197,7 @@ class FuturesStateCache:
         return result
 
     # --------------------------------------------------
-    # Finalize 5-minute futures bar
+    # Finalize 5-minute bar
     # --------------------------------------------------
 
     def finalize_bar(
@@ -2698,7 +2558,7 @@ class FuturesStateCache:
         )
 
     # --------------------------------------------------
-    # WebSocket message handling
+    # WebSocket receive loop
     # --------------------------------------------------
 
     async def receive_messages(
@@ -2732,15 +2592,28 @@ class FuturesStateCache:
 
                 continue
 
-            # Subscription confirmations.
             if "id" in message:
 
                 if "result" in message:
+
+                    result = message[
+                        "result"
+                    ]
 
                     print(
                         "Futures market-data "
                         "subscriptions confirmed."
                     )
+
+                    if isinstance(
+                        result,
+                        list
+                    ):
+
+                        print(
+                            f"Confirmed channels: "
+                            f"{len(result)}"
+                        )
 
                 continue
 
@@ -2826,6 +2699,10 @@ class FuturesStateCache:
                     self.process_book(
                         data
                     )
+
+                else:
+
+                    self.book_parse_errors += 1
 
             self.messages_received += 1
 
@@ -2941,12 +2818,12 @@ class FuturesStateCache:
             )
 
             print(
-                f"Perpetuals:          "
+                f"Perpetuals:           "
                 f"{expected}"
             )
 
             print(
-                f"Tickers initialized: "
+                f"Tickers initialized:  "
                 f"{tickers_initialized}/"
                 f"{expected}"
             )
@@ -2958,36 +2835,36 @@ class FuturesStateCache:
             )
 
             print(
-                f"Trades received:     "
+                f"Trades received:      "
                 f"{self.trades_received:,}"
             )
 
             print(
-                f"L2 messages:         "
+                f"L2 messages:          "
                 f"{self.book_messages_received:,}"
             )
 
             print(
-                f"L2 sequence gaps:    "
-                f"{self.book_sequence_gaps:,}"
+                f"L2 parse errors:      "
+                f"{self.book_parse_errors:,}"
             )
 
             print(
-                f"Late trades ignored: "
+                f"Late trades ignored:  "
                 f"{self.ignored_late_trades:,}"
             )
 
             if ticker_ages:
 
                 print(
-                    f"Median ticker age:   "
+                    f"Median ticker age:    "
                     f"{statistics.median(ticker_ages):,.0f} ms"
                 )
 
             if book_ages:
 
                 print(
-                    f"Median L2 age:       "
+                    f"Median L2 age:        "
                     f"{statistics.median(book_ages):,.0f} ms"
                 )
 
