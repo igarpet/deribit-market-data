@@ -40,7 +40,6 @@ DATA_ROOT = Path(
     data_root_env
 ).expanduser().resolve()
 
-# Completely separate from options.
 FUTURES_ROOT = (
     DATA_ROOT
     / "futures"
@@ -51,14 +50,14 @@ SNAPSHOT_INTERVAL_SECONDS = (
     5 * 60
 )
 
-TICKER_INITIALIZATION_TIMEOUT_SECONDS = (
+MARKET_INITIALIZATION_TIMEOUT_SECONDS = (
     60
 )
 
-# Allows the 100 ms trade feed a small amount
-# of time to deliver trades executed immediately
-# before the exact 5-minute boundary.
-TRADE_FINALIZATION_DELAY_SECONDS = (
+# The public trade/book channels are aggregated
+# at 100 ms. Give the final messages preceding
+# the boundary a short opportunity to arrive.
+FINALIZATION_DELAY_SECONDS = (
     1.0
 )
 
@@ -125,10 +124,10 @@ async def sleep_until(
 
 
 # --------------------------------------------------
-# Wait for initial ticker snapshots
+# Initial state
 # --------------------------------------------------
 
-async def wait_for_tickers(
+async def wait_for_market_state(
     cache: FuturesStateCache,
     stop_event: asyncio.Event
 ) -> bool:
@@ -144,20 +143,28 @@ async def wait_for_tickers(
 
     print(
         "\nWaiting for futures "
-        "ticker initialization..."
+        "ticker + L2 initialization..."
     )
 
     while not stop_event.is_set():
 
-        initialized = len(
+        tickers = len(
             cache.ticker_state
         )
 
-        if initialized >= expected:
+        books = (
+            cache.valid_book_count()
+        )
+
+        if (
+            tickers >= expected
+            and books >= expected
+        ):
 
             print(
-                f"Futures tickers initialized: "
-                f"{initialized}/{expected}"
+                f"Futures market state "
+                f"initialized: "
+                f"{expected}/{expected}"
             )
 
             return True
@@ -170,17 +177,22 @@ async def wait_for_tickers(
 
         if (
             elapsed
-            >= TICKER_INITIALIZATION_TIMEOUT_SECONDS
+            >= MARKET_INITIALIZATION_TIMEOUT_SECONDS
         ):
 
             print(
-                "\nFutures ticker "
+                "\nFutures market-state "
                 "initialization timeout."
             )
 
             print(
-                f"Initialized: "
-                f"{initialized}/{expected}"
+                f"Tickers: "
+                f"{tickers}/{expected}"
+            )
+
+            print(
+                f"L2 books: "
+                f"{books}/{expected}"
             )
 
             return False
@@ -213,9 +225,27 @@ def save_bar_rows(
         ].iloc[0]
     )
 
+    if (
+        bar_start.tzinfo
+        is None
+    ):
+
+        bar_start = (
+            bar_start.tz_localize(
+                "UTC"
+            )
+        )
+
+    else:
+
+        bar_start = (
+            bar_start.tz_convert(
+                "UTC"
+            )
+        )
+
     utc_date = (
         bar_start
-        .tz_convert("UTC")
         .date()
         .isoformat()
     )
@@ -242,8 +272,10 @@ def save_bar_rows(
 
     if output_file.exists():
 
-        existing = pd.read_parquet(
-            output_file
+        existing = (
+            pd.read_parquet(
+                output_file
+            )
         )
 
         combined = pd.concat(
@@ -251,7 +283,8 @@ def save_bar_rows(
                 existing,
                 rows
             ],
-            ignore_index=True
+            ignore_index=True,
+            sort=False
         )
 
     else:
@@ -260,7 +293,6 @@ def save_bar_rows(
             rows.copy()
         )
 
-    # Makes writes idempotent.
     combined = (
         combined
         .sort_values(
@@ -315,13 +347,17 @@ def print_bar_summary(
     output_file: Path
 ) -> None:
 
-    bar_start = rows[
-        "bar_start"
-    ].iloc[0]
+    bar_start = (
+        rows[
+            "bar_start"
+        ].iloc[0]
+    )
 
-    bar_end = rows[
-        "bar_end"
-    ].iloc[0]
+    bar_end = (
+        rows[
+            "bar_end"
+        ].iloc[0]
+    )
 
     print(
         "\nFUTURES 5-MINUTE BAR SAVED"
@@ -352,16 +388,62 @@ def print_bar_summary(
         f"{rows['volume_usd'].sum():,.2f}"
     )
 
-    incomplete = int(
-        (~rows[
-            "stream_complete"
-        ]).sum()
+    incomplete_streams = int(
+        (
+            ~rows[
+                "stream_complete"
+            ].fillna(
+                False
+            )
+        ).sum()
     )
 
     print(
         f"Incomplete streams: "
-        f"{incomplete}"
+        f"{incomplete_streams}"
     )
+
+    if (
+        "book_valid"
+        in rows.columns
+    ):
+
+        valid_books = int(
+            rows[
+                "book_valid"
+            ]
+            .fillna(
+                False
+            )
+            .sum()
+        )
+
+        print(
+            f"Valid L2 books: "
+            f"{valid_books}/"
+            f"{len(rows)}"
+        )
+
+    if (
+        "book_stats_complete"
+        in rows.columns
+    ):
+
+        complete_book_stats = int(
+            rows[
+                "book_stats_complete"
+            ]
+            .fillna(
+                False
+            )
+            .sum()
+        )
+
+        print(
+            f"Complete L2 stats: "
+            f"{complete_book_stats}/"
+            f"{len(rows)}"
+        )
 
     print(
         "File:"
@@ -400,24 +482,27 @@ async def bar_writer(
         )
 
         if not reached_boundary:
+
             return
 
-        # Freeze the futures quote/index state
-        # at the same exact 5-minute boundary.
+        # Freeze ticker + L2 state as close as
+        # possible to the exact five-minute
+        # boundary.
         boundary_state = (
             cache.capture_boundary_state(
                 scheduled_end
             )
         )
 
-        # Allow batched 100 ms trade messages
-        # immediately before the boundary to arrive.
+        # Allow the 100 ms aggregated trade/book
+        # stream to flush exchange events from just
+        # before the boundary.
         try:
 
             await asyncio.wait_for(
                 stop_event.wait(),
                 timeout=(
-                    TRADE_FINALIZATION_DELAY_SECONDS
+                    FINALIZATION_DELAY_SECONDS
                 )
             )
 
@@ -427,9 +512,11 @@ async def bar_writer(
 
             pass
 
-        rows = cache.finalize_bar(
-            bar_end=scheduled_end,
-            boundary_state=boundary_state
+        rows = (
+            cache.finalize_bar(
+                bar_end=scheduled_end,
+                boundary_state=boundary_state
+            )
         )
 
         try:
@@ -520,14 +607,15 @@ async def run() -> None:
         stop_event
     )
 
-    # Use the exact current 0DTE option session
-    # to determine which underlying coins matter.
+    # The current exact 0DTE option universe
+    # determines which underlyings need a
+    # canonical perpetual reference.
     session, option_instruments = (
         get_current_session()
     )
 
     print(
-        "\nDERIBIT FUTURES 5M COLLECTOR"
+        "\nDERIBIT FUTURES 5M + L2 COLLECTOR"
     )
 
     print(
@@ -551,6 +639,7 @@ async def run() -> None:
 
     display_columns = [
         column
+
         for column in [
             "base_currency",
             "instrument_name",
@@ -558,6 +647,7 @@ async def run() -> None:
             "settlement_currency",
             "api_currency"
         ]
+
         if column
         in perpetuals.columns
     ]
@@ -582,7 +672,7 @@ async def run() -> None:
     )
 
     initialized = (
-        await wait_for_tickers(
+        await wait_for_market_state(
             cache,
             stop_event
         )
@@ -595,7 +685,7 @@ async def run() -> None:
         await cache_task
 
         raise RuntimeError(
-            "Futures ticker cache "
+            "Futures ticker/L2 cache "
             "failed to initialize."
         )
 

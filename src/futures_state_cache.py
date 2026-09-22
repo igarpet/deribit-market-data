@@ -5,24 +5,61 @@ import copy
 import json
 import statistics
 import time
-from datetime import datetime, timezone
 
 import pandas as pd
 import requests
 import websockets
 
 
+# --------------------------------------------------
+# Configuration
+# --------------------------------------------------
+
 REST_URL = "https://www.deribit.com/api/v2"
 WS_URL = "wss://www.deribit.com/ws/api/v2"
 
 BAR_INTERVAL_MS = 5 * 60 * 1000
 
+BOOK_DEPTH = 20
+BOOK_GROUP = "none"
+BOOK_INTERVAL = "100ms"
+
 HEALTH_INTERVAL_SECONDS = 30
 RECONNECT_DELAY_SECONDS = 5
 
 
+BOOK_METRIC_NAMES = (
+    "spread",
+    "bid_depth_5",
+    "ask_depth_5",
+    "obi_5",
+    "bid_depth_10",
+    "ask_depth_10",
+    "obi_10",
+    "bid_depth_20",
+    "ask_depth_20",
+    "obi_20",
+    "microprice",
+)
+
+
 # --------------------------------------------------
-# Helpers
+# Exceptions
+# --------------------------------------------------
+
+class BookSequenceGap(RuntimeError):
+    """
+    Raised when Deribit order-book sequencing
+    indicates that an update was missed.
+
+    The connection is deliberately restarted so
+    all books receive fresh snapshots.
+    """
+    pass
+
+
+# --------------------------------------------------
+# Generic helpers
 # --------------------------------------------------
 
 def deep_merge(
@@ -53,7 +90,7 @@ def deep_merge(
 
 
 # --------------------------------------------------
-# Perpetual discovery
+# Futures discovery
 # --------------------------------------------------
 
 def get_future_instruments(
@@ -109,10 +146,13 @@ def discover_perpetuals(
     Preference:
         1. Linear USDC perpetual
         2. Inverse perpetual
-        3. Any other perpetual
+        3. Any remaining perpetual
     """
 
-    if "underlying" not in option_instruments.columns:
+    if (
+        "underlying"
+        not in option_instruments.columns
+    ):
 
         raise RuntimeError(
             "Option instruments do not contain "
@@ -139,15 +179,17 @@ def discover_perpetuals(
         .tolist()
     )
 
-    # These are currently the important
-    # Deribit futures buckets for our universe.
     for required in [
         "USDC",
         "BTC",
         "ETH"
     ]:
 
-        if required not in api_currencies:
+        if (
+            required
+            not in api_currencies
+        ):
+
             api_currencies.append(
                 required
             )
@@ -180,8 +222,8 @@ def discover_perpetuals(
     if not frames:
 
         raise RuntimeError(
-            "No active futures were returned "
-            "by Deribit."
+            "No active futures were "
+            "returned by Deribit."
         )
 
     futures = pd.concat(
@@ -189,22 +231,18 @@ def discover_perpetuals(
         ignore_index=True
     )
 
-    if "is_active" in futures.columns:
+    if (
+        "is_active"
+        in futures.columns
+    ):
 
         futures = futures[
-            futures["is_active"] == True
+            futures[
+                "is_active"
+            ] == True
         ].copy()
 
     perpetual_mask = (
-        futures[
-            "settlement_period"
-        ]
-        .astype(str)
-        .str.lower()
-        .eq("perpetual")
-    )
-
-    perpetual_mask |= (
         futures[
             "instrument_name"
         ]
@@ -215,6 +253,20 @@ def discover_perpetuals(
             na=False
         )
     )
+
+    if (
+        "settlement_period"
+        in futures.columns
+    ):
+
+        perpetual_mask |= (
+            futures[
+                "settlement_period"
+            ]
+            .astype(str)
+            .str.lower()
+            .eq("perpetual")
+        )
 
     futures = futures[
         perpetual_mask
@@ -251,34 +303,40 @@ def discover_perpetuals(
         .str.upper()
     )
 
-    # Prefer linear USDC perpetuals.
     futures[
         "_selection_rank"
     ] = 2
 
+    # Prefer linear USDC.
     futures.loc[
         (
-            instrument_type.eq("linear")
-            & settlement_currency.eq("USDC")
+            instrument_type.eq(
+                "linear"
+            )
+            & settlement_currency.eq(
+                "USDC"
+            )
         ),
         "_selection_rank"
     ] = 0
 
+    # Second preference: inverse/reversed.
     futures.loc[
-        instrument_type.eq("reversed"),
+        instrument_type.eq(
+            "reversed"
+        ),
         "_selection_rank"
     ] = 1
 
-    futures = futures.sort_values(
-        [
-            "base_currency",
-            "_selection_rank",
-            "instrument_name"
-        ]
-    )
-
     selected = (
         futures
+        .sort_values(
+            [
+                "base_currency",
+                "_selection_rank",
+                "instrument_name"
+            ]
+        )
         .drop_duplicates(
             subset=[
                 "base_currency"
@@ -303,12 +361,13 @@ def discover_perpetuals(
     selected_underlyings = set(
         selected[
             "underlying"
-        ]
+        ].tolist()
     )
 
     missing = [
         underlying
-        for underlying in underlyings
+        for underlying
+        in underlyings
         if underlying
         not in selected_underlyings
     ]
@@ -332,7 +391,7 @@ def discover_perpetuals(
 
 
 # --------------------------------------------------
-# Futures state/cache
+# Futures state cache
 # --------------------------------------------------
 
 class FuturesStateCache:
@@ -374,11 +433,19 @@ class FuturesStateCache:
             )
         )
 
+        # Latest ticker state only.
         self.ticker_state: dict[
             str,
             dict
         ] = {}
 
+        # Latest L2 top-20 state only.
+        self.order_book_state: dict[
+            str,
+            dict
+        ] = {}
+
+        # Current OHLCV/trade accumulators.
         self.bars: dict[
             tuple[str, int],
             dict
@@ -389,14 +456,35 @@ class FuturesStateCache:
             set
         ] = {}
 
+        # Time-weighted L2 statistics.
+        self.book_metric_state: dict[
+            str,
+            dict
+        ] = {}
+
+        self.book_bar_accumulators: dict[
+            tuple[str, int],
+            dict
+        ] = {}
+
+        # Bars affected by a WebSocket outage /
+        # sequence-loss event.
+        self.incomplete_bar_keys: set[
+            tuple[str, int]
+        ] = set()
+
         self.messages_received = 0
         self.trades_received = 0
+        self.book_messages_received = 0
+
+        self.book_sequence_gaps = 0
         self.ignored_late_trades = 0
 
         self.connection_count = 0
 
         self.collector_started_ms = int(
-            time.time() * 1000
+            time.time()
+            * 1000
         )
 
         self.last_finalized_end_ms = 0
@@ -404,8 +492,21 @@ class FuturesStateCache:
         self.websocket = None
 
     # --------------------------------------------------
-    # Channels
+    # Subscription channels
     # --------------------------------------------------
+
+    def book_channel(
+        self,
+        instrument: str
+    ) -> str:
+
+        return (
+            f"book."
+            f"{instrument}."
+            f"{BOOK_GROUP}."
+            f"{BOOK_DEPTH}."
+            f"{BOOK_INTERVAL}"
+        )
 
     def build_channels(
         self
@@ -413,7 +514,9 @@ class FuturesStateCache:
 
         channels = []
 
-        for instrument in self.instrument_names:
+        for instrument in (
+            self.instrument_names
+        ):
 
             channels.append(
                 f"incremental_ticker."
@@ -424,6 +527,12 @@ class FuturesStateCache:
                 f"trades."
                 f"{instrument}."
                 f"100ms"
+            )
+
+            channels.append(
+                self.book_channel(
+                    instrument
+                )
             )
 
         return channels
@@ -449,7 +558,7 @@ class FuturesStateCache:
         print(
             f"\nSubscribing to "
             f"{len(channels)} futures "
-            f"channels..."
+            f"market-data channels..."
         )
 
         await websocket.send(
@@ -457,6 +566,59 @@ class FuturesStateCache:
                 request
             )
         )
+
+    # --------------------------------------------------
+    # Reconnect handling
+    # --------------------------------------------------
+
+    def current_bucket_start_ms(
+        self
+    ) -> int:
+
+        now_ms = int(
+            time.time()
+            * 1000
+        )
+
+        return (
+            now_ms
+            - (
+                now_ms
+                % BAR_INTERVAL_MS
+            )
+        )
+
+    def mark_current_bar_incomplete(
+        self
+    ) -> None:
+
+        bucket_start_ms = (
+            self.current_bucket_start_ms()
+        )
+
+        for instrument in (
+            self.instrument_names
+        ):
+
+            self.incomplete_bar_keys.add(
+                (
+                    instrument,
+                    bucket_start_ms
+                )
+            )
+
+    def reset_realtime_state(
+        self
+    ) -> None:
+        """
+        Preserve trade/bar accumulators but force
+        fresh ticker/book initialization after a
+        connection restart.
+        """
+
+        self.ticker_state.clear()
+        self.order_book_state.clear()
+        self.book_metric_state.clear()
 
     # --------------------------------------------------
     # Ticker processing
@@ -474,6 +636,7 @@ class FuturesStateCache:
         )
 
         if not instrument_name:
+
             return
 
         update_type = (
@@ -508,12 +671,836 @@ class FuturesStateCache:
         state[
             "_received_timestamp_ms"
         ] = int(
-            time.time() * 1000
+            time.time()
+            * 1000
         )
 
         self.ticker_state[
             instrument_name
         ] = state
+
+    # --------------------------------------------------
+    # L2 order-book helpers
+    # --------------------------------------------------
+
+    def _new_book_state(
+        self
+    ) -> dict:
+
+        return {
+            "bids": {},
+            "asks": {},
+            "change_id": None,
+            "timestamp": None,
+            "_received_timestamp_ms": None,
+            "valid": False
+        }
+
+    def _parse_book_level(
+        self,
+        level
+    ) -> tuple[str, float, float] | None:
+        """
+        Supports both:
+
+            ["new", price, amount]
+
+        and defensive support for:
+
+            [price, amount]
+        """
+
+        if (
+            not isinstance(
+                level,
+                (list, tuple)
+            )
+        ):
+
+            return None
+
+        if len(level) >= 3:
+
+            action = str(
+                level[0]
+            ).lower()
+
+            try:
+
+                price = float(
+                    level[1]
+                )
+
+                amount = float(
+                    level[2]
+                )
+
+            except (
+                TypeError,
+                ValueError
+            ):
+
+                return None
+
+            return (
+                action,
+                price,
+                amount
+            )
+
+        if len(level) == 2:
+
+            try:
+
+                price = float(
+                    level[0]
+                )
+
+                amount = float(
+                    level[1]
+                )
+
+            except (
+                TypeError,
+                ValueError
+            ):
+
+                return None
+
+            return (
+                "new",
+                price,
+                amount
+            )
+
+        return None
+
+    def _apply_book_levels(
+        self,
+        levels: list,
+        side: dict
+    ) -> None:
+
+        for raw_level in levels:
+
+            parsed = (
+                self._parse_book_level(
+                    raw_level
+                )
+            )
+
+            if parsed is None:
+                continue
+
+            action, price, amount = (
+                parsed
+            )
+
+            if (
+                action == "delete"
+                or amount <= 0
+            ):
+
+                side.pop(
+                    price,
+                    None
+                )
+
+            else:
+
+                side[
+                    price
+                ] = amount
+
+    def _trim_book(
+        self,
+        state: dict
+    ) -> None:
+
+        bid_prices = sorted(
+            state[
+                "bids"
+            ].keys(),
+            reverse=True
+        )[
+            :BOOK_DEPTH
+        ]
+
+        ask_prices = sorted(
+            state[
+                "asks"
+            ].keys()
+        )[
+            :BOOK_DEPTH
+        ]
+
+        state[
+            "bids"
+        ] = {
+            price:
+                state[
+                    "bids"
+                ][price]
+
+            for price
+            in bid_prices
+        }
+
+        state[
+            "asks"
+        ] = {
+            price:
+                state[
+                    "asks"
+                ][price]
+
+            for price
+            in ask_prices
+        }
+
+    def _sorted_book_levels(
+        self,
+        instrument: str
+    ) -> tuple[
+        list[tuple[float, float]],
+        list[tuple[float, float]]
+    ]:
+
+        state = (
+            self.order_book_state.get(
+                instrument
+            )
+        )
+
+        if (
+            not state
+            or not state.get(
+                "valid",
+                False
+            )
+        ):
+
+            return (
+                [],
+                []
+            )
+
+        bids = sorted(
+            state[
+                "bids"
+            ].items(),
+            key=lambda item:
+                item[0],
+            reverse=True
+        )[
+            :BOOK_DEPTH
+        ]
+
+        asks = sorted(
+            state[
+                "asks"
+            ].items(),
+            key=lambda item:
+                item[0]
+        )[
+            :BOOK_DEPTH
+        ]
+
+        return (
+            bids,
+            asks
+        )
+
+    def _calculate_book_metrics(
+        self,
+        instrument: str
+    ) -> dict | None:
+
+        bids, asks = (
+            self._sorted_book_levels(
+                instrument
+            )
+        )
+
+        if (
+            not bids
+            or not asks
+        ):
+
+            return None
+
+        best_bid = bids[0][0]
+        best_ask = asks[0][0]
+
+        bid_size_1 = bids[0][1]
+        ask_size_1 = asks[0][1]
+
+        spread = (
+            best_ask
+            - best_bid
+        )
+
+        denominator = (
+            bid_size_1
+            + ask_size_1
+        )
+
+        microprice = None
+
+        if denominator > 0:
+
+            microprice = (
+                (
+                    best_ask
+                    * bid_size_1
+                )
+                +
+                (
+                    best_bid
+                    * ask_size_1
+                )
+            ) / denominator
+
+        result = {
+            "spread":
+                spread,
+
+            "microprice":
+                microprice
+        }
+
+        for depth in [
+            5,
+            10,
+            20
+        ]:
+
+            bid_depth = sum(
+                amount
+                for _, amount
+                in bids[
+                    :depth
+                ]
+            )
+
+            ask_depth = sum(
+                amount
+                for _, amount
+                in asks[
+                    :depth
+                ]
+            )
+
+            total_depth = (
+                bid_depth
+                + ask_depth
+            )
+
+            obi = None
+
+            if total_depth > 0:
+
+                obi = (
+                    bid_depth
+                    - ask_depth
+                ) / total_depth
+
+            result[
+                f"bid_depth_{depth}"
+            ] = bid_depth
+
+            result[
+                f"ask_depth_{depth}"
+            ] = ask_depth
+
+            result[
+                f"obi_{depth}"
+            ] = obi
+
+        return result
+
+    # --------------------------------------------------
+    # Time-weighted L2 statistics
+    # --------------------------------------------------
+
+    def _new_book_accumulator(
+        self
+    ) -> dict:
+
+        return {
+            "valid_duration_ms": 0.0,
+
+            "weighted_sum": {
+                metric: 0.0
+                for metric
+                in BOOK_METRIC_NAMES
+            },
+
+            "weighted_duration": {
+                metric: 0.0
+                for metric
+                in BOOK_METRIC_NAMES
+            },
+
+            "update_count": 0,
+
+            "min_obi_20": None,
+            "max_obi_20": None
+        }
+
+    def _get_book_accumulator(
+        self,
+        instrument: str,
+        bucket_start_ms: int
+    ) -> dict:
+
+        key = (
+            instrument,
+            bucket_start_ms
+        )
+
+        if (
+            key
+            not in self.book_bar_accumulators
+        ):
+
+            self.book_bar_accumulators[
+                key
+            ] = (
+                self._new_book_accumulator()
+            )
+
+        return (
+            self.book_bar_accumulators[
+                key
+            ]
+        )
+
+    def _accumulate_book_metrics(
+        self,
+        instrument: str,
+        start_ms: int,
+        end_ms: int,
+        metrics: dict
+    ) -> None:
+
+        if end_ms <= start_ms:
+            return
+
+        cursor = (
+            start_ms
+        )
+
+        while cursor < end_ms:
+
+            bucket_start_ms = (
+                cursor
+                - (
+                    cursor
+                    % BAR_INTERVAL_MS
+                )
+            )
+
+            bucket_end_ms = (
+                bucket_start_ms
+                + BAR_INTERVAL_MS
+            )
+
+            segment_end = min(
+                end_ms,
+                bucket_end_ms
+            )
+
+            duration = (
+                segment_end
+                - cursor
+            )
+
+            accumulator = (
+                self._get_book_accumulator(
+                    instrument,
+                    bucket_start_ms
+                )
+            )
+
+            accumulator[
+                "valid_duration_ms"
+            ] += duration
+
+            for metric_name in (
+                BOOK_METRIC_NAMES
+            ):
+
+                value = (
+                    metrics.get(
+                        metric_name
+                    )
+                )
+
+                if value is None:
+                    continue
+
+                accumulator[
+                    "weighted_sum"
+                ][
+                    metric_name
+                ] += (
+                    value
+                    * duration
+                )
+
+                accumulator[
+                    "weighted_duration"
+                ][
+                    metric_name
+                ] += duration
+
+            cursor = (
+                segment_end
+            )
+
+    def _advance_book_stats(
+        self,
+        instrument: str,
+        target_timestamp_ms: int
+    ) -> None:
+
+        state = (
+            self.book_metric_state.get(
+                instrument
+            )
+        )
+
+        if state is None:
+            return
+
+        previous_timestamp_ms = (
+            state[
+                "last_timestamp_ms"
+            ]
+        )
+
+        if (
+            target_timestamp_ms
+            <= previous_timestamp_ms
+        ):
+
+            return
+
+        metrics = (
+            state.get(
+                "last_metrics"
+            )
+        )
+
+        if metrics is not None:
+
+            self._accumulate_book_metrics(
+                instrument,
+                previous_timestamp_ms,
+                target_timestamp_ms,
+                metrics
+            )
+
+        state[
+            "last_timestamp_ms"
+        ] = target_timestamp_ms
+
+    def _record_book_observation(
+        self,
+        instrument: str,
+        timestamp_ms: int,
+        metrics: dict
+    ) -> None:
+
+        bucket_start_ms = (
+            timestamp_ms
+            - (
+                timestamp_ms
+                % BAR_INTERVAL_MS
+            )
+        )
+
+        accumulator = (
+            self._get_book_accumulator(
+                instrument,
+                bucket_start_ms
+            )
+        )
+
+        accumulator[
+            "update_count"
+        ] += 1
+
+        obi_20 = (
+            metrics.get(
+                "obi_20"
+            )
+        )
+
+        if obi_20 is not None:
+
+            current_min = (
+                accumulator[
+                    "min_obi_20"
+                ]
+            )
+
+            current_max = (
+                accumulator[
+                    "max_obi_20"
+                ]
+            )
+
+            if (
+                current_min is None
+                or obi_20 < current_min
+            ):
+
+                accumulator[
+                    "min_obi_20"
+                ] = obi_20
+
+            if (
+                current_max is None
+                or obi_20 > current_max
+            ):
+
+                accumulator[
+                    "max_obi_20"
+                ] = obi_20
+
+    # --------------------------------------------------
+    # L2 message processing
+    # --------------------------------------------------
+
+    def process_book(
+        self,
+        data: dict
+    ) -> None:
+
+        instrument_name = (
+            data.get(
+                "instrument_name"
+            )
+        )
+
+        if not instrument_name:
+
+            return
+
+        received_timestamp_ms = int(
+            time.time()
+            * 1000
+        )
+
+        timestamp_ms = int(
+            data.get(
+                "timestamp"
+            )
+            or received_timestamp_ms
+        )
+
+        update_type = str(
+            data.get(
+                "type",
+                ""
+            )
+        ).lower()
+
+        state = (
+            self.order_book_state.get(
+                instrument_name
+            )
+        )
+
+        if state is None:
+
+            state = (
+                self._new_book_state()
+            )
+
+            self.order_book_state[
+                instrument_name
+            ] = state
+
+        # Previous valid book remained in effect
+        # up to this exchange timestamp.
+        self._advance_book_stats(
+            instrument_name,
+            timestamp_ms
+        )
+
+        if update_type == "snapshot":
+
+            state[
+                "bids"
+            ] = {}
+
+            state[
+                "asks"
+            ] = {}
+
+            self._apply_book_levels(
+                data.get(
+                    "bids",
+                    []
+                ),
+                state[
+                    "bids"
+                ]
+            )
+
+            self._apply_book_levels(
+                data.get(
+                    "asks",
+                    []
+                ),
+                state[
+                    "asks"
+                ]
+            )
+
+            state[
+                "valid"
+            ] = True
+
+        elif update_type == "change":
+
+            if not state.get(
+                "valid",
+                False
+            ):
+
+                self.book_sequence_gaps += 1
+
+                raise BookSequenceGap(
+                    f"No valid L2 snapshot "
+                    f"for {instrument_name}"
+                )
+
+            previous_change_id = (
+                data.get(
+                    "prev_change_id"
+                )
+            )
+
+            last_change_id = (
+                state.get(
+                    "change_id"
+                )
+            )
+
+            if (
+                previous_change_id
+                is not None
+                and last_change_id
+                is not None
+                and previous_change_id
+                != last_change_id
+            ):
+
+                state[
+                    "valid"
+                ] = False
+
+                self.book_metric_state.pop(
+                    instrument_name,
+                    None
+                )
+
+                self.book_sequence_gaps += 1
+
+                raise BookSequenceGap(
+                    f"L2 sequence gap "
+                    f"for {instrument_name}: "
+                    f"expected prev_change_id "
+                    f"{last_change_id}, got "
+                    f"{previous_change_id}"
+                )
+
+            self._apply_book_levels(
+                data.get(
+                    "bids",
+                    []
+                ),
+                state[
+                    "bids"
+                ]
+            )
+
+            self._apply_book_levels(
+                data.get(
+                    "asks",
+                    []
+                ),
+                state[
+                    "asks"
+                ]
+            )
+
+        else:
+
+            return
+
+        self._trim_book(
+            state
+        )
+
+        state[
+            "change_id"
+        ] = data.get(
+            "change_id"
+        )
+
+        state[
+            "timestamp"
+        ] = timestamp_ms
+
+        state[
+            "_received_timestamp_ms"
+        ] = received_timestamp_ms
+
+        metrics = (
+            self._calculate_book_metrics(
+                instrument_name
+            )
+        )
+
+        if metrics is None:
+
+            state[
+                "valid"
+            ] = False
+
+            self.book_metric_state.pop(
+                instrument_name,
+                None
+            )
+
+            return
+
+        state[
+            "valid"
+        ] = True
+
+        self.book_metric_state[
+            instrument_name
+        ] = {
+            "last_timestamp_ms":
+                timestamp_ms,
+
+            "last_metrics":
+                metrics
+        }
+
+        self._record_book_observation(
+            instrument_name,
+            timestamp_ms,
+            metrics
+        )
+
+        self.book_messages_received += 1
 
     # --------------------------------------------------
     # Trade processing
@@ -534,16 +1521,22 @@ class FuturesStateCache:
 
             return
 
-        timestamp_ms = trade.get(
-            "timestamp"
+        timestamp_ms = (
+            trade.get(
+                "timestamp"
+            )
         )
 
-        price = trade.get(
-            "price"
+        price = (
+            trade.get(
+                "price"
+            )
         )
 
-        amount = trade.get(
-            "amount"
+        amount = (
+            trade.get(
+                "amount"
+            )
         )
 
         if (
@@ -551,6 +1544,7 @@ class FuturesStateCache:
             or price is None
             or amount is None
         ):
+
             return
 
         timestamp_ms = int(
@@ -569,10 +1563,9 @@ class FuturesStateCache:
             price <= 0
             or amount < 0
         ):
+
             return
 
-        # Trades are assigned by DERIBIT exchange
-        # timestamp, not VM receipt time.
         bucket_start_ms = (
             timestamp_ms
             - (
@@ -586,9 +1579,6 @@ class FuturesStateCache:
             + BAR_INTERVAL_MS
         )
 
-        # If a very late notification arrives
-        # after we already finalized that bar,
-        # do not silently place it into another bar.
         if (
             bucket_end_ms
             <= self.last_finalized_end_ms
@@ -618,14 +1608,18 @@ class FuturesStateCache:
 
             dedup_key = (
                 "id",
-                str(trade_id)
+                str(
+                    trade_id
+                )
             )
 
         elif trade_seq is not None:
 
             dedup_key = (
                 "seq",
-                int(trade_seq)
+                int(
+                    trade_seq
+                )
             )
 
         else:
@@ -668,11 +1662,11 @@ class FuturesStateCache:
             )
         ).lower()
 
-        # Deribit linear futures:
-        # amount is in underlying coin.
+        # Linear futures:
+        # amount is base-coin quantity.
         #
-        # Deribit inverse futures:
-        # amount is in USD units.
+        # Reversed/inverse futures:
+        # amount is USD quantity.
         if instrument_type == "linear":
 
             volume_base = (
@@ -705,17 +1699,26 @@ class FuturesStateCache:
                 "USD"
             )
 
-        bar = self.bars.get(
-            key
+        bar = (
+            self.bars.get(
+                key
+            )
         )
 
         if bar is None:
 
             bar = {
-                "open": price,
-                "high": price,
-                "low": price,
-                "close": price,
+                "open":
+                    price,
+
+                "high":
+                    price,
+
+                "low":
+                    price,
+
+                "close":
+                    price,
 
                 "first_trade_timestamp_ms":
                     timestamp_ms,
@@ -723,22 +1726,38 @@ class FuturesStateCache:
                 "last_trade_timestamp_ms":
                     timestamp_ms,
 
-                "volume_native": 0.0,
-                "volume_base": 0.0,
-                "volume_usd": 0.0,
+                "volume_native":
+                    0.0,
 
-                "buy_volume_native": 0.0,
-                "sell_volume_native": 0.0,
+                "volume_base":
+                    0.0,
 
-                "buy_volume_base": 0.0,
-                "sell_volume_base": 0.0,
+                "volume_usd":
+                    0.0,
 
-                "buy_volume_usd": 0.0,
-                "sell_volume_usd": 0.0,
+                "buy_volume_native":
+                    0.0,
 
-                "trade_count": 0,
+                "sell_volume_native":
+                    0.0,
 
-                "vwap_numerator": 0.0,
+                "buy_volume_base":
+                    0.0,
+
+                "sell_volume_base":
+                    0.0,
+
+                "buy_volume_usd":
+                    0.0,
+
+                "sell_volume_usd":
+                    0.0,
+
+                "trade_count":
+                    0,
+
+                "vwap_numerator":
+                    0.0,
 
                 "native_volume_unit":
                     native_unit
@@ -748,8 +1767,6 @@ class FuturesStateCache:
                 key
             ] = bar
 
-        # Open/close determined by exchange
-        # timestamps rather than arrival order.
         if (
             timestamp_ms
             < bar[
@@ -783,14 +1800,18 @@ class FuturesStateCache:
         bar[
             "high"
         ] = max(
-            bar["high"],
+            bar[
+                "high"
+            ],
             price
         )
 
         bar[
             "low"
         ] = min(
-            bar["low"],
+            bar[
+                "low"
+            ],
             price
         )
 
@@ -806,8 +1827,6 @@ class FuturesStateCache:
             "volume_usd"
         ] += volume_usd
 
-        # VWAP uses standardized
-        # base-coin-equivalent volume.
         bar[
             "vwap_numerator"
         ] += (
@@ -857,12 +1876,202 @@ class FuturesStateCache:
         self.trades_received += 1
 
     # --------------------------------------------------
-    # Boundary ticker state
+    # L2 boundary snapshot
+    # --------------------------------------------------
+
+    def _book_boundary_fields(
+        self,
+        instrument: str,
+        snapshot_ms: int
+    ) -> dict:
+
+        state = (
+            self.order_book_state.get(
+                instrument
+            )
+        )
+
+        fields = {
+            "book_valid":
+                False,
+
+            "book_timestamp_ms":
+                None,
+
+            "book_received_timestamp_ms":
+                None,
+
+            "book_age_ms":
+                None,
+
+            "book_change_id":
+                None
+        }
+
+        for level in range(
+            1,
+            BOOK_DEPTH + 1
+        ):
+
+            suffix = (
+                f"{level:02d}"
+            )
+
+            fields[
+                f"bid_px_{suffix}"
+            ] = None
+
+            fields[
+                f"bid_sz_{suffix}"
+            ] = None
+
+            fields[
+                f"ask_px_{suffix}"
+            ] = None
+
+            fields[
+                f"ask_sz_{suffix}"
+            ] = None
+
+        for name in [
+            "spread",
+            "microprice",
+            "bid_depth_5",
+            "ask_depth_5",
+            "obi_5",
+            "bid_depth_10",
+            "ask_depth_10",
+            "obi_10",
+            "bid_depth_20",
+            "ask_depth_20",
+            "obi_20"
+        ]:
+
+            fields[
+                name
+            ] = None
+
+        if (
+            not state
+            or not state.get(
+                "valid",
+                False
+            )
+        ):
+
+            return fields
+
+        bids, asks = (
+            self._sorted_book_levels(
+                instrument
+            )
+        )
+
+        metrics = (
+            self._calculate_book_metrics(
+                instrument
+            )
+        )
+
+        if metrics is None:
+
+            return fields
+
+        book_timestamp_ms = (
+            state.get(
+                "timestamp"
+            )
+        )
+
+        fields[
+            "book_valid"
+        ] = True
+
+        fields[
+            "book_timestamp_ms"
+        ] = book_timestamp_ms
+
+        fields[
+            "book_received_timestamp_ms"
+        ] = state.get(
+            "_received_timestamp_ms"
+        )
+
+        fields[
+            "book_change_id"
+        ] = state.get(
+            "change_id"
+        )
+
+        if (
+            book_timestamp_ms
+            is not None
+        ):
+
+            fields[
+                "book_age_ms"
+            ] = (
+                snapshot_ms
+                - book_timestamp_ms
+            )
+
+        for index, (
+            price,
+            amount
+        ) in enumerate(
+            bids[
+                :BOOK_DEPTH
+            ],
+            start=1
+        ):
+
+            suffix = (
+                f"{index:02d}"
+            )
+
+            fields[
+                f"bid_px_{suffix}"
+            ] = price
+
+            fields[
+                f"bid_sz_{suffix}"
+            ] = amount
+
+        for index, (
+            price,
+            amount
+        ) in enumerate(
+            asks[
+                :BOOK_DEPTH
+            ],
+            start=1
+        ):
+
+            suffix = (
+                f"{index:02d}"
+            )
+
+            fields[
+                f"ask_px_{suffix}"
+            ] = price
+
+            fields[
+                f"ask_sz_{suffix}"
+            ] = amount
+
+        fields.update(
+            metrics
+        )
+
+        return fields
+
+    # --------------------------------------------------
+    # Ticker + L2 boundary state
     # --------------------------------------------------
 
     def capture_boundary_state(
         self,
-        snapshot_time: datetime
+        snapshot_time
     ) -> dict[str, dict]:
 
         snapshot_ms = int(
@@ -872,7 +2081,9 @@ class FuturesStateCache:
 
         result = {}
 
-        for instrument in self.instrument_names:
+        for instrument in (
+            self.instrument_names
+        ):
 
             ticker = copy.deepcopy(
                 self.ticker_state.get(
@@ -899,10 +2110,11 @@ class FuturesStateCache:
             ):
 
                 mid = (
-                    bid + ask
+                    bid
+                    + ask
                 ) / 2
 
-            exchange_timestamp_ms = (
+            ticker_timestamp_ms = (
                 ticker.get(
                     "timestamp"
                 )
@@ -911,18 +2123,16 @@ class FuturesStateCache:
             ticker_age_ms = None
 
             if (
-                exchange_timestamp_ms
+                ticker_timestamp_ms
                 is not None
             ):
 
                 ticker_age_ms = (
                     snapshot_ms
-                    - exchange_timestamp_ms
+                    - ticker_timestamp_ms
                 )
 
-            result[
-                instrument
-            ] = {
+            state = {
                 "best_bid_price":
                     bid,
 
@@ -968,7 +2178,7 @@ class FuturesStateCache:
                     ),
 
                 "ticker_exchange_timestamp_ms":
-                    exchange_timestamp_ms,
+                    ticker_timestamp_ms,
 
                 "ticker_received_timestamp_ms":
                     ticker.get(
@@ -979,21 +2189,162 @@ class FuturesStateCache:
                     ticker_age_ms
             }
 
+            state.update(
+                self._book_boundary_fields(
+                    instrument,
+                    snapshot_ms
+                )
+            )
+
+            result[
+                instrument
+            ] = state
+
         return result
 
     # --------------------------------------------------
-    # Finalize 5-minute bar
+    # Finalize within-bar L2 statistics
+    # --------------------------------------------------
+
+    def finalize_book_stats(
+        self,
+        instrument: str,
+        bar_start_ms: int,
+        bar_end_ms: int
+    ) -> dict:
+
+        # If no post-boundary update has yet
+        # advanced the metric state, extend the
+        # latest valid book to the bar boundary.
+        self._advance_book_stats(
+            instrument,
+            bar_end_ms
+        )
+
+        key = (
+            instrument,
+            bar_start_ms
+        )
+
+        accumulator = (
+            self.book_bar_accumulators.pop(
+                key,
+                None
+            )
+        )
+
+        result = {
+            "book_stats_coverage_ms":
+                0.0,
+
+            "book_stats_complete":
+                False,
+
+            "book_update_count":
+                0,
+
+            "book_min_obi_20":
+                None,
+
+            "book_max_obi_20":
+                None
+        }
+
+        for metric_name in (
+            BOOK_METRIC_NAMES
+        ):
+
+            result[
+                f"book_twa_{metric_name}"
+            ] = None
+
+        if accumulator is None:
+
+            return result
+
+        coverage_ms = min(
+            float(
+                accumulator[
+                    "valid_duration_ms"
+                ]
+            ),
+            float(
+                BAR_INTERVAL_MS
+            )
+        )
+
+        result[
+            "book_stats_coverage_ms"
+        ] = coverage_ms
+
+        # Allow a tiny timestamp rounding tolerance.
+        result[
+            "book_stats_complete"
+        ] = (
+            coverage_ms
+            >= (
+                BAR_INTERVAL_MS
+                - 5
+            )
+        )
+
+        result[
+            "book_update_count"
+        ] = int(
+            accumulator[
+                "update_count"
+            ]
+        )
+
+        result[
+            "book_min_obi_20"
+        ] = accumulator[
+            "min_obi_20"
+        ]
+
+        result[
+            "book_max_obi_20"
+        ] = accumulator[
+            "max_obi_20"
+        ]
+
+        for metric_name in (
+            BOOK_METRIC_NAMES
+        ):
+
+            duration = (
+                accumulator[
+                    "weighted_duration"
+                ][
+                    metric_name
+                ]
+            )
+
+            if duration <= 0:
+                continue
+
+            result[
+                f"book_twa_{metric_name}"
+            ] = (
+                accumulator[
+                    "weighted_sum"
+                ][
+                    metric_name
+                ]
+                / duration
+            )
+
+        return result
+
+    # --------------------------------------------------
+    # Finalize 5-minute futures bar
     # --------------------------------------------------
 
     def finalize_bar(
         self,
-        bar_end: datetime,
+        bar_end,
         boundary_state: dict[str, dict]
     ) -> pd.DataFrame:
-
-        bar_end = bar_end.astimezone(
-            timezone.utc
-        )
 
         bar_end_ms = int(
             bar_end.timestamp()
@@ -1005,14 +2356,20 @@ class FuturesStateCache:
             - BAR_INTERVAL_MS
         )
 
-        bar_start = datetime.fromtimestamp(
-            bar_start_ms / 1000,
-            tz=timezone.utc
+        bar_start = (
+            pd.Timestamp(
+                bar_start_ms,
+                unit="ms",
+                tz="UTC"
+            )
+            .to_pydatetime()
         )
 
         rows = []
 
-        for instrument in self.instrument_names:
+        for instrument in (
+            self.instrument_names
+        ):
 
             key = (
                 instrument,
@@ -1045,15 +2402,15 @@ class FuturesStateCache:
 
             if bar is None:
 
-                volume_base = 0.0
-                vwap = None
-
                 open_price = None
                 high_price = None
                 low_price = None
                 close_price = None
 
+                vwap = None
+
                 volume_native = 0.0
+                volume_base = 0.0
                 volume_usd = 0.0
 
                 buy_volume_native = 0.0
@@ -1103,57 +2460,83 @@ class FuturesStateCache:
                     else None
                 )
 
-                open_price = bar[
-                    "open"
-                ]
+                open_price = (
+                    bar[
+                        "open"
+                    ]
+                )
 
-                high_price = bar[
-                    "high"
-                ]
+                high_price = (
+                    bar[
+                        "high"
+                    ]
+                )
 
-                low_price = bar[
-                    "low"
-                ]
+                low_price = (
+                    bar[
+                        "low"
+                    ]
+                )
 
-                close_price = bar[
-                    "close"
-                ]
+                close_price = (
+                    bar[
+                        "close"
+                    ]
+                )
 
-                volume_native = bar[
-                    "volume_native"
-                ]
+                volume_native = (
+                    bar[
+                        "volume_native"
+                    ]
+                )
 
-                volume_usd = bar[
-                    "volume_usd"
-                ]
+                volume_usd = (
+                    bar[
+                        "volume_usd"
+                    ]
+                )
 
-                buy_volume_native = bar[
-                    "buy_volume_native"
-                ]
+                buy_volume_native = (
+                    bar[
+                        "buy_volume_native"
+                    ]
+                )
 
-                sell_volume_native = bar[
-                    "sell_volume_native"
-                ]
+                sell_volume_native = (
+                    bar[
+                        "sell_volume_native"
+                    ]
+                )
 
-                buy_volume_base = bar[
-                    "buy_volume_base"
-                ]
+                buy_volume_base = (
+                    bar[
+                        "buy_volume_base"
+                    ]
+                )
 
-                sell_volume_base = bar[
-                    "sell_volume_base"
-                ]
+                sell_volume_base = (
+                    bar[
+                        "sell_volume_base"
+                    ]
+                )
 
-                buy_volume_usd = bar[
-                    "buy_volume_usd"
-                ]
+                buy_volume_usd = (
+                    bar[
+                        "buy_volume_usd"
+                    ]
+                )
 
-                sell_volume_usd = bar[
-                    "sell_volume_usd"
-                ]
+                sell_volume_usd = (
+                    bar[
+                        "sell_volume_usd"
+                    ]
+                )
 
-                trade_count = bar[
-                    "trade_count"
-                ]
+                trade_count = (
+                    bar[
+                        "trade_count"
+                    ]
+                )
 
                 first_trade_timestamp_ms = (
                     bar[
@@ -1176,176 +2559,133 @@ class FuturesStateCache:
             stream_complete = (
                 self.collector_started_ms
                 <= bar_start_ms
+                and key
+                not in self.incomplete_bar_keys
+            )
+
+            self.incomplete_bar_keys.discard(
+                key
+            )
+
+            book_stats = (
+                self.finalize_book_stats(
+                    instrument,
+                    bar_start_ms,
+                    bar_end_ms
+                )
+            )
+
+            row = {
+                "bar_start":
+                    bar_start,
+
+                "bar_end":
+                    bar_end,
+
+                "underlying":
+                    metadata.get(
+                        "base_currency"
+                    ),
+
+                "instrument_name":
+                    instrument,
+
+                "api_currency":
+                    metadata.get(
+                        "api_currency"
+                    ),
+
+                "instrument_type":
+                    metadata.get(
+                        "instrument_type"
+                    ),
+
+                "settlement_currency":
+                    metadata.get(
+                        "settlement_currency"
+                    ),
+
+                "quote_currency":
+                    metadata.get(
+                        "quote_currency"
+                    ),
+
+                "contract_size":
+                    metadata.get(
+                        "contract_size"
+                    ),
+
+                "native_volume_unit":
+                    native_volume_unit,
+
+                "open":
+                    open_price,
+
+                "high":
+                    high_price,
+
+                "low":
+                    low_price,
+
+                "close":
+                    close_price,
+
+                "vwap":
+                    vwap,
+
+                "volume_native":
+                    volume_native,
+
+                "volume_base":
+                    volume_base,
+
+                "volume_usd":
+                    volume_usd,
+
+                "buy_volume_native":
+                    buy_volume_native,
+
+                "sell_volume_native":
+                    sell_volume_native,
+
+                "buy_volume_base":
+                    buy_volume_base,
+
+                "sell_volume_base":
+                    sell_volume_base,
+
+                "buy_volume_usd":
+                    buy_volume_usd,
+
+                "sell_volume_usd":
+                    sell_volume_usd,
+
+                "trade_count":
+                    trade_count,
+
+                "first_trade_timestamp_ms":
+                    first_trade_timestamp_ms,
+
+                "last_trade_timestamp_ms":
+                    last_trade_timestamp_ms,
+
+                "stream_complete":
+                    stream_complete,
+
+                "source":
+                    "deribit_ws_100ms_l2"
+            }
+
+            row.update(
+                boundary
+            )
+
+            row.update(
+                book_stats
             )
 
             rows.append(
-                {
-                    "bar_start":
-                        bar_start,
-
-                    "bar_end":
-                        bar_end,
-
-                    "underlying":
-                        metadata.get(
-                            "base_currency"
-                        ),
-
-                    "instrument_name":
-                        instrument,
-
-                    "api_currency":
-                        metadata.get(
-                            "api_currency"
-                        ),
-
-                    "instrument_type":
-                        metadata.get(
-                            "instrument_type"
-                        ),
-
-                    "settlement_currency":
-                        metadata.get(
-                            "settlement_currency"
-                        ),
-
-                    "quote_currency":
-                        metadata.get(
-                            "quote_currency"
-                        ),
-
-                    "contract_size":
-                        metadata.get(
-                            "contract_size"
-                        ),
-
-                    "native_volume_unit":
-                        native_volume_unit,
-
-                    "open":
-                        open_price,
-
-                    "high":
-                        high_price,
-
-                    "low":
-                        low_price,
-
-                    "close":
-                        close_price,
-
-                    "vwap":
-                        vwap,
-
-                    "volume_native":
-                        volume_native,
-
-                    "volume_base":
-                        volume_base,
-
-                    "volume_usd":
-                        volume_usd,
-
-                    "buy_volume_native":
-                        buy_volume_native,
-
-                    "sell_volume_native":
-                        sell_volume_native,
-
-                    "buy_volume_base":
-                        buy_volume_base,
-
-                    "sell_volume_base":
-                        sell_volume_base,
-
-                    "buy_volume_usd":
-                        buy_volume_usd,
-
-                    "sell_volume_usd":
-                        sell_volume_usd,
-
-                    "trade_count":
-                        trade_count,
-
-                    "first_trade_timestamp_ms":
-                        first_trade_timestamp_ms,
-
-                    "last_trade_timestamp_ms":
-                        last_trade_timestamp_ms,
-
-                    "best_bid_price":
-                        boundary.get(
-                            "best_bid_price"
-                        ),
-
-                    "best_bid_amount":
-                        boundary.get(
-                            "best_bid_amount"
-                        ),
-
-                    "best_ask_price":
-                        boundary.get(
-                            "best_ask_price"
-                        ),
-
-                    "best_ask_amount":
-                        boundary.get(
-                            "best_ask_amount"
-                        ),
-
-                    "mid_price":
-                        boundary.get(
-                            "mid_price"
-                        ),
-
-                    "last_price":
-                        boundary.get(
-                            "last_price"
-                        ),
-
-                    "mark_price":
-                        boundary.get(
-                            "mark_price"
-                        ),
-
-                    "index_price":
-                        boundary.get(
-                            "index_price"
-                        ),
-
-                    "underlying_price":
-                        boundary.get(
-                            "underlying_price"
-                        ),
-
-                    "open_interest":
-                        boundary.get(
-                            "open_interest"
-                        ),
-
-                    "ticker_exchange_timestamp_ms":
-                        boundary.get(
-                            "ticker_exchange_timestamp_ms"
-                        ),
-
-                    "ticker_received_timestamp_ms":
-                        boundary.get(
-                            "ticker_received_timestamp_ms"
-                        ),
-
-                    "ticker_age_ms":
-                        boundary.get(
-                            "ticker_age_ms"
-                        ),
-
-                    # False for the first partial bar
-                    # after collector startup.
-                    "stream_complete":
-                        stream_complete,
-
-                    "source":
-                        "deribit_ws_100ms"
-                }
+                row
             )
 
         self.last_finalized_end_ms = max(
@@ -1358,7 +2698,7 @@ class FuturesStateCache:
         )
 
     # --------------------------------------------------
-    # Receive WebSocket messages
+    # WebSocket message handling
     # --------------------------------------------------
 
     async def receive_messages(
@@ -1392,19 +2732,22 @@ class FuturesStateCache:
 
                 continue
 
+            # Subscription confirmations.
             if "id" in message:
 
                 if "result" in message:
 
                     print(
-                        "Futures subscriptions "
-                        "confirmed."
+                        "Futures market-data "
+                        "subscriptions confirmed."
                     )
 
                 continue
 
-            params = message.get(
-                "params"
+            params = (
+                message.get(
+                    "params"
+                )
             )
 
             if not params:
@@ -1417,8 +2760,10 @@ class FuturesStateCache:
                 )
             )
 
-            data = params.get(
-                "data"
+            data = (
+                params.get(
+                    "data"
+                )
             )
 
             if channel.startswith(
@@ -1469,11 +2814,38 @@ class FuturesStateCache:
                             trade
                         )
 
+            elif channel.startswith(
+                "book."
+            ):
+
+                if isinstance(
+                    data,
+                    dict
+                ):
+
+                    self.process_book(
+                        data
+                    )
+
             self.messages_received += 1
 
     # --------------------------------------------------
-    # Health monitoring
+    # Health
     # --------------------------------------------------
+
+    def valid_book_count(
+        self
+    ) -> int:
+
+        return sum(
+            1
+            for state
+            in self.order_book_state.values()
+            if state.get(
+                "valid",
+                False
+            )
+        )
 
     async def health_reporter(
         self
@@ -1500,16 +2872,12 @@ class FuturesStateCache:
                 self.instrument_names
             )
 
-            initialized = len(
+            tickers_initialized = len(
                 self.ticker_state
             )
 
-            initialized_pct = (
-                initialized
-                / expected
-                * 100
-                if expected
-                else 0
+            books_initialized = (
+                self.valid_book_count()
             )
 
             now_ms = int(
@@ -1517,19 +2885,53 @@ class FuturesStateCache:
                 * 1000
             )
 
-            ages = []
+            ticker_ages = []
 
             for ticker in (
                 self.ticker_state.values()
             ):
 
-                timestamp_ms = ticker.get(
-                    "timestamp"
+                timestamp_ms = (
+                    ticker.get(
+                        "timestamp"
+                    )
                 )
 
-                if timestamp_ms is not None:
+                if (
+                    timestamp_ms
+                    is not None
+                ):
 
-                    ages.append(
+                    ticker_ages.append(
+                        now_ms
+                        - timestamp_ms
+                    )
+
+            book_ages = []
+
+            for state in (
+                self.order_book_state.values()
+            ):
+
+                if not state.get(
+                    "valid",
+                    False
+                ):
+
+                    continue
+
+                timestamp_ms = (
+                    state.get(
+                        "timestamp"
+                    )
+                )
+
+                if (
+                    timestamp_ms
+                    is not None
+                ):
+
+                    book_ages.append(
                         now_ms
                         - timestamp_ms
                     )
@@ -1545,8 +2947,14 @@ class FuturesStateCache:
 
             print(
                 f"Tickers initialized: "
-                f"{initialized}/{expected} "
-                f"({initialized_pct:.1f}%)"
+                f"{tickers_initialized}/"
+                f"{expected}"
+            )
+
+            print(
+                f"L2 books initialized: "
+                f"{books_initialized}/"
+                f"{expected}"
             )
 
             print(
@@ -1555,19 +2963,36 @@ class FuturesStateCache:
             )
 
             print(
+                f"L2 messages:         "
+                f"{self.book_messages_received:,}"
+            )
+
+            print(
+                f"L2 sequence gaps:    "
+                f"{self.book_sequence_gaps:,}"
+            )
+
+            print(
                 f"Late trades ignored: "
                 f"{self.ignored_late_trades:,}"
             )
 
-            if ages:
+            if ticker_ages:
 
                 print(
                     f"Median ticker age:   "
-                    f"{statistics.median(ages):,.0f} ms"
+                    f"{statistics.median(ticker_ages):,.0f} ms"
+                )
+
+            if book_ages:
+
+                print(
+                    f"Median L2 age:       "
+                    f"{statistics.median(book_ages):,.0f} ms"
                 )
 
     # --------------------------------------------------
-    # Connection lifecycle
+    # WebSocket lifecycle
     # --------------------------------------------------
 
     async def run_connection(
@@ -1575,6 +3000,13 @@ class FuturesStateCache:
     ) -> None:
 
         self.connection_count += 1
+
+        if (
+            self.connection_count
+            > 1
+        ):
+
+            self.reset_realtime_state()
 
         print(
             "\nConnecting futures "
@@ -1649,9 +3081,22 @@ class FuturesStateCache:
                     await websocket.close(
                         code=1000,
                         reason=(
-                            "Futures collector shutdown"
+                            "Futures collector "
+                            "shutdown"
                         )
                     )
+
+                if (
+                    receive_task in done
+                ):
+
+                    exception = (
+                        receive_task.exception()
+                    )
+
+                    if exception is not None:
+
+                        raise exception
 
                 for task in pending:
 
@@ -1715,6 +3160,17 @@ class FuturesStateCache:
 
                 await self.run_connection()
 
+                if (
+                    not self.stop_event.is_set()
+                ):
+
+                    self.mark_current_bar_incomplete()
+
+                    print(
+                        "\nFutures WebSocket "
+                        "closed unexpectedly."
+                    )
+
             except asyncio.CancelledError:
 
                 break
@@ -1724,29 +3180,34 @@ class FuturesStateCache:
                 if self.stop_event.is_set():
                     break
 
+                self.mark_current_bar_incomplete()
+
                 print(
                     f"\nFutures WebSocket "
                     f"error: {exc}"
                 )
 
-                print(
-                    f"Reconnecting in "
-                    f"{RECONNECT_DELAY_SECONDS} "
-                    f"seconds..."
+            if self.stop_event.is_set():
+                break
+
+            print(
+                f"Reconnecting in "
+                f"{RECONNECT_DELAY_SECONDS} "
+                f"seconds..."
+            )
+
+            try:
+
+                await asyncio.wait_for(
+                    self.stop_event.wait(),
+                    timeout=(
+                        RECONNECT_DELAY_SECONDS
+                    )
                 )
 
-                try:
+            except asyncio.TimeoutError:
 
-                    await asyncio.wait_for(
-                        self.stop_event.wait(),
-                        timeout=(
-                            RECONNECT_DELAY_SECONDS
-                        )
-                    )
-
-                except asyncio.TimeoutError:
-
-                    pass
+                pass
 
         print(
             "\nFutures state cache "
