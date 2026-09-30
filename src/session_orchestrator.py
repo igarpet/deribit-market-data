@@ -4,12 +4,16 @@ import signal
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import duckdb
 
-from session_manager import calculate_session_window
+from session_manager import (
+    STATE_ROOT,
+    calculate_next_session_window,
+    calculate_session_window,
+)
 from session_rollover import (
     DATABASE_FILE,
     DATABASE_ROOT,
@@ -39,9 +43,14 @@ SRC_ROOT = (
 
 RESTART_DELAY_SECONDS = 5
 
-# Must match the collector's maximum permitted
-# delay for an opening 08:00 snapshot.
-OPENING_SNAPSHOT_WINDOW_SECONDS = 120
+# Start next-session preparation at 07:57 UTC.
+PREWARM_LEAD_SECONDS = 3 * 60
+
+PREWARM_RETRY_SECONDS = 15
+
+OLD_COLLECTOR_EXIT_TIMEOUT_SECONDS = 30
+
+ROLLOVER_RETRY_SECONDS = 5 * 60
 
 
 # --------------------------------------------------
@@ -50,7 +59,76 @@ OPENING_SNAPSHOT_WINDOW_SECONDS = 120
 
 stop_requested = False
 
-current_process = None
+utility_process: subprocess.Popen | None = None
+
+collector_processes: dict[
+    str,
+    subprocess.Popen
+] = {}
+
+
+# --------------------------------------------------
+# Process helpers
+# --------------------------------------------------
+
+def process_is_running(
+    process: subprocess.Popen | None
+) -> bool:
+
+    return (
+        process is not None
+        and process.poll() is None
+    )
+
+
+def terminate_process(
+    process: subprocess.Popen | None,
+    label: str
+) -> None:
+
+    if not process_is_running(
+        process
+    ):
+        return
+
+    print(
+        f"Stopping {label}..."
+    )
+
+    try:
+        process.terminate()
+
+    except Exception as exc:
+        print(
+            f"Could not terminate "
+            f"{label} cleanly: {exc}"
+        )
+
+
+def sleep_interruptibly(
+    seconds: float
+) -> None:
+
+    deadline = (
+        time.monotonic()
+        + seconds
+    )
+
+    while (
+        not stop_requested
+        and time.monotonic() < deadline
+    ):
+
+        time.sleep(
+            min(
+                0.5,
+                max(
+                    0.0,
+                    deadline
+                    - time.monotonic()
+                )
+            )
+        )
 
 
 # --------------------------------------------------
@@ -63,7 +141,7 @@ def request_shutdown(
 ):
 
     global stop_requested
-    global current_process
+    global utility_process
 
     print(
         f"\nOrchestrator received "
@@ -72,26 +150,19 @@ def request_shutdown(
 
     stop_requested = True
 
-    if (
-        current_process is not None
-        and current_process.poll() is None
+    terminate_process(
+        utility_process,
+        "utility process"
+    )
+
+    for expiry_date, process in list(
+        collector_processes.items()
     ):
 
-        print(
-            "Stopping child process..."
+        terminate_process(
+            process,
+            f"collector {expiry_date}"
         )
-
-        try:
-
-            current_process.terminate()
-
-        except Exception as exc:
-
-            print(
-                f"Could not terminate "
-                f"child process cleanly: "
-                f"{exc}"
-            )
 
 
 def configure_signals():
@@ -123,7 +194,7 @@ def configure_signals():
 
 
 # --------------------------------------------------
-# Generic project-script runner
+# Generic blocking project-script runner
 # --------------------------------------------------
 
 def run_script(
@@ -131,7 +202,7 @@ def run_script(
     arguments: list[str] | None = None
 ) -> int:
 
-    global current_process
+    global utility_process
 
     if arguments is None:
         arguments = []
@@ -155,16 +226,16 @@ def run_script(
         " ".join(command)
     )
 
-    current_process = subprocess.Popen(
+    utility_process = subprocess.Popen(
         command,
         cwd=PROJECT_ROOT
     )
 
     return_code = (
-        current_process.wait()
+        utility_process.wait()
     )
 
-    current_process = None
+    utility_process = None
 
     return return_code
 
@@ -174,8 +245,6 @@ def run_script(
 # --------------------------------------------------
 
 def refresh_instruments() -> bool:
-
-    global stop_requested
 
     if stop_requested:
         return False
@@ -249,29 +318,16 @@ def is_session_registered(
 
 
 # --------------------------------------------------
-# Find completed sessions requiring recovery
+# Completed-session discovery
 # --------------------------------------------------
 
 def find_completed_unregistered_sessions() -> list[str]:
-    """
-    Return all raw sessions that:
-
-        1. contain production snapshots,
-        2. have already expired,
-        3. are not registered in DuckDB.
-
-    Results are returned oldest-first.
-
-    This allows recovery after the VM has been offline
-    across one or more 08:00 UTC boundaries.
-    """
 
     now = datetime.now(
         timezone.utc
     )
 
     if not RAW_SNAPSHOT_ROOT.exists():
-
         return []
 
     connection = open_database()
@@ -298,12 +354,9 @@ def find_completed_unregistered_sessions() -> list[str]:
                 expiry_date
             )
 
-            # The current live session must never
-            # be finalized.
             if expiry_time > now:
                 continue
 
-            # There must actually be production data.
             snapshot_files = list(
                 folder.glob(
                     "snapshot_*.parquet"
@@ -313,8 +366,6 @@ def find_completed_unregistered_sessions() -> list[str]:
             if not snapshot_files:
                 continue
 
-            # Ignore sessions already successfully
-            # registered in DuckDB.
             if session_is_registered(
                 connection,
                 expiry_date
@@ -328,7 +379,6 @@ def find_completed_unregistered_sessions() -> list[str]:
                 )
             )
 
-        # Oldest first.
         candidates.sort(
             key=lambda item: item[0]
         )
@@ -351,22 +401,10 @@ def find_completed_unregistered_sessions() -> list[str]:
 def rollover_session(
     expiry_date: str
 ) -> bool:
-    """
-    Finalize one specific expired session.
-
-    Using the explicit expiry date prevents the
-    rollover script from accidentally selecting
-    another session.
-    """
-
-    global stop_requested
 
     if stop_requested:
         return False
 
-    # Idempotency:
-    # if this session has already been finalized,
-    # treat that as success.
     if is_session_registered(
         expiry_date
     ):
@@ -419,16 +457,6 @@ def rollover_session(
 # --------------------------------------------------
 
 def catch_up_completed_sessions() -> bool:
-    """
-    Recover any sessions that expired while the
-    orchestrator/VM was offline.
-
-    The scan is repeated after each pass. This handles
-    the edge case where the clock crosses 08:00 UTC
-    while startup recovery itself is running.
-    """
-
-    global stop_requested
 
     print(
         "\nSTARTUP SESSION RECOVERY"
@@ -458,7 +486,7 @@ def catch_up_completed_sessions() -> bool:
             else:
 
                 print(
-                    f"\nStartup recovery complete."
+                    "\nStartup recovery complete."
                 )
 
                 print(
@@ -492,89 +520,202 @@ def catch_up_completed_sessions() -> bool:
             if not success:
 
                 print(
-                    "\nStartup recovery stopped "
-                    "because a session could not "
-                    "be finalized."
+                    "\nStartup recovery could not "
+                    "finalize every session."
+                )
+
+                print(
+                    "Live collection will continue; "
+                    "recovery can be retried later."
                 )
 
                 return False
 
             recovered_count += 1
 
-        # Deliberately loop and scan again.
-        #
-        # Example:
-        # startup begins at 07:59:59 and recovery
-        # crosses 08:00. The session that just expired
-        # will be detected on this second pass.
-
     return False
 
 
 # --------------------------------------------------
-# Opening-snapshot decision
+# Collector lifecycle
 # --------------------------------------------------
 
-def should_request_opening_snapshot(
+def warmup_ready_path(
     session
-) -> bool:
-    """
-    If the orchestrator starts shortly after 08:00,
-    allow the collector to create the opening snapshot.
-
-    The collector itself performs the final safety
-    check before writing it.
-    """
-
-    now = datetime.now(
-        timezone.utc
-    )
-
-    delay = (
-        now
-        - session.session_start
-    ).total_seconds()
+) -> Path:
 
     return (
-        0
-        <= delay
-        <= OPENING_SNAPSHOT_WINDOW_SECONDS
+        STATE_ROOT
+        / "warmup"
+        / session.session_id
+        / "ready.json"
     )
 
 
-# --------------------------------------------------
-# Collector
-# --------------------------------------------------
+def clear_warmup_ready_state(
+    session
+) -> None:
 
-def run_collector(
-    opening_snapshot: bool
-) -> int:
+    path = warmup_ready_path(
+        session
+    )
 
-    arguments = []
+    if path.exists():
 
-    if opening_snapshot:
+        try:
+            path.unlink()
 
-        arguments.append(
-            "--opening-snapshot"
+        except OSError as exc:
+
+            print(
+                f"Could not remove stale "
+                f"warm-up marker: {exc}"
+            )
+
+
+def start_collector(
+    session,
+    warmup: bool
+) -> subprocess.Popen:
+
+    script = (
+        SRC_ROOT
+        / "option_grid_collector.py"
+    )
+
+    command = [
+        sys.executable,
+        str(script),
+        "--expiry-date",
+        session.expiry_date,
+    ]
+
+    if warmup:
+
+        command.append(
+            "--warmup"
         )
+
+        clear_warmup_ready_state(
+            session
+        )
+
+    print(
+        "\nStarting option collector:"
+    )
+
+    print(
+        " ".join(command)
+    )
+
+    print(
+        f"Target session: "
+        f"{session.session_id}"
+    )
+
+    print(
+        f"Warm-up mode:  "
+        f"{warmup}"
+    )
+
+    process = subprocess.Popen(
+        command,
+        cwd=PROJECT_ROOT
+    )
+
+    collector_processes[
+        session.expiry_date
+    ] = process
+
+    return process
+
+
+def forget_collector(
+    session,
+    process: subprocess.Popen | None
+) -> None:
+
+    registered = collector_processes.get(
+        session.expiry_date
+    )
+
+    if registered is process:
+
+        collector_processes.pop(
+            session.expiry_date,
+            None
+        )
+
+
+def wait_for_old_collector(
+    session,
+    process: subprocess.Popen | None
+) -> None:
+
+    if process is None:
+        return
+
+    if process.poll() is not None:
+
+        forget_collector(
+            session,
+            process
+        )
+
+        return
+
+    print(
+        f"\nWaiting for expired collector "
+        f"{session.expiry_date} to exit..."
+    )
+
+    try:
+
+        process.wait(
+            timeout=(
+                OLD_COLLECTOR_EXIT_TIMEOUT_SECONDS
+            )
+        )
+
+    except subprocess.TimeoutExpired:
 
         print(
-            "\nOpening snapshot requested."
+            "Expired collector did not exit "
+            "within timeout; terminating it."
         )
 
-    return run_script(
-        "option_grid_collector.py",
-        arguments
+        terminate_process(
+            process,
+            f"expired collector {session.expiry_date}"
+        )
+
+        try:
+
+            process.wait(
+                timeout=10
+            )
+
+        except subprocess.TimeoutExpired:
+
+            print(
+                "Expired collector still did not exit; "
+                "killing it."
+            )
+
+            process.kill()
+            process.wait()
+
+    forget_collector(
+        session,
+        process
     )
 
 
 # --------------------------------------------------
-# Main orchestration loop
+# Main
 # --------------------------------------------------
 
 def main():
-
-    global stop_requested
 
     configure_signals()
 
@@ -591,12 +732,57 @@ def main():
         f"{datetime.now(timezone.utc).isoformat()}"
     )
 
-    # --------------------------------------------------
-    # STEP 1
-    # Recover any completed sessions left behind
-    # by a VM outage/reboot.
-    # --------------------------------------------------
+    # Refresh first, then get live collection running.
+    refresh_ok = refresh_instruments()
 
+    if stop_requested:
+        return
+
+    if not refresh_ok:
+
+        print(
+            "\nWARNING: initial instrument refresh failed."
+        )
+
+        print(
+            "Attempting to start from the latest existing "
+            "instrument master so live collection is not "
+            "delayed unnecessarily."
+        )
+
+    current_session = (
+        calculate_session_window()
+    )
+
+    print(
+        "\nACTIVE SESSION"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    print(
+        f"Session ID: "
+        f"{current_session.session_id}"
+    )
+
+    print(
+        f"Start:      "
+        f"{current_session.session_start.isoformat()}"
+    )
+
+    print(
+        f"Expiry:     "
+        f"{current_session.session_expiry.isoformat()}"
+    )
+
+    current_collector = start_collector(
+        current_session,
+        warmup=False
+    )
+
+    # Historical housekeeping occurs after live collection starts.
     recovery_ok = (
         catch_up_completed_sessions()
     )
@@ -606,179 +792,416 @@ def main():
 
     if not recovery_ok:
 
-        raise RuntimeError(
-            "Startup session recovery failed. "
-            "Stopping to avoid silently "
-            "skipping historical data."
+        print(
+            "\nWARNING: startup historical recovery "
+            "was incomplete."
         )
 
-    # --------------------------------------------------
-    # STEP 2
-    # Refresh instruments for the CURRENT session.
-    # --------------------------------------------------
-
-    if not refresh_instruments():
-
-        if stop_requested:
-            return
-
-        raise RuntimeError(
-            "Initial instrument master "
-            "refresh failed."
+        print(
+            "Live collection remains active."
         )
 
-    # First launch can request an opening snapshot
-    # if systemd happened to start very close to 08:00.
-    first_collector_launch = True
+    next_session = None
+    next_collector = None
 
-    opening_snapshot = False
+    prewarm_retry_at = datetime.min.replace(
+        tzinfo=timezone.utc
+    )
 
-    # --------------------------------------------------
-    # Main lifecycle
-    # --------------------------------------------------
+    next_ready_logged = False
+
+    pending_rollovers: list[str] = []
+
+    next_rollover_retry_at = datetime.min.replace(
+        tzinfo=timezone.utc
+    )
 
     while not stop_requested:
-
-        session = (
-            calculate_session_window()
-        )
-
-        if first_collector_launch:
-
-            opening_snapshot = (
-                should_request_opening_snapshot(
-                    session
-                )
-            )
-
-            first_collector_launch = False
-
-        print(
-            "\nACTIVE SESSION"
-        )
-
-        print(
-            "=" * 60
-        )
-
-        print(
-            f"Session ID: "
-            f"{session.session_id}"
-        )
-
-        print(
-            f"Start:      "
-            f"{session.session_start.isoformat()}"
-        )
-
-        print(
-            f"Expiry:     "
-            f"{session.session_expiry.isoformat()}"
-        )
-
-        collector_return_code = (
-            run_collector(
-                opening_snapshot=opening_snapshot
-            )
-        )
-
-        # Opening mode is only used once.
-        # An unexpected restart during the same session
-        # must not create another opening snapshot.
-        opening_snapshot = False
-
-        if stop_requested:
-            break
 
         now = datetime.now(
             timezone.utc
         )
 
         # --------------------------------------------------
-        # Normal 08:00 session completion
+        # A. 08:00 warm handover
         # --------------------------------------------------
 
-        if (
-            now
-            >= session.session_expiry
-        ):
+        if now >= current_session.session_expiry:
+
+            expired_session = current_session
+            expired_collector = current_collector
 
             print(
-                "\nSession expiry reached."
+                "\nSESSION HANDOVER"
+            )
+
+            print(
+                "=" * 60
             )
 
             print(
                 f"Expired session: "
-                f"{session.expiry_date}"
+                f"{expired_session.session_id}"
             )
 
-            rollover_ok = (
-                rollover_session(
-                    session.expiry_date
-                )
-            )
+            if next_session is None:
 
-            if not rollover_ok:
-
-                raise RuntimeError(
-                    "Session rollover failed. "
-                    "Stopping orchestrator to "
-                    "avoid silently losing data."
+                next_session = (
+                    calculate_next_session_window(
+                        expired_session
+                    )
                 )
 
-            if stop_requested:
-                break
+            if not process_is_running(
+                next_collector
+            ):
 
-            # Get the latest instrument universe
-            # before starting the new session.
-            if not refresh_instruments():
+                print(
+                    "\nNo healthy pre-warmed collector "
+                    "is available at the boundary."
+                )
+
+                print(
+                    "Starting the new session now; "
+                    "08:00 will remain missing."
+                )
+
+                refresh_instruments()
 
                 if stop_requested:
                     break
 
-                raise RuntimeError(
-                    "Instrument master refresh "
-                    "failed after rollover."
+                next_collector = start_collector(
+                    next_session,
+                    warmup=False
                 )
 
-            # The next collector belongs to the
-            # newly-created 08:00 session.
-            opening_snapshot = True
+            # Promote new live collector before housekeeping.
+            current_session = next_session
+            current_collector = next_collector
+
+            next_session = None
+            next_collector = None
+            next_ready_logged = False
+
+            prewarm_retry_at = datetime.min.replace(
+                tzinfo=timezone.utc
+            )
+
+            print(
+                f"\nNew active session: "
+                f"{current_session.session_id}"
+            )
+
+            wait_for_old_collector(
+                expired_session,
+                expired_collector
+            )
+
+            if (
+                expired_session.expiry_date
+                not in pending_rollovers
+            ):
+
+                pending_rollovers.append(
+                    expired_session.expiry_date
+                )
+
+            rollover_ok = rollover_session(
+                expired_session.expiry_date
+            )
+
+            if rollover_ok:
+
+                pending_rollovers.remove(
+                    expired_session.expiry_date
+                )
+
+            else:
+
+                print(
+                    "\nRollover failed, but the new live "
+                    "collector remains active."
+                )
+
+                next_rollover_retry_at = (
+                    datetime.now(timezone.utc)
+                    + timedelta(
+                        seconds=ROLLOVER_RETRY_SECONDS
+                    )
+                )
 
             continue
 
         # --------------------------------------------------
-        # Unexpected collector exit
+        # B. Current-session child unexpectedly stopped
         # --------------------------------------------------
 
-        print(
-            "\nCollector exited before "
-            "session expiry."
-        )
-
-        print(
-            f"Return code: "
-            f"{collector_return_code}"
-        )
-
-        print(
-            f"Restarting in "
-            f"{RESTART_DELAY_SECONDS} "
-            f"seconds..."
-        )
-
-        # Do not create an artificial opening snapshot
-        # after an intraday collector restart.
-        opening_snapshot = False
-
-        for _ in range(
-            RESTART_DELAY_SECONDS
+        if not process_is_running(
+            current_collector
         ):
+
+            return_code = (
+                current_collector.poll()
+                if current_collector is not None
+                else None
+            )
+
+            forget_collector(
+                current_session,
+                current_collector
+            )
+
+            print(
+                "\nCurrent-session collector exited "
+                "before session expiry."
+            )
+
+            print(
+                f"Return code: "
+                f"{return_code}"
+            )
+
+            print(
+                f"Restarting in "
+                f"{RESTART_DELAY_SECONDS} seconds..."
+            )
+
+            sleep_interruptibly(
+                RESTART_DELAY_SECONDS
+            )
 
             if stop_requested:
                 break
 
-            time.sleep(1)
+            current_collector = start_collector(
+                current_session,
+                warmup=False
+            )
+
+            continue
+
+        # --------------------------------------------------
+        # C. Pre-warm next expiry
+        # --------------------------------------------------
+
+        prewarm_start = (
+            current_session.session_expiry
+            - timedelta(
+                seconds=PREWARM_LEAD_SECONDS
+            )
+        )
+
+        if (
+            now >= prewarm_start
+            and now < current_session.session_expiry
+        ):
+
+            if next_session is None:
+
+                next_session = (
+                    calculate_next_session_window(
+                        current_session
+                    )
+                )
+
+            if (
+                next_collector is not None
+                and not process_is_running(
+                    next_collector
+                )
+            ):
+
+                return_code = (
+                    next_collector.poll()
+                )
+
+                forget_collector(
+                    next_session,
+                    next_collector
+                )
+
+                print(
+                    "\nPre-warm collector exited "
+                    "before handover."
+                )
+
+                print(
+                    f"Return code: "
+                    f"{return_code}"
+                )
+
+                next_collector = None
+
+                prewarm_retry_at = (
+                    now
+                    + timedelta(
+                        seconds=PREWARM_RETRY_SECONDS
+                    )
+                )
+
+            if (
+                next_collector is None
+                and now >= prewarm_retry_at
+            ):
+
+                print(
+                    "\nPRE-WARMING NEXT SESSION"
+                )
+
+                print(
+                    "=" * 60
+                )
+
+                print(
+                    f"Current: "
+                    f"{current_session.session_id}"
+                )
+
+                print(
+                    f"Next:    "
+                    f"{next_session.session_id}"
+                )
+
+                refresh_ok = (
+                    refresh_instruments()
+                )
+
+                if stop_requested:
+                    break
+
+                if refresh_ok:
+
+                    try:
+
+                        next_collector = start_collector(
+                            next_session,
+                            warmup=True
+                        )
+
+                        next_ready_logged = False
+
+                    except Exception as exc:
+
+                        print(
+                            f"Could not launch next-session "
+                            f"collector: {exc}"
+                        )
+
+                        next_collector = None
+
+                else:
+
+                    print(
+                        "Pre-warm instrument refresh failed."
+                    )
+
+                if next_collector is None:
+
+                    prewarm_retry_at = (
+                        datetime.now(timezone.utc)
+                        + timedelta(
+                            seconds=PREWARM_RETRY_SECONDS
+                        )
+                    )
+
+            if (
+                next_collector is not None
+                and process_is_running(
+                    next_collector
+                )
+                and not next_ready_logged
+            ):
+
+                ready_file = warmup_ready_path(
+                    next_session
+                )
+
+                if ready_file.exists():
+
+                    print(
+                        "\nNext-session collector "
+                        "reports READY."
+                    )
+
+                    print(
+                        ready_file
+                    )
+
+                    next_ready_logged = True
+
+        # --------------------------------------------------
+        # D. Deferred rollover retry
+        # --------------------------------------------------
+
+        seconds_to_expiry = (
+            current_session.session_expiry
+            - now
+        ).total_seconds()
+
+        if (
+            pending_rollovers
+            and now >= next_rollover_retry_at
+            and seconds_to_expiry
+            > PREWARM_LEAD_SECONDS + 60
+        ):
+
+            expiry_date = (
+                pending_rollovers[0]
+            )
+
+            print(
+                f"\nRetrying deferred rollover: "
+                f"{expiry_date}"
+            )
+
+            if rollover_session(
+                expiry_date
+            ):
+
+                pending_rollovers.pop(0)
+
+            else:
+
+                next_rollover_retry_at = (
+                    datetime.now(timezone.utc)
+                    + timedelta(
+                        seconds=ROLLOVER_RETRY_SECONDS
+                    )
+                )
+
+        time.sleep(0.5)
+
+    # Graceful shutdown.
+    for expiry_date, process in list(
+        collector_processes.items()
+    ):
+
+        terminate_process(
+            process,
+            f"collector {expiry_date}"
+        )
+
+    for expiry_date, process in list(
+        collector_processes.items()
+    ):
+
+        if process_is_running(
+            process
+        ):
+
+            try:
+
+                process.wait(
+                    timeout=15
+                )
+
+            except subprocess.TimeoutExpired:
+
+                process.kill()
+                process.wait()
+
+    collector_processes.clear()
 
     print(
         "\nSession orchestrator "
@@ -786,10 +1209,5 @@ def main():
     )
 
 
-# --------------------------------------------------
-# Entry point
-# --------------------------------------------------
-
 if __name__ == "__main__":
-
     main()

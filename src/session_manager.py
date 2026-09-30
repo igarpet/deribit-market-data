@@ -42,6 +42,45 @@ class SessionWindow:
     session_id: str
 
 
+def build_session_window(
+    session_start: datetime,
+    session_expiry: datetime
+) -> SessionWindow:
+    """Build a normalized UTC SessionWindow."""
+
+    if (
+        session_start.tzinfo is None
+        or session_expiry.tzinfo is None
+    ):
+        raise ValueError(
+            "Session datetimes must be timezone-aware."
+        )
+
+    session_start = session_start.astimezone(
+        timezone.utc
+    )
+
+    session_expiry = session_expiry.astimezone(
+        timezone.utc
+    )
+
+    expiry_timestamp_ms = int(
+        session_expiry.timestamp() * 1000
+    )
+
+    expiry_date = session_expiry.strftime(
+        "%Y-%m-%d"
+    )
+
+    return SessionWindow(
+        session_start=session_start,
+        session_expiry=session_expiry,
+        expiry_timestamp_ms=expiry_timestamp_ms,
+        expiry_date=expiry_date,
+        session_id=f"expiry={expiry_date}"
+    )
+
+
 def calculate_session_window(
     now: datetime | None = None
 ) -> SessionWindow:
@@ -85,24 +124,64 @@ def calculate_session_window(
         + timedelta(days=1)
     )
 
-    expiry_timestamp_ms = int(
-        session_expiry.timestamp() * 1000
-    )
-
-    expiry_date = session_expiry.strftime(
-        "%Y-%m-%d"
-    )
-
-    session_id = (
-        f"expiry={expiry_date}"
-    )
-
-    return SessionWindow(
+    return build_session_window(
         session_start=session_start,
-        session_expiry=session_expiry,
-        expiry_timestamp_ms=expiry_timestamp_ms,
-        expiry_date=expiry_date,
-        session_id=session_id
+        session_expiry=session_expiry
+    )
+
+
+def session_window_for_expiry_date(
+    expiry_date: str
+) -> SessionWindow:
+    """
+    Build the exact 0DTE session ending at 08:00 UTC on
+    the supplied YYYY-MM-DD expiry date.
+
+    This is the key helper used by warm handover: a collector
+    can target tomorrow's expiry before tomorrow's session is
+    the wall-clock current session.
+    """
+
+    try:
+        expiry = datetime.strptime(
+            expiry_date,
+            "%Y-%m-%d"
+        ).replace(
+            hour=SETTLEMENT_HOUR_UTC,
+            minute=0,
+            second=0,
+            microsecond=0,
+            tzinfo=timezone.utc
+        )
+
+    except ValueError as exc:
+        raise ValueError(
+            "expiry_date must be YYYY-MM-DD."
+        ) from exc
+
+    return build_session_window(
+        session_start=(
+            expiry
+            - timedelta(days=1)
+        ),
+        session_expiry=expiry
+    )
+
+
+def calculate_next_session_window(
+    session: SessionWindow | None = None
+) -> SessionWindow:
+    """Return the session immediately after the supplied/current one."""
+
+    if session is None:
+        session = calculate_session_window()
+
+    return build_session_window(
+        session_start=session.session_expiry,
+        session_expiry=(
+            session.session_expiry
+            + timedelta(days=1)
+        )
     )
 
 
@@ -111,9 +190,7 @@ def calculate_session_window(
 # --------------------------------------------------
 
 def load_latest_instrument_master() -> tuple[pd.DataFrame, Path]:
-    """
-    Load the most recent instrument-master Parquet.
-    """
+    """Load the most recent instrument-master Parquet."""
 
     files = sorted(
         INSTRUMENTS_ROOT.glob(
@@ -141,8 +218,8 @@ def select_session_instruments(
     session: SessionWindow
 ) -> pd.DataFrame:
     """
-    Select every active option expiring at the
-    locked session expiry timestamp.
+    Select every active option expiring at the locked
+    session expiry timestamp.
 
     Important:
     We intentionally DO NOT filter settlement_period == 'day'.
@@ -208,6 +285,35 @@ def select_session_instruments(
         )
 
     return session_instruments
+
+
+def get_session_for_expiry_date(
+    expiry_date: str
+) -> tuple[
+    SessionWindow,
+    pd.DataFrame
+]:
+    """
+    Resolve an explicit session and its instruments from the
+    latest instrument master.
+    """
+
+    session = session_window_for_expiry_date(
+        expiry_date
+    )
+
+    master, _ = (
+        load_latest_instrument_master()
+    )
+
+    instruments = (
+        select_session_instruments(
+            master,
+            session
+        )
+    )
+
+    return session, instruments
 
 
 # --------------------------------------------------
@@ -420,7 +526,7 @@ def print_session_summary(
 
 
 # --------------------------------------------------
-# Main
+# Public collector helpers
 # --------------------------------------------------
 
 def get_current_session() -> tuple[
@@ -428,11 +534,9 @@ def get_current_session() -> tuple[
     pd.DataFrame
 ]:
     """
-    Main function other collectors will use.
-
-    Returns:
-        session definition
-        current session instrument universe
+    Return the wall-clock current session and its instrument
+    universe. Existing callers, including the futures collector,
+    keep the same interface.
     """
 
     session = calculate_session_window()

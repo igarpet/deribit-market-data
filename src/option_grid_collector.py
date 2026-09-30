@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 import signal
 import statistics
@@ -12,7 +13,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from option_state_cache import OptionStateCache
-from session_manager import get_current_session
+from session_manager import (
+    STATE_ROOT,
+    get_current_session,
+    get_session_for_expiry_date,
+)
 
 
 # --------------------------------------------------
@@ -44,17 +49,14 @@ TEST_SNAPSHOT_ROOT = (
     / "test_snapshots"
 )
 
-# 5-minute collection frequency
 SNAPSHOT_INTERVAL_SECONDS = 5 * 60
 
 INITIALIZATION_TIMEOUT_SECONDS = 120
-
 MINIMUM_INITIALIZATION_PCT = 99.0
 
-# The orchestrator can request an opening 08:00 snapshot.
-# We only allow it to be labelled as 08:00 if cache
-# initialization finishes within 2 minutes of session start.
-OPENING_SNAPSHOT_MAX_DELAY_SECONDS = 120
+# Only normal scheduler jitter is accepted for the true
+# 08:00 opening observation.
+OPENING_CAPTURE_MAX_DELAY_SECONDS = 1.0
 
 
 # --------------------------------------------------
@@ -64,14 +66,6 @@ OPENING_SNAPSHOT_MAX_DELAY_SECONDS = 120
 def next_snapshot_time(
     now: datetime | None = None
 ) -> datetime:
-    """
-    Return the next exact 5-minute UTC boundary.
-
-    Examples:
-        14:03    -> 14:05
-        14:05:02 -> 14:10
-        14:59    -> 15:00
-    """
 
     if now is None:
         now = datetime.now(
@@ -102,28 +96,18 @@ async def sleep_until(
     target: datetime,
     stop_event: asyncio.Event
 ) -> bool:
-    """
-    Sleep until target time.
-
-    Returns:
-        True  -> target time was reached.
-        False -> shutdown was requested first.
-    """
-
-    now = datetime.now(
-        timezone.utc
-    )
 
     delay = max(
         0,
         (
             target
-            - now
+            - datetime.now(
+                timezone.utc
+            )
         ).total_seconds()
     )
 
     try:
-
         await asyncio.wait_for(
             stop_event.wait(),
             timeout=delay
@@ -132,7 +116,6 @@ async def sleep_until(
         return False
 
     except asyncio.TimeoutError:
-
         return True
 
 
@@ -143,7 +126,7 @@ async def sleep_until(
 async def wait_for_cache(
     cache: OptionStateCache,
     stop_event: asyncio.Event
-) -> bool:
+) -> datetime | None:
 
     expected = len(
         cache.instrument_names
@@ -170,10 +153,11 @@ async def wait_for_cache(
             else 0
         )
 
-        if (
-            pct
-            >= MINIMUM_INITIALIZATION_PCT
-        ):
+        if pct >= MINIMUM_INITIALIZATION_PCT:
+
+            ready_at = datetime.now(
+                timezone.utc
+            )
 
             print(
                 f"Cache initialized: "
@@ -182,17 +166,19 @@ async def wait_for_cache(
                 f"({pct:.1f}%)"
             )
 
-            return True
+            print(
+                f"Cache ready at: "
+                f"{ready_at.isoformat()}"
+            )
+
+            return ready_at
 
         elapsed = (
             time.monotonic()
             - start
         )
 
-        if (
-            elapsed
-            >= INITIALIZATION_TIMEOUT_SECONDS
-        ):
+        if elapsed >= INITIALIZATION_TIMEOUT_SECONDS:
 
             print(
                 "\nInitialization timeout."
@@ -205,11 +191,102 @@ async def wait_for_cache(
                 f"({pct:.1f}%)"
             )
 
-            return False
+            return None
 
         await asyncio.sleep(1)
 
-    return False
+    return None
+
+
+def warmup_ready_file(
+    session
+) -> Path:
+
+    return (
+        STATE_ROOT
+        / "warmup"
+        / session.session_id
+        / "ready.json"
+    )
+
+
+def write_warmup_ready_state(
+    cache: OptionStateCache,
+    ready_at: datetime
+) -> Path:
+
+    output_file = warmup_ready_file(
+        cache.session
+    )
+
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    expected = len(
+        cache.instrument_names
+    )
+
+    initialized = len(
+        cache.state
+    )
+
+    coverage_pct = (
+        initialized
+        / expected
+        * 100
+        if expected
+        else 0.0
+    )
+
+    payload = {
+        "session_id": cache.session.session_id,
+        "expiry_date": cache.session.expiry_date,
+        "session_start_utc": (
+            cache.session.session_start.isoformat()
+        ),
+        "session_expiry_utc": (
+            cache.session.session_expiry.isoformat()
+        ),
+        "expected_instruments": expected,
+        "initialized_instruments": initialized,
+        "coverage_pct": coverage_pct,
+        "ready_at_utc": ready_at.isoformat(),
+        "ready_before_session_start": (
+            ready_at
+            <= cache.session.session_start
+        )
+    }
+
+    temporary_file = output_file.with_suffix(
+        ".tmp"
+    )
+
+    with open(
+        temporary_file,
+        "w",
+        encoding="utf-8"
+    ) as file:
+        json.dump(
+            payload,
+            file,
+            indent=4
+        )
+
+    temporary_file.replace(
+        output_file
+    )
+
+    print(
+        "\nWarm-up readiness state written:"
+    )
+
+    print(
+        output_file
+    )
+
+    return output_file
 
 
 # --------------------------------------------------
@@ -219,15 +296,9 @@ async def wait_for_cache(
 def save_grid_snapshot(
     cache: OptionStateCache,
     scheduled_time: datetime,
+    cache_ready_at: datetime | None = None,
     test_mode: bool = False
 ) -> Path:
-    """
-    Freeze the complete option-state cache into one
-    Parquet file.
-
-    Every expected instrument is represented by one row,
-    even if no ticker state has been received for it.
-    """
 
     actual_capture_time = datetime.now(
         timezone.utc
@@ -241,6 +312,26 @@ def save_grid_snapshot(
         actual_capture_time
         - scheduled_time
     ).total_seconds() * 1000
+
+    is_opening_snapshot = (
+        scheduled_time
+        == cache.session.session_start
+    )
+
+    cache_initialized_before_boundary = (
+        cache_ready_at is not None
+        and cache_ready_at <= scheduled_time
+    )
+
+    opening_snapshot_valid = (
+        is_opening_snapshot
+        and cache_initialized_before_boundary
+        and capture_delay_ms
+        <= (
+            OPENING_CAPTURE_MAX_DELAY_SECONDS
+            * 1000
+        )
+    )
 
     grid[
         "scheduled_snapshot_time"
@@ -266,12 +357,23 @@ def save_grid_snapshot(
         ].notna()
     )
 
+    grid[
+        "is_opening_snapshot"
+    ] = is_opening_snapshot
+
+    grid[
+        "cache_initialized_before_boundary"
+    ] = cache_initialized_before_boundary
+
+    grid[
+        "opening_snapshot_valid"
+    ] = opening_snapshot_valid
+
     expected_rows = len(
         cache.instrument_names
     )
 
     if len(grid) != expected_rows:
-
         raise RuntimeError(
             f"Grid row mismatch: "
             f"expected {expected_rows}, "
@@ -281,19 +383,16 @@ def save_grid_snapshot(
     if not grid[
         "instrument_name"
     ].is_unique:
-
         raise RuntimeError(
             "Duplicate instrument names "
             "detected in grid snapshot."
         )
 
-    if test_mode:
-
-        root = TEST_SNAPSHOT_ROOT
-
-    else:
-
-        root = SNAPSHOT_ROOT
+    root = (
+        TEST_SNAPSHOT_ROOT
+        if test_mode
+        else SNAPSHOT_ROOT
+    )
 
     output_folder = (
         root
@@ -334,12 +433,10 @@ def save_grid_snapshot(
         )
     )
 
-    # Prevent duplicate production snapshots.
     if (
         output_file.exists()
         and not test_mode
     ):
-
         print(
             "\nSnapshot already exists:"
         )
@@ -350,10 +447,7 @@ def save_grid_snapshot(
 
         return output_file
 
-    # Remove an abandoned temporary file
-    # from a previous interrupted write.
     if temporary_file.exists():
-
         temporary_file.unlink()
 
     grid.to_parquet(
@@ -363,13 +457,11 @@ def save_grid_snapshot(
     )
 
     if not temporary_file.exists():
-
         raise RuntimeError(
             "Temporary Parquet file "
             "was not created."
         )
 
-    # Atomic finalization.
     temporary_file.replace(
         output_file
     )
@@ -448,6 +540,21 @@ def print_snapshot_summary(
         f"{grid['capture_delay_ms'].iloc[0]:,.0f} ms"
     )
 
+    print(
+        f"Opening snapshot:   "
+        f"{grid['is_opening_snapshot'].iloc[0]}"
+    )
+
+    if bool(
+        grid[
+            "is_opening_snapshot"
+        ].iloc[0]
+    ):
+        print(
+            f"Opening valid:      "
+            f"{grid['opening_snapshot_valid'].iloc[0]}"
+        )
+
     if ages:
 
         print(
@@ -475,35 +582,31 @@ def print_snapshot_summary(
 
 
 # --------------------------------------------------
-# Continuous 5-minute writer
+# Continuous writer
 # --------------------------------------------------
 
 async def snapshot_writer(
     cache: OptionStateCache,
-    stop_event: asyncio.Event
+    stop_event: asyncio.Event,
+    cache_ready_at: datetime
 ) -> None:
 
     while not stop_event.is_set():
 
-        scheduled_time = (
-            next_snapshot_time()
+        now = datetime.now(
+            timezone.utc
         )
 
-        # --------------------------------------------------
-        # End-of-session handling
-        #
-        # After the 07:55 snapshot, the next scheduled
-        # boundary is 08:00. We do NOT write that snapshot
-        # into the expiring session.
-        #
-        # Instead, stay alive until exactly 08:00 and then
-        # stop so the orchestrator can:
-        #
-        #   1. compact the expired session
-        #   2. refresh instruments
-        #   3. start the new expiry
-        #   4. capture its opening 08:00 snapshot
-        # --------------------------------------------------
+        # Future-session warm-up collectors can never
+        # write before their true 08:00 start.
+        if now < cache.session.session_start:
+            scheduled_time = (
+                cache.session.session_start
+            )
+        else:
+            scheduled_time = (
+                next_snapshot_time(now)
+            )
 
         if (
             scheduled_time
@@ -563,16 +666,68 @@ async def snapshot_writer(
         if not continue_running:
             return
 
-        try:
+        # True 08:00 boundary rule.
+        if (
+            scheduled_time
+            == cache.session.session_start
+        ):
 
+            if (
+                cache_ready_at
+                > cache.session.session_start
+            ):
+                print(
+                    "\nOPENING SNAPSHOT MISSED"
+                )
+
+                print(
+                    "Reason: cache was not ready "
+                    "before the 08:00 boundary."
+                )
+
+                print(
+                    f"Cache ready at: "
+                    f"{cache_ready_at.isoformat()}"
+                )
+
+                continue
+
+            opening_delay = (
+                datetime.now(
+                    timezone.utc
+                )
+                - scheduled_time
+            ).total_seconds()
+
+            if (
+                opening_delay
+                > OPENING_CAPTURE_MAX_DELAY_SECONDS
+            ):
+                print(
+                    "\nOPENING SNAPSHOT MISSED"
+                )
+
+                print(
+                    "Reason: boundary capture "
+                    "was too late."
+                )
+
+                print(
+                    f"Delay: "
+                    f"{opening_delay:.3f} seconds"
+                )
+
+                continue
+
+        try:
             save_grid_snapshot(
                 cache=cache,
                 scheduled_time=scheduled_time,
+                cache_ready_at=cache_ready_at,
                 test_mode=False
             )
 
         except Exception as exc:
-
             print(
                 f"\nSnapshot error: "
                 f"{exc}"
@@ -605,29 +760,24 @@ def configure_signals(
             stop_event.set
         )
 
-    # Ctrl+C
     signal.signal(
         signal.SIGINT,
         request_shutdown
     )
 
-    # Linux/systemd termination
     if hasattr(
         signal,
         "SIGTERM"
     ):
-
         signal.signal(
             signal.SIGTERM,
             request_shutdown
         )
 
-    # Windows Ctrl+Break
     if hasattr(
         signal,
         "SIGBREAK"
     ):
-
         signal.signal(
             signal.SIGBREAK,
             request_shutdown
@@ -640,20 +790,36 @@ def configure_signals(
 
 async def run(
     once: bool = False,
-    opening_snapshot: bool = False
+    expiry_date: str | None = None,
+    warmup: bool = False
 ) -> None:
 
-    stop_event = (
-        asyncio.Event()
-    )
+    stop_event = asyncio.Event()
 
     configure_signals(
         stop_event
     )
 
-    session, instruments = (
-        get_current_session()
+    if expiry_date is None:
+        session, instruments = (
+            get_current_session()
+        )
+    else:
+        session, instruments = (
+            get_session_for_expiry_date(
+                expiry_date
+            )
+        )
+
+    now = datetime.now(
+        timezone.utc
     )
+
+    if now >= session.session_expiry:
+        raise RuntimeError(
+            "Refusing to start collector for "
+            f"expired session {session.session_id}."
+        )
 
     print(
         "\n0DTE GRID COLLECTOR"
@@ -683,6 +849,11 @@ async def run(
         f"{len(instruments)}"
     )
 
+    print(
+        f"Warm-up: "
+        f"{warmup}"
+    )
+
     cache = OptionStateCache(
         session=session,
         instruments=instruments,
@@ -693,14 +864,14 @@ async def run(
         cache.run_forever()
     )
 
-    initialized = (
+    cache_ready_at = (
         await wait_for_cache(
             cache=cache,
             stop_event=stop_event
         )
     )
 
-    if not initialized:
+    if cache_ready_at is None:
 
         print(
             "\nCache did not reach "
@@ -714,19 +885,22 @@ async def run(
 
         return
 
-    # --------------------------------------------------
-    # One-off test mode
-    # --------------------------------------------------
+    if warmup:
+        write_warmup_ready_state(
+            cache=cache,
+            ready_at=cache_ready_at
+        )
 
     if once:
 
-        now = datetime.now(
+        test_time = datetime.now(
             timezone.utc
         )
 
         save_grid_snapshot(
             cache=cache,
-            scheduled_time=now,
+            scheduled_time=test_time,
+            cache_ready_at=cache_ready_at,
             test_mode=True
         )
 
@@ -736,78 +910,16 @@ async def run(
 
         return
 
-    # --------------------------------------------------
-    # Opening 08:00 snapshot
-    #
-    # Used by session_orchestrator.py immediately after
-    # rollover. The actual WebSocket cache takes some
-    # seconds to initialize, but the snapshot is assigned
-    # to the intended 08:00 session boundary.
-    # --------------------------------------------------
-
-    if opening_snapshot:
-
-        now = datetime.now(
-            timezone.utc
-        )
-
-        opening_delay = (
-            now
-            - session.session_start
-        ).total_seconds()
-
-        if (
-            0
-            <= opening_delay
-            <= OPENING_SNAPSHOT_MAX_DELAY_SECONDS
-        ):
-
-            print(
-                "\nWriting opening "
-                "08:00 UTC session snapshot."
-            )
-
-            save_grid_snapshot(
-                cache=cache,
-                scheduled_time=(
-                    session.session_start
-                ),
-                test_mode=False
-            )
-
-        else:
-
-            print(
-                "\nOpening snapshot skipped."
-            )
-
-            print(
-                f"Session started "
-                f"{opening_delay:.1f} "
-                f"seconds ago."
-            )
-
-            print(
-                f"Maximum allowed opening "
-                f"delay is "
-                f"{OPENING_SNAPSHOT_MAX_DELAY_SECONDS} "
-                f"seconds."
-            )
-
-    # --------------------------------------------------
-    # Continuous mode
-    # --------------------------------------------------
-
     writer_task = asyncio.create_task(
         snapshot_writer(
             cache=cache,
-            stop_event=stop_event
+            stop_event=stop_event,
+            cache_ready_at=cache_ready_at
         )
     )
 
     await stop_event.wait()
 
-    # Wait for both components to shut down cleanly.
     for task in [
         writer_task,
         cache_task
@@ -816,11 +928,9 @@ async def run(
         if not task.done():
 
             try:
-
                 await task
 
             except asyncio.CancelledError:
-
                 pass
 
     print(
@@ -837,8 +947,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description=(
-            "Deribit 0DTE "
-            "option-grid collector"
+            "Deribit 0DTE option-grid collector"
         )
     )
 
@@ -852,12 +961,22 @@ def main():
     )
 
     parser.add_argument(
-        "--opening-snapshot",
+        "--expiry-date",
+        default=None,
+        help=(
+            "Explicit target expiry in YYYY-MM-DD. "
+            "Used by the orchestrator for warm handover. "
+            "If omitted, use the wall-clock current session."
+        )
+    )
+
+    parser.add_argument(
+        "--warmup",
         action="store_true",
         help=(
-            "Capture the session's "
-            "08:00 UTC opening grid "
-            "after cache initialization."
+            "Mark this process as a pre-warmed next-session "
+            "collector. No snapshot is written before the "
+            "session's true 08:00 UTC start."
         )
     )
 
@@ -866,13 +985,11 @@ def main():
     asyncio.run(
         run(
             once=args.once,
-            opening_snapshot=(
-                args.opening_snapshot
-            )
+            expiry_date=args.expiry_date,
+            warmup=args.warmup
         )
     )
 
 
 if __name__ == "__main__":
-
     main()
