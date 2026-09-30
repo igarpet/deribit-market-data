@@ -34,6 +34,444 @@ from data_engineering.catalog.database import (
 
 
 # --------------------------------------------------
+# Schema helpers
+# --------------------------------------------------
+
+def relation_columns(
+    connection,
+    relation_name: str
+) -> set[str]:
+
+    rows = connection.execute(
+        f"DESCRIBE {relation_name}"
+    ).fetchall()
+
+    return {
+        row[0]
+        for row in rows
+    }
+
+
+def optional_option_aggregates(
+    option_columns: set[str]
+) -> str:
+    """
+    Build provenance aggregates only when the underlying
+    Parquet schema exposes the corresponding collector fields.
+
+    This lets the research layer work with:
+      - legacy option sessions,
+      - warm-handover sessions,
+      - reconnect-hardened sessions,
+      - dynamic-universe sessions,
+
+    all through one union_by_name raw view.
+    """
+
+    expressions = []
+
+    # --------------------------------------------------
+    # Opening provenance
+    # --------------------------------------------------
+
+    if (
+        "is_opening_snapshot"
+        in option_columns
+        or "opening_snapshot_valid"
+        in option_columns
+        or "cache_initialized_before_boundary"
+        in option_columns
+    ):
+
+        presence_terms = []
+
+        for column in [
+            "is_opening_snapshot",
+            "opening_snapshot_valid",
+            "cache_initialized_before_boundary",
+        ]:
+
+            if column in option_columns:
+
+                presence_terms.append(
+                    f"{column} IS NOT NULL"
+                )
+
+        expressions.append(
+            """
+            MAX(
+                CASE
+                    WHEN
+                        """
+            + " OR ".join(
+                presence_terms
+            )
+            + """
+                    THEN 1
+                    ELSE 0
+                END
+            ) = 1
+                AS opening_provenance_available
+            """
+        )
+
+    else:
+
+        expressions.append(
+            """
+            FALSE
+                AS opening_provenance_available
+            """
+        )
+
+    if "is_opening_snapshot" in option_columns:
+
+        expressions.append(
+            """
+            MAX(
+                CASE
+                    WHEN is_opening_snapshot IS TRUE
+                    THEN 1
+                    ELSE 0
+                END
+            ) = 1
+                AS collector_marks_opening
+            """
+        )
+
+    else:
+
+        expressions.append(
+            """
+            CAST(NULL AS BOOLEAN)
+                AS collector_marks_opening
+            """
+        )
+
+    if "opening_snapshot_valid" in option_columns:
+
+        expressions.append(
+            """
+            100.0
+            * SUM(
+                CASE
+                    WHEN opening_snapshot_valid IS TRUE
+                    THEN 1
+                    ELSE 0
+                END
+            )
+            / COUNT(*)
+                AS opening_snapshot_valid_pct
+            """
+        )
+
+    else:
+
+        expressions.append(
+            """
+            CAST(NULL AS DOUBLE)
+                AS opening_snapshot_valid_pct
+            """
+        )
+
+    if (
+        "cache_initialized_before_boundary"
+        in option_columns
+    ):
+
+        expressions.append(
+            """
+            MIN(
+                CASE
+                    WHEN
+                        cache_initialized_before_boundary
+                            IS TRUE
+                    THEN 1
+                    ELSE 0
+                END
+            ) = 1
+                AS cache_initialized_before_boundary
+            """
+        )
+
+    else:
+
+        expressions.append(
+            """
+            CAST(NULL AS BOOLEAN)
+                AS cache_initialized_before_boundary
+            """
+        )
+
+    # --------------------------------------------------
+    # Connection/feed provenance
+    # --------------------------------------------------
+
+    if (
+        "cache_fully_initialized"
+        in option_columns
+        or "feed_last_message_age_ms"
+        in option_columns
+        or "cache_connection_count"
+        in option_columns
+    ):
+
+        presence_terms = []
+
+        for column in [
+            "cache_fully_initialized",
+            "feed_last_message_age_ms",
+            "cache_connection_count",
+        ]:
+
+            if column in option_columns:
+
+                presence_terms.append(
+                    f"{column} IS NOT NULL"
+                )
+
+        expressions.append(
+            """
+            MAX(
+                CASE
+                    WHEN
+                        """
+            + " OR ".join(
+                presence_terms
+            )
+            + """
+                    THEN 1
+                    ELSE 0
+                END
+            ) = 1
+                AS feed_provenance_available
+            """
+        )
+
+    else:
+
+        expressions.append(
+            """
+            FALSE
+                AS feed_provenance_available
+            """
+        )
+
+    if (
+        "cache_fully_initialized"
+        in option_columns
+    ):
+
+        expressions.append(
+            """
+            MIN(
+                CASE
+                    WHEN cache_fully_initialized IS TRUE
+                    THEN 1
+                    ELSE 0
+                END
+            ) = 1
+                AS cache_fully_initialized
+            """
+        )
+
+    else:
+
+        expressions.append(
+            """
+            CAST(NULL AS BOOLEAN)
+                AS cache_fully_initialized
+            """
+        )
+
+    if (
+        "cache_fully_initialized_at_ms"
+        in option_columns
+    ):
+
+        expressions.append(
+            """
+            MAX(
+                cache_fully_initialized_at_ms
+            )
+                AS cache_fully_initialized_at_ms
+            """
+        )
+
+    else:
+
+        expressions.append(
+            """
+            CAST(NULL AS BIGINT)
+                AS cache_fully_initialized_at_ms
+            """
+        )
+
+    if "cache_connection_count" in option_columns:
+
+        expressions.append(
+            """
+            MAX(
+                cache_connection_count
+            )
+                AS cache_connection_count
+            """
+        )
+
+    else:
+
+        expressions.append(
+            """
+            CAST(NULL AS BIGINT)
+                AS cache_connection_count
+            """
+        )
+
+    if (
+        "feed_last_message_received_at_ms"
+        in option_columns
+    ):
+
+        expressions.append(
+            """
+            MAX(
+                feed_last_message_received_at_ms
+            )
+                AS feed_last_message_received_at_ms
+            """
+        )
+
+    else:
+
+        expressions.append(
+            """
+            CAST(NULL AS BIGINT)
+                AS feed_last_message_received_at_ms
+            """
+        )
+
+    if (
+        "feed_last_message_age_ms"
+        in option_columns
+    ):
+
+        expressions.append(
+            """
+            MAX(
+                feed_last_message_age_ms
+            )
+                AS feed_last_message_age_ms
+            """
+        )
+
+    else:
+
+        expressions.append(
+            """
+            CAST(NULL AS DOUBLE)
+                AS feed_last_message_age_ms
+            """
+        )
+
+    # --------------------------------------------------
+    # Dynamic-universe provenance
+    # --------------------------------------------------
+
+    if (
+        "initial_instrument_count"
+        in option_columns
+        or "dynamic_instruments_added"
+        in option_columns
+        or "universe_size_at_capture"
+        in option_columns
+    ):
+
+        presence_terms = []
+
+        for column in [
+            "initial_instrument_count",
+            "dynamic_instruments_added",
+            "universe_size_at_capture",
+        ]:
+
+            if column in option_columns:
+
+                presence_terms.append(
+                    f"{column} IS NOT NULL"
+                )
+
+        expressions.append(
+            """
+            MAX(
+                CASE
+                    WHEN
+                        """
+            + " OR ".join(
+                presence_terms
+            )
+            + """
+                    THEN 1
+                    ELSE 0
+                END
+            ) = 1
+                AS universe_provenance_available
+            """
+        )
+
+    else:
+
+        expressions.append(
+            """
+            FALSE
+                AS universe_provenance_available
+            """
+        )
+
+    for source_column, alias in [
+        (
+            "initial_instrument_count",
+            "initial_instrument_count",
+        ),
+        (
+            "dynamic_instruments_added",
+            "dynamic_instruments_added",
+        ),
+        (
+            "universe_size_at_capture",
+            "universe_size_at_capture",
+        ),
+        (
+            "last_universe_update_ms",
+            "last_universe_update_ms",
+        ),
+    ]:
+
+        if source_column in option_columns:
+
+            expressions.append(
+                f"""
+                MAX(
+                    {source_column}
+                )
+                    AS {alias}
+                """
+            )
+
+        else:
+
+            expressions.append(
+                f"""
+                CAST(NULL AS BIGINT)
+                    AS {alias}
+                """
+            )
+
+    return ",\n".join(
+        expressions
+    )
+
+
+# --------------------------------------------------
 # Canonical state index
 # --------------------------------------------------
 
@@ -41,8 +479,19 @@ def create_state_index(
     connection
 ) -> None:
 
+    option_columns = relation_columns(
+        connection,
+        "raw_option_grid"
+    )
+
+    provenance_sql = (
+        optional_option_aggregates(
+            option_columns
+        )
+    )
+
     connection.execute(
-        """
+        f"""
         CREATE OR REPLACE VIEW
         canonical_state_index AS
 
@@ -120,27 +569,32 @@ def create_state_index(
                 COUNT(*)
                     AS futures_rows,
 
-                MAX(
+                COUNT(
+                    DISTINCT instrument_name
+                )
+                    AS futures_instrument_count,
+
+                MIN(
                     CASE
-                        WHEN stream_complete
+                        WHEN stream_complete IS TRUE
                         THEN 1
                         ELSE 0
                     END
                 ) = 1
                     AS futures_stream_complete,
 
-                MAX(
+                MIN(
                     CASE
-                        WHEN book_valid
+                        WHEN book_valid IS TRUE
                         THEN 1
                         ELSE 0
                     END
                 ) = 1
                     AS book_valid,
 
-                MAX(
+                MIN(
                     CASE
-                        WHEN book_stats_complete
+                        WHEN book_stats_complete IS TRUE
                         THEN 1
                         ELSE 0
                     END
@@ -170,7 +624,7 @@ def create_state_index(
 
                 SUM(
                     CASE
-                        WHEN has_ticker_state
+                        WHEN has_ticker_state IS TRUE
                         THEN 1
                         ELSE 0
                     END
@@ -180,13 +634,19 @@ def create_state_index(
                 100.0
                 * SUM(
                     CASE
-                        WHEN has_ticker_state
+                        WHEN has_ticker_state IS TRUE
                         THEN 1
                         ELSE 0
                     END
                 )
                 / COUNT(*)
                     AS option_coverage_pct,
+
+                MIN(snapshot_time)
+                    AS option_capture_time_min,
+
+                MAX(snapshot_time)
+                    AS option_capture_time_max,
 
                 MAX(capture_delay_ms)
                     AS capture_delay_ms,
@@ -195,7 +655,9 @@ def create_state_index(
                     AS median_quote_age_ms,
 
                 MAX(quote_age_ms)
-                    AS max_quote_age_ms
+                    AS max_quote_age_ms,
+
+                {provenance_sql}
 
             FROM raw_option_grid
 
@@ -230,6 +692,12 @@ def create_state_index(
 
             e.minutes_to_expiry,
 
+            (
+                e.state_time
+                = e.session_start
+            )
+                AS is_opening_state,
+
 
             COALESCE(
                 f.futures_rows,
@@ -237,13 +705,24 @@ def create_state_index(
             ) > 0
                 AS has_futures,
 
-
             COALESCE(
                 o.option_contract_count,
                 0
             ) > 0
                 AS has_options,
 
+
+            COALESCE(
+                f.futures_rows,
+                0
+            )
+                AS futures_rows,
+
+            COALESCE(
+                f.futures_instrument_count,
+                0
+            )
+                AS futures_instrument_count,
 
             f.futures_stream_complete,
 
@@ -258,21 +737,56 @@ def create_state_index(
             )
                 AS option_contract_count,
 
-
             COALESCE(
                 o.option_ticker_count,
                 0
             )
                 AS option_ticker_count,
 
-
             o.option_coverage_pct,
+
+            o.option_capture_time_min,
+
+            o.option_capture_time_max,
 
             o.capture_delay_ms,
 
             o.median_quote_age_ms,
 
             o.max_quote_age_ms,
+
+
+            o.opening_provenance_available,
+
+            o.collector_marks_opening,
+
+            o.opening_snapshot_valid_pct,
+
+            o.cache_initialized_before_boundary,
+
+
+            o.feed_provenance_available,
+
+            o.cache_fully_initialized,
+
+            o.cache_fully_initialized_at_ms,
+
+            o.cache_connection_count,
+
+            o.feed_last_message_received_at_ms,
+
+            o.feed_last_message_age_ms,
+
+
+            o.universe_provenance_available,
+
+            o.initial_instrument_count,
+
+            o.dynamic_instruments_added,
+
+            o.universe_size_at_capture,
+
+            o.last_universe_update_ms,
 
 
             (
@@ -365,7 +879,31 @@ def print_session_summary(
                     AS INTEGER
                 )
             )
-                AS complete_states
+                AS complete_states,
+
+            SUM(
+                CAST(
+                    opening_provenance_available
+                    AS INTEGER
+                )
+            )
+                AS opening_provenance_states,
+
+            SUM(
+                CAST(
+                    feed_provenance_available
+                    AS INTEGER
+                )
+            )
+                AS feed_provenance_states,
+
+            SUM(
+                CAST(
+                    universe_provenance_available
+                    AS INTEGER
+                )
+            )
+                AS universe_provenance_states
 
         FROM canonical_state_index
 
@@ -379,20 +917,23 @@ def print_session_summary(
 
 
     print(
-        "\nCANONICAL STATE INDEX"
+        "\nCANONICAL STATE INDEX v0.2"
     )
 
     print(
-        "=" * 100
+        "=" * 150
     )
 
     print(
         f"{'Expiry':<15}"
-        f"{'Assets':>10}"
-        f"{'Expected':>15}"
-        f"{'Futures':>15}"
-        f"{'Options':>15}"
-        f"{'Complete':>15}"
+        f"{'Assets':>8}"
+        f"{'Expected':>12}"
+        f"{'Futures':>12}"
+        f"{'Options':>12}"
+        f"{'Complete':>12}"
+        f"{'Open prov':>12}"
+        f"{'Feed prov':>12}"
+        f"{'Univ prov':>12}"
     )
 
 
@@ -400,11 +941,14 @@ def print_session_summary(
 
         print(
             f"{str(row[0]):<15}"
-            f"{row[1]:>10,}"
-            f"{row[2]:>15,}"
-            f"{row[3]:>15,}"
-            f"{row[4]:>15,}"
-            f"{row[5]:>15,}"
+            f"{row[1]:>8,}"
+            f"{row[2]:>12,}"
+            f"{row[3]:>12,}"
+            f"{row[4]:>12,}"
+            f"{row[5]:>12,}"
+            f"{row[6]:>12,}"
+            f"{row[7]:>12,}"
+            f"{row[8]:>12,}"
         )
 
 
