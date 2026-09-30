@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import signal
 import subprocess
 import sys
@@ -43,14 +44,20 @@ SRC_ROOT = (
 
 RESTART_DELAY_SECONDS = 5
 
-# Start next-session preparation at 07:57 UTC.
-PREWARM_LEAD_SECONDS = 3 * 60
+# Shorter overlap than the previous 3 minutes.
+# This still leaves ample time for instrument refresh
+# and WebSocket initialization on the current VM.
+PREWARM_LEAD_SECONDS = 90
 
 PREWARM_RETRY_SECONDS = 15
 
 OLD_COLLECTOR_EXIT_TIMEOUT_SECONDS = 30
 
 ROLLOVER_RETRY_SECONDS = 5 * 60
+
+WARMUP_STATUS_MAX_AGE_SECONDS = 5
+
+WARMUP_MAX_FEED_SILENCE_MS = 10_000
 
 
 # --------------------------------------------------
@@ -96,12 +103,15 @@ def terminate_process(
     )
 
     try:
+
         process.terminate()
 
     except Exception as exc:
+
         print(
             f"Could not terminate "
-            f"{label} cleanly: {exc}"
+            f"{label} cleanly: "
+            f"{exc}"
         )
 
 
@@ -194,7 +204,7 @@ def configure_signals():
 
 
 # --------------------------------------------------
-# Generic blocking project-script runner
+# Generic project-script runner
 # --------------------------------------------------
 
 def run_script(
@@ -223,12 +233,16 @@ def run_script(
     )
 
     print(
-        " ".join(command)
+        " ".join(
+            command
+        )
     )
 
-    utility_process = subprocess.Popen(
-        command,
-        cwd=PROJECT_ROOT
+    utility_process = (
+        subprocess.Popen(
+            command,
+            cwd=PROJECT_ROOT
+        )
     )
 
     return_code = (
@@ -289,7 +303,9 @@ def open_database():
     )
 
     connection = duckdb.connect(
-        str(DATABASE_FILE)
+        str(
+            DATABASE_FILE
+        )
     )
 
     initialize_database(
@@ -380,7 +396,8 @@ def find_completed_unregistered_sessions() -> list[str]:
             )
 
         candidates.sort(
-            key=lambda item: item[0]
+            key=lambda item:
+                item[0]
         )
 
         return [
@@ -453,91 +470,7 @@ def rollover_session(
 
 
 # --------------------------------------------------
-# Startup recovery
-# --------------------------------------------------
-
-def catch_up_completed_sessions() -> bool:
-
-    print(
-        "\nSTARTUP SESSION RECOVERY"
-    )
-
-    print(
-        "=" * 60
-    )
-
-    recovered_count = 0
-
-    while not stop_requested:
-
-        sessions = (
-            find_completed_unregistered_sessions()
-        )
-
-        if not sessions:
-
-            if recovered_count == 0:
-
-                print(
-                    "No completed unregistered "
-                    "sessions found."
-                )
-
-            else:
-
-                print(
-                    "\nStartup recovery complete."
-                )
-
-                print(
-                    f"Recovered sessions: "
-                    f"{recovered_count}"
-                )
-
-            return True
-
-        print(
-            f"\nFound {len(sessions)} "
-            f"completed unregistered "
-            f"session(s):"
-        )
-
-        for expiry_date in sessions:
-
-            print(
-                f"  {expiry_date}"
-            )
-
-        for expiry_date in sessions:
-
-            if stop_requested:
-                return False
-
-            success = rollover_session(
-                expiry_date
-            )
-
-            if not success:
-
-                print(
-                    "\nStartup recovery could not "
-                    "finalize every session."
-                )
-
-                print(
-                    "Live collection will continue; "
-                    "recovery can be retried later."
-                )
-
-                return False
-
-            recovered_count += 1
-
-    return False
-
-
-# --------------------------------------------------
-# Collector lifecycle
+# Warm-up status
 # --------------------------------------------------
 
 def warmup_ready_path(
@@ -563,6 +496,7 @@ def clear_warmup_ready_state(
     if path.exists():
 
         try:
+
             path.unlink()
 
         except OSError as exc:
@@ -572,6 +506,228 @@ def clear_warmup_ready_state(
                 f"warm-up marker: {exc}"
             )
 
+
+def read_warmup_status(
+    session
+) -> dict | None:
+
+    path = warmup_ready_path(
+        session
+    )
+
+    if not path.exists():
+        return None
+
+    try:
+
+        with open(
+            path,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            payload = json.load(
+                file
+            )
+
+    except Exception as exc:
+
+        print(
+            f"\nCould not read warm-up "
+            f"status: {exc}"
+        )
+
+        return None
+
+    if (
+        payload.get(
+            "session_id"
+        )
+        != session.session_id
+    ):
+
+        return None
+
+    return payload
+
+
+def warmup_status_is_ready(
+    session
+) -> tuple[
+    bool,
+    dict | None,
+    str
+]:
+
+    payload = read_warmup_status(
+        session
+    )
+
+    if payload is None:
+
+        return (
+            False,
+            None,
+            "no warm-up status file"
+        )
+
+    try:
+
+        updated_at = (
+            datetime.fromisoformat(
+                payload[
+                    "updated_at_utc"
+                ]
+            )
+        )
+
+        if updated_at.tzinfo is None:
+
+            updated_at = (
+                updated_at.replace(
+                    tzinfo=timezone.utc
+                )
+            )
+
+        updated_at = (
+            updated_at.astimezone(
+                timezone.utc
+            )
+        )
+
+    except Exception:
+
+        return (
+            False,
+            payload,
+            "invalid status timestamp"
+        )
+
+    age_seconds = (
+        datetime.now(
+            timezone.utc
+        )
+        - updated_at
+    ).total_seconds()
+
+    if (
+        age_seconds
+        > WARMUP_STATUS_MAX_AGE_SECONDS
+    ):
+
+        return (
+            False,
+            payload,
+            (
+                "warm-up status is stale "
+                f"({age_seconds:.1f}s)"
+            )
+        )
+
+    if not payload.get(
+        "connected",
+        False
+    ):
+
+        return (
+            False,
+            payload,
+            "warm-up WebSocket is not connected"
+        )
+
+    expected = int(
+        payload.get(
+            "expected_instruments",
+            0
+        )
+    )
+
+    initialized = int(
+        payload.get(
+            "initialized_instruments",
+            0
+        )
+    )
+
+    if (
+        expected <= 0
+        or initialized != expected
+    ):
+
+        return (
+            False,
+            payload,
+            (
+                "warm-up cache is not fully "
+                f"initialized "
+                f"({initialized}/{expected})"
+            )
+        )
+
+    if not payload.get(
+        "fully_initialized",
+        False
+    ):
+
+        return (
+            False,
+            payload,
+            "fully_initialized is false"
+        )
+
+    if not payload.get(
+        "cache_initialized_before_boundary",
+        False
+    ):
+
+        return (
+            False,
+            payload,
+            "cache was not initialized before boundary"
+        )
+
+    last_message_age_ms = (
+        payload.get(
+            "last_message_age_ms"
+        )
+    )
+
+    if (
+        last_message_age_ms is None
+        or float(
+            last_message_age_ms
+        )
+        > WARMUP_MAX_FEED_SILENCE_MS
+    ):
+
+        return (
+            False,
+            payload,
+            "warm-up feed is not recent"
+        )
+
+    if not payload.get(
+        "ready_for_opening_boundary",
+        False
+    ):
+
+        return (
+            False,
+            payload,
+            "collector does not report "
+            "opening readiness"
+        )
+
+    return (
+        True,
+        payload,
+        "ready"
+    )
+
+
+# --------------------------------------------------
+# Collector lifecycle
+# --------------------------------------------------
 
 def start_collector(
     session,
@@ -605,7 +761,9 @@ def start_collector(
     )
 
     print(
-        " ".join(command)
+        " ".join(
+            command
+        )
     )
 
     print(
@@ -665,8 +823,10 @@ def wait_for_old_collector(
         return
 
     print(
-        f"\nWaiting for expired collector "
-        f"{session.expiry_date} to exit..."
+        f"\nWaiting for expired "
+        f"collector "
+        f"{session.expiry_date} "
+        f"to exit..."
     )
 
     try:
@@ -680,13 +840,17 @@ def wait_for_old_collector(
     except subprocess.TimeoutExpired:
 
         print(
-            "Expired collector did not exit "
-            "within timeout; terminating it."
+            "Expired collector did not "
+            "exit within timeout; "
+            "terminating it."
         )
 
         terminate_process(
             process,
-            f"expired collector {session.expiry_date}"
+            (
+                "expired collector "
+                f"{session.expiry_date}"
+            )
         )
 
         try:
@@ -698,8 +862,8 @@ def wait_for_old_collector(
         except subprocess.TimeoutExpired:
 
             print(
-                "Expired collector still did not exit; "
-                "killing it."
+                "Expired collector still "
+                "did not exit; killing it."
             )
 
             process.kill()
@@ -720,7 +884,8 @@ def main():
     configure_signals()
 
     print(
-        "\nDERIBIT 0DTE SESSION ORCHESTRATOR"
+        "\nDERIBIT 0DTE "
+        "SESSION ORCHESTRATOR"
     )
 
     print(
@@ -732,8 +897,9 @@ def main():
         f"{datetime.now(timezone.utc).isoformat()}"
     )
 
-    # Refresh first, then get live collection running.
-    refresh_ok = refresh_instruments()
+    refresh_ok = (
+        refresh_instruments()
+    )
 
     if stop_requested:
         return
@@ -741,13 +907,13 @@ def main():
     if not refresh_ok:
 
         print(
-            "\nWARNING: initial instrument refresh failed."
+            "\nWARNING: initial instrument "
+            "refresh failed."
         )
 
         print(
-            "Attempting to start from the latest existing "
-            "instrument master so live collection is not "
-            "delayed unnecessarily."
+            "Attempting to start from the "
+            "latest existing instrument master."
         )
 
     current_session = (
@@ -782,38 +948,48 @@ def main():
         warmup=False
     )
 
-    # Historical housekeeping occurs after live collection starts.
-    recovery_ok = (
-        catch_up_completed_sessions()
+    # Historical compaction is deferred so startup
+    # never blocks live orchestration near 08:00.
+    pending_rollovers = (
+        find_completed_unregistered_sessions()
     )
 
-    if stop_requested:
-        return
-
-    if not recovery_ok:
+    if pending_rollovers:
 
         print(
-            "\nWARNING: startup historical recovery "
-            "was incomplete."
+            "\nDeferred completed sessions:"
         )
 
+        for expiry_date in (
+            pending_rollovers
+        ):
+
+            print(
+                f"  {expiry_date}"
+            )
+
+    else:
+
         print(
-            "Live collection remains active."
+            "\nNo completed unregistered "
+            "sessions found."
         )
 
     next_session = None
     next_collector = None
 
-    prewarm_retry_at = datetime.min.replace(
-        tzinfo=timezone.utc
+    prewarm_retry_at = (
+        datetime.min.replace(
+            tzinfo=timezone.utc
+        )
     )
 
     next_ready_logged = False
 
-    pending_rollovers: list[str] = []
-
-    next_rollover_retry_at = datetime.min.replace(
-        tzinfo=timezone.utc
+    next_rollover_retry_at = (
+        datetime.min.replace(
+            tzinfo=timezone.utc
+        )
     )
 
     while not stop_requested:
@@ -826,10 +1002,18 @@ def main():
         # A. 08:00 warm handover
         # --------------------------------------------------
 
-        if now >= current_session.session_expiry:
+        if (
+            now
+            >= current_session.session_expiry
+        ):
 
-            expired_session = current_session
-            expired_collector = current_collector
+            expired_session = (
+                current_session
+            )
+
+            expired_collector = (
+                current_collector
+            )
 
             print(
                 "\nSESSION HANDOVER"
@@ -852,18 +1036,51 @@ def main():
                     )
                 )
 
-            if not process_is_running(
-                next_collector
-            ):
+            warm_process_alive = (
+                process_is_running(
+                    next_collector
+                )
+            )
+
+            warm_ready, _, reason = (
+                warmup_status_is_ready(
+                    next_session
+                )
+            )
+
+            if warm_process_alive:
 
                 print(
-                    "\nNo healthy pre-warmed collector "
-                    "is available at the boundary."
+                    "Warm collector process: "
+                    "alive"
                 )
 
                 print(
-                    "Starting the new session now; "
-                    "08:00 will remain missing."
+                    f"Warm collector boundary "
+                    f"readiness: {warm_ready}"
+                )
+
+                print(
+                    f"Readiness detail: "
+                    f"{reason}"
+                )
+
+            else:
+
+                print(
+                    "Warm collector process: "
+                    "not available"
+                )
+
+            if not warm_process_alive:
+
+                print(
+                    "\nStarting new session now."
+                )
+
+                print(
+                    "The true 08:00 opening "
+                    "state will remain missing."
                 )
 
                 refresh_instruments()
@@ -871,21 +1088,46 @@ def main():
                 if stop_requested:
                     break
 
-                next_collector = start_collector(
-                    next_session,
-                    warmup=False
+                next_collector = (
+                    start_collector(
+                        next_session,
+                        warmup=False
+                    )
                 )
 
-            # Promote new live collector before housekeeping.
-            current_session = next_session
-            current_collector = next_collector
+            elif not warm_ready:
+
+                # Keep this child. It already targets
+                # the correct expiry and can continue
+                # initializing/reconnecting. Its own
+                # boundary logic refuses to fabricate
+                # an invalid 08:00 row.
+                print(
+                    "\nWarm child is alive but "
+                    "not boundary-ready."
+                )
+
+                print(
+                    "Promoting it for continuity; "
+                    "08:00 may be missing."
+                )
+
+            current_session = (
+                next_session
+            )
+
+            current_collector = (
+                next_collector
+            )
 
             next_session = None
             next_collector = None
             next_ready_logged = False
 
-            prewarm_retry_at = datetime.min.replace(
-                tzinfo=timezone.utc
+            prewarm_retry_at = (
+                datetime.min.replace(
+                    tzinfo=timezone.utc
+                )
             )
 
             print(
@@ -907,30 +1149,8 @@ def main():
                     expired_session.expiry_date
                 )
 
-            rollover_ok = rollover_session(
-                expired_session.expiry_date
-            )
-
-            if rollover_ok:
-
-                pending_rollovers.remove(
-                    expired_session.expiry_date
-                )
-
-            else:
-
-                print(
-                    "\nRollover failed, but the new live "
-                    "collector remains active."
-                )
-
-                next_rollover_retry_at = (
-                    datetime.now(timezone.utc)
-                    + timedelta(
-                        seconds=ROLLOVER_RETRY_SECONDS
-                    )
-                )
-
+            # Return immediately to monitoring the
+            # new live child. Rollover is deferred.
             continue
 
         # --------------------------------------------------
@@ -943,7 +1163,8 @@ def main():
 
             return_code = (
                 current_collector.poll()
-                if current_collector is not None
+                if current_collector
+                is not None
                 else None
             )
 
@@ -953,8 +1174,8 @@ def main():
             )
 
             print(
-                "\nCurrent-session collector exited "
-                "before session expiry."
+                "\nCurrent-session collector "
+                "exited before session expiry."
             )
 
             print(
@@ -964,7 +1185,8 @@ def main():
 
             print(
                 f"Restarting in "
-                f"{RESTART_DELAY_SECONDS} seconds..."
+                f"{RESTART_DELAY_SECONDS} "
+                f"seconds..."
             )
 
             sleep_interruptibly(
@@ -974,9 +1196,11 @@ def main():
             if stop_requested:
                 break
 
-            current_collector = start_collector(
-                current_session,
-                warmup=False
+            current_collector = (
+                start_collector(
+                    current_session,
+                    warmup=False
+                )
             )
 
             continue
@@ -988,13 +1212,16 @@ def main():
         prewarm_start = (
             current_session.session_expiry
             - timedelta(
-                seconds=PREWARM_LEAD_SECONDS
+                seconds=(
+                    PREWARM_LEAD_SECONDS
+                )
             )
         )
 
         if (
             now >= prewarm_start
-            and now < current_session.session_expiry
+            and now
+            < current_session.session_expiry
         ):
 
             if next_session is None:
@@ -1022,8 +1249,8 @@ def main():
                 )
 
                 print(
-                    "\nPre-warm collector exited "
-                    "before handover."
+                    "\nPre-warm collector "
+                    "exited before handover."
                 )
 
                 print(
@@ -1032,11 +1259,14 @@ def main():
                 )
 
                 next_collector = None
+                next_ready_logged = False
 
                 prewarm_retry_at = (
                     now
                     + timedelta(
-                        seconds=PREWARM_RETRY_SECONDS
+                        seconds=(
+                            PREWARM_RETRY_SECONDS
+                        )
                     )
                 )
 
@@ -1074,18 +1304,23 @@ def main():
 
                     try:
 
-                        next_collector = start_collector(
-                            next_session,
-                            warmup=True
+                        next_collector = (
+                            start_collector(
+                                next_session,
+                                warmup=True
+                            )
                         )
 
-                        next_ready_logged = False
+                        next_ready_logged = (
+                            False
+                        )
 
                     except Exception as exc:
 
                         print(
-                            f"Could not launch next-session "
-                            f"collector: {exc}"
+                            "Could not launch "
+                            "next-session collector: "
+                            f"{exc}"
                         )
 
                         next_collector = None
@@ -1093,15 +1328,20 @@ def main():
                 else:
 
                     print(
-                        "Pre-warm instrument refresh failed."
+                        "Pre-warm instrument "
+                        "refresh failed."
                     )
 
                 if next_collector is None:
 
                     prewarm_retry_at = (
-                        datetime.now(timezone.utc)
+                        datetime.now(
+                            timezone.utc
+                        )
                         + timedelta(
-                            seconds=PREWARM_RETRY_SECONDS
+                            seconds=(
+                                PREWARM_RETRY_SECONDS
+                            )
                         )
                     )
 
@@ -1110,28 +1350,58 @@ def main():
                 and process_is_running(
                     next_collector
                 )
-                and not next_ready_logged
             ):
 
-                ready_file = warmup_ready_path(
-                    next_session
+                ready, payload, reason = (
+                    warmup_status_is_ready(
+                        next_session
+                    )
                 )
 
-                if ready_file.exists():
+                if (
+                    ready
+                    and not next_ready_logged
+                ):
 
                     print(
                         "\nNext-session collector "
-                        "reports READY."
+                        "reports CURRENTLY READY "
+                        "for the 08:00 boundary."
                     )
 
-                    print(
-                        ready_file
-                    )
+                    if payload is not None:
+
+                        print(
+                            f"Connection generation: "
+                            f"{payload.get('connection_count')}"
+                        )
+
+                        print(
+                            f"Initialized: "
+                            f"{payload.get('initialized_instruments')}/"
+                            f"{payload.get('expected_instruments')}"
+                        )
 
                     next_ready_logged = True
 
+                elif (
+                    not ready
+                    and next_ready_logged
+                ):
+
+                    print(
+                        "\nNext-session collector "
+                        "lost readiness."
+                    )
+
+                    print(
+                        f"Reason: {reason}"
+                    )
+
+                    next_ready_logged = False
+
         # --------------------------------------------------
-        # D. Deferred rollover retry
+        # D. Deferred rollover / startup recovery
         # --------------------------------------------------
 
         seconds_to_expiry = (
@@ -1151,7 +1421,7 @@ def main():
             )
 
             print(
-                f"\nRetrying deferred rollover: "
+                f"\nRunning deferred rollover: "
                 f"{expiry_date}"
             )
 
@@ -1159,20 +1429,40 @@ def main():
                 expiry_date
             ):
 
-                pending_rollovers.pop(0)
+                pending_rollovers.pop(
+                    0
+                )
+
+                next_rollover_retry_at = (
+                    datetime.now(
+                        timezone.utc
+                    )
+                    + timedelta(
+                        seconds=5
+                    )
+                )
 
             else:
 
                 next_rollover_retry_at = (
-                    datetime.now(timezone.utc)
+                    datetime.now(
+                        timezone.utc
+                    )
                     + timedelta(
-                        seconds=ROLLOVER_RETRY_SECONDS
+                        seconds=(
+                            ROLLOVER_RETRY_SECONDS
+                        )
                     )
                 )
 
-        time.sleep(0.5)
+        time.sleep(
+            0.5
+        )
 
-    # Graceful shutdown.
+    # --------------------------------------------------
+    # Graceful shutdown
+    # --------------------------------------------------
+
     for expiry_date, process in list(
         collector_processes.items()
     ):
@@ -1210,4 +1500,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()

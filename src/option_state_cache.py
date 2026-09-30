@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 import pandas as pd
 import websockets
 
+from deribit_client import DeribitClient
 from session_manager import get_current_session
 
 
@@ -21,8 +22,34 @@ SUBSCRIPTION_BATCH_SIZE = 400
 HEALTH_INTERVAL_SECONDS = 30
 RECONNECT_DELAY_SECONDS = 5
 
+FEED_STALE_TIMEOUT_SECONDS = 30
+INITIAL_MESSAGE_GRACE_SECONDS = 15
 
-def deep_merge(original: dict, update: dict) -> dict:
+# Deribit publishes full instrument metadata here whenever
+# a new option instrument is created.
+INSTRUMENT_CREATION_CHANNEL = (
+    "instrument.creation.option.any"
+)
+
+# Safety-net reconciliation. The creation channel provides
+# near-real-time discovery; REST reconciliation recovers any
+# creation notifications missed during a WebSocket outage.
+UNIVERSE_RECONCILE_INTERVAL_SECONDS = 5 * 60
+
+# Created instruments in terminal/non-tradable states are not
+# added to the expected live universe. REST reconciliation can
+# pick them up later if they become active.
+NON_COLLECTIBLE_STATES = {
+    "inactive",
+    "delivered",
+    "archivized",
+}
+
+
+def deep_merge(
+    original: dict,
+    update: dict
+) -> dict:
     """
     Recursively merge an incremental ticker update
     into the existing cached ticker state.
@@ -32,17 +59,28 @@ def deep_merge(original: dict, update: dict) -> dict:
 
         if (
             isinstance(value, dict)
-            and isinstance(original.get(key), dict)
+            and isinstance(
+                original.get(key),
+                dict
+            )
         ):
+
             deep_merge(
                 original[key],
                 value
             )
 
         else:
+
             original[key] = value
 
     return original
+
+
+class FeedStaleError(
+    RuntimeError
+):
+    pass
 
 
 class OptionStateCache:
@@ -55,13 +93,14 @@ class OptionStateCache:
     ):
 
         self.session = session
-
         self.stop_event = stop_event
 
         self.instruments = (
             instruments
             .drop_duplicates(
-                subset=["instrument_name"]
+                subset=[
+                    "instrument_name"
+                ]
             )
             .copy()
         )
@@ -70,50 +109,768 @@ class OptionStateCache:
             self.instruments[
                 "instrument_name"
             ]
+            .astype(str)
             .tolist()
         )
 
         self.metadata = (
             self.instruments
-            .set_index("instrument_name")
-            .to_dict(orient="index")
+            .set_index(
+                "instrument_name"
+            )
+            .to_dict(
+                orient="index"
+            )
         )
 
-        self.state: dict[str, dict] = {}
+        # Ticker state belongs to one WebSocket connection
+        # generation only. It is cleared before reconnects.
+        self.state: dict[
+            str,
+            dict
+        ] = {}
 
         self.messages_received = 0
-
         self.connection_count = 0
 
-        self.last_message_received_at = None
+        self.connected = False
+
+        self.connection_started_at_ms: (
+            int | None
+        ) = None
+
+        self.last_message_received_at: (
+            int | None
+        ) = None
+
+        self.fully_initialized_at_ms: (
+            int | None
+        ) = None
 
         self.websocket = None
+
+        # Dynamic-universe diagnostics.
+        self.initial_instrument_count = len(
+            self.instrument_names
+        )
+
+        self.dynamic_instruments_added = 0
+
+        self.creation_notifications_received = 0
+        self.creation_notifications_matched = 0
+
+        self.universe_reconciliations = 0
+        self.universe_reconciliation_errors = 0
+
+        self.last_universe_update_ms: (
+            int | None
+        ) = None
+
+        # IDs for subscriptions sent after startup.
+        self.next_subscription_request_id = (
+            10_000
+        )
+
+        # Creation notifications and REST reconciliation can
+        # both discover instruments at nearly the same time.
+        # Serialize WebSocket subscription writes.
+        self.subscription_lock = (
+            asyncio.Lock()
+        )
+
+    # --------------------------------------------------
+    # Readiness / health
+    # --------------------------------------------------
+
+    @property
+    def expected_count(
+        self
+    ) -> int:
+
+        return len(
+            self.instrument_names
+        )
+
+    @property
+    def initialized_count(
+        self
+    ) -> int:
+
+        return len(
+            self.state
+        )
+
+    @property
+    def coverage_pct(
+        self
+    ) -> float:
+
+        if not self.expected_count:
+            return 0.0
+
+        return (
+            self.initialized_count
+            / self.expected_count
+            * 100.0
+        )
+
+    def last_message_age_ms(
+        self,
+        now_ms: int | None = None
+    ) -> int | None:
+
+        if (
+            self.last_message_received_at
+            is None
+        ):
+
+            return None
+
+        if now_ms is None:
+
+            now_ms = int(
+                time.time()
+                * 1000
+            )
+
+        return max(
+            0,
+            now_ms
+            - self.last_message_received_at
+        )
+
+    def is_fully_initialized(
+        self
+    ) -> bool:
+
+        return (
+            self.expected_count > 0
+            and self.initialized_count
+            == self.expected_count
+            and self.fully_initialized_at_ms
+            is not None
+        )
+
+    def readiness_snapshot(
+        self
+    ) -> dict:
+
+        now_ms = int(
+            time.time()
+            * 1000
+        )
+
+        return {
+            "connected":
+                self.connected,
+
+            "connection_count":
+                self.connection_count,
+
+            "connection_started_at_ms":
+                self.connection_started_at_ms,
+
+            "expected_instruments":
+                self.expected_count,
+
+            "initialized_instruments":
+                self.initialized_count,
+
+            "coverage_pct":
+                self.coverage_pct,
+
+            "fully_initialized":
+                self.is_fully_initialized(),
+
+            "fully_initialized_at_ms":
+                self.fully_initialized_at_ms,
+
+            "last_message_received_at_ms":
+                self.last_message_received_at,
+
+            "last_message_age_ms":
+                self.last_message_age_ms(
+                    now_ms
+                ),
+
+            "initial_instrument_count":
+                self.initial_instrument_count,
+
+            "dynamic_instruments_added":
+                self.dynamic_instruments_added,
+
+            "last_universe_update_ms":
+                self.last_universe_update_ms
+        }
+
+    def reset_connection_state(
+        self
+    ) -> None:
+        """
+        Invalidate all connection-dependent ticker state.
+
+        The instrument universe itself is intentionally
+        preserved across reconnects. This means any strikes
+        discovered intraday remain known and are resubscribed.
+        """
+
+        self.state.clear()
+
+        self.connected = False
+
+        self.connection_started_at_ms = None
+        self.last_message_received_at = None
+        self.fully_initialized_at_ms = None
+
+    # --------------------------------------------------
+    # Instrument normalization / dynamic universe
+    # --------------------------------------------------
+
+    def normalize_instrument_record(
+        self,
+        record: dict
+    ) -> dict | None:
+        """
+        Convert one Deribit instrument object into the metadata
+        format used by the collector, but only if it belongs to
+        this collector's locked session expiry.
+        """
+
+        if not isinstance(
+            record,
+            dict
+        ):
+
+            return None
+
+        instrument_name = (
+            record.get(
+                "instrument_name"
+            )
+        )
+
+        if not instrument_name:
+            return None
+
+        expiration_timestamp = (
+            record.get(
+                "expiration_timestamp"
+            )
+        )
+
+        try:
+
+            expiration_timestamp = int(
+                expiration_timestamp
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            return None
+
+        if (
+            expiration_timestamp
+            != self.session.expiry_timestamp_ms
+        ):
+
+            return None
+
+        state = str(
+            record.get(
+                "state",
+                ""
+            )
+        ).lower()
+
+        if (
+            state
+            in NON_COLLECTIBLE_STATES
+        ):
+
+            return None
+
+        # public/get_instruments returns active instruments
+        # with expired=false. For creation notifications,
+        # is_active may be absent or may reflect initial state.
+        if (
+            record.get(
+                "is_active"
+            )
+            is False
+        ):
+
+            return None
+
+        metadata = copy.deepcopy(
+            record
+        )
+
+        # These are custom columns used throughout this project.
+        metadata[
+            "underlying"
+        ] = (
+            metadata.get(
+                "underlying"
+            )
+            or metadata.get(
+                "base_currency"
+            )
+        )
+
+        # When querying currency=any or consuming creation events
+        # there is no request-bucket label. For options, the
+        # settlement currency is the appropriate API bucket
+        # representation used by the existing collector.
+        metadata[
+            "api_currency"
+        ] = (
+            metadata.get(
+                "api_currency"
+            )
+            or metadata.get(
+                "settlement_currency"
+            )
+        )
+
+        creation_timestamp = (
+            metadata.get(
+                "creation_timestamp"
+            )
+        )
+
+        if creation_timestamp is not None:
+
+            try:
+
+                metadata[
+                    "creation_time"
+                ] = pd.to_datetime(
+                    int(
+                        creation_timestamp
+                    ),
+                    unit="ms",
+                    utc=True
+                )
+
+            except (
+                TypeError,
+                ValueError
+            ):
+
+                pass
+
+        metadata[
+            "expiration_time"
+        ] = pd.to_datetime(
+            expiration_timestamp,
+            unit="ms",
+            utc=True
+        )
+
+        metadata[
+            "snapshot_time"
+        ] = datetime.now(
+            timezone.utc
+        )
+
+        return metadata
+
+    def _append_instrument_metadata(
+        self,
+        metadata: dict,
+        source: str
+    ) -> bool:
+        """
+        Add one previously unseen instrument to the live
+        session universe. No await occurs here, so membership
+        mutation is atomic inside the asyncio event loop.
+        """
+
+        instrument_name = str(
+            metadata[
+                "instrument_name"
+            ]
+        )
+
+        if (
+            instrument_name
+            in self.metadata
+        ):
+
+            return False
+
+        self.instrument_names.append(
+            instrument_name
+        )
+
+        self.metadata[
+            instrument_name
+        ] = metadata
+
+        self.instruments = pd.concat(
+            [
+                self.instruments,
+                pd.DataFrame(
+                    [
+                        metadata
+                    ]
+                )
+            ],
+            ignore_index=True,
+            sort=False
+        )
+
+        self.dynamic_instruments_added += 1
+
+        self.last_universe_update_ms = int(
+            time.time()
+            * 1000
+        )
+
+        # The previously recorded "fully initialized" instant
+        # no longer describes the expanded universe.
+        self.fully_initialized_at_ms = None
+
+        print(
+            "\nNEW SESSION INSTRUMENT DISCOVERED"
+        )
+
+        print(
+            f"Instrument: "
+            f"{instrument_name}"
+        )
+
+        print(
+            f"Source:     "
+            f"{source}"
+        )
+
+        print(
+            f"Universe:   "
+            f"{self.expected_count} instruments"
+        )
+
+        return True
+
+    def _next_request_id(
+        self
+    ) -> int:
+
+        request_id = (
+            self.next_subscription_request_id
+        )
+
+        self.next_subscription_request_id += 1
+
+        return request_id
+
+    async def subscribe_channel_batch(
+        self,
+        websocket,
+        channels: list[str],
+        label: str
+    ) -> None:
+
+        if not channels:
+            return
+
+        request = {
+            "jsonrpc": "2.0",
+            "id": self._next_request_id(),
+            "method": "public/subscribe",
+            "params": {
+                "channels": channels
+            }
+        }
+
+        async with self.subscription_lock:
+
+            await websocket.send(
+                json.dumps(
+                    request
+                )
+            )
+
+        print(
+            f"{label}: "
+            f"{len(channels)} channel(s)"
+        )
+
+    async def add_instrument_records(
+        self,
+        records: list[dict],
+        source: str
+    ) -> int:
+        """
+        Add all newly discovered exact-expiry instruments,
+        then subscribe them in batches on the existing
+        WebSocket connection.
+        """
+
+        new_names = []
+
+        for record in records:
+
+            metadata = (
+                self.normalize_instrument_record(
+                    record
+                )
+            )
+
+            if metadata is None:
+                continue
+
+            instrument_name = str(
+                metadata[
+                    "instrument_name"
+                ]
+            )
+
+            if (
+                instrument_name
+                in self.metadata
+            ):
+
+                continue
+
+            added = (
+                self._append_instrument_metadata(
+                    metadata,
+                    source=source
+                )
+            )
+
+            if added:
+
+                new_names.append(
+                    instrument_name
+                )
+
+        if (
+            new_names
+            and self.connected
+            and self.websocket is not None
+        ):
+
+            channels = [
+                f"incremental_ticker.{name}"
+                for name in new_names
+            ]
+
+            batches = [
+                channels[
+                    i:i + SUBSCRIPTION_BATCH_SIZE
+                ]
+                for i in range(
+                    0,
+                    len(channels),
+                    SUBSCRIPTION_BATCH_SIZE
+                )
+            ]
+
+            for index, batch in enumerate(
+                batches,
+                start=1
+            ):
+
+                await self.subscribe_channel_batch(
+                    self.websocket,
+                    batch,
+                    (
+                        "Dynamic ticker subscription "
+                        f"{index}/{len(batches)}"
+                    )
+                )
+
+        return len(
+            new_names
+        )
+
+    def fetch_session_universe_from_rest(
+        self
+    ) -> list[dict]:
+        """
+        Fetch the currently active option universe in one REST
+        request using currency=any, then return only this
+        collector's exact locked expiry.
+        """
+
+        client = DeribitClient()
+
+        frame = (
+            client.get_option_instruments(
+                "any",
+                expired=False
+            )
+        )
+
+        if frame.empty:
+            return []
+
+        expiration = pd.to_numeric(
+            frame[
+                "expiration_timestamp"
+            ],
+            errors="coerce"
+        )
+
+        frame = frame.loc[
+            expiration
+            == self.session.expiry_timestamp_ms
+        ].copy()
+
+        if (
+            "is_active"
+            in frame.columns
+        ):
+
+            frame = frame.loc[
+                frame[
+                    "is_active"
+                ]
+                == True
+            ].copy()
+
+        return frame.to_dict(
+            orient="records"
+        )
+
+    async def reconcile_session_universe(
+        self
+    ) -> int:
+
+        self.universe_reconciliations += 1
+
+        try:
+
+            records = await asyncio.to_thread(
+                self.fetch_session_universe_from_rest
+            )
+
+            added = (
+                await self.add_instrument_records(
+                    records,
+                    source="rest_reconciliation"
+                )
+            )
+
+            if added:
+
+                print(
+                    "\nUNIVERSE RECONCILIATION"
+                )
+
+                print(
+                    f"Added: "
+                    f"{added}"
+                )
+
+                print(
+                    f"Current universe: "
+                    f"{self.expected_count}"
+                )
+
+            return added
+
+        except Exception as exc:
+
+            self.universe_reconciliation_errors += 1
+
+            print(
+                "\nUniverse reconciliation "
+                f"error: {exc}"
+            )
+
+            return 0
+
+    async def universe_reconciler(
+        self
+    ) -> None:
+
+        # Immediate reconciliation closes any discovery gap
+        # that occurred while this process/WebSocket was down.
+        await self.reconcile_session_universe()
+
+        while not self.stop_event.is_set():
+
+            try:
+
+                await asyncio.wait_for(
+                    self.stop_event.wait(),
+                    timeout=(
+                        UNIVERSE_RECONCILE_INTERVAL_SECONDS
+                    )
+                )
+
+                break
+
+            except asyncio.TimeoutError:
+                pass
+
+            await self.reconcile_session_universe()
+
+    async def handle_instrument_creation(
+        self,
+        data: dict
+    ) -> None:
+
+        self.creation_notifications_received += 1
+
+        metadata = (
+            self.normalize_instrument_record(
+                data
+            )
+        )
+
+        if metadata is None:
+            return
+
+        self.creation_notifications_matched += 1
+
+        await self.add_instrument_records(
+            [
+                data
+            ],
+            source="instrument.creation"
+        )
 
     # --------------------------------------------------
     # Subscription handling
     # --------------------------------------------------
-
-    def build_channels(self) -> list[str]:
-
-        return [
-            f"incremental_ticker.{name}"
-            for name in self.instrument_names
-        ]
 
     async def subscribe(
         self,
         websocket
     ) -> None:
 
-        channels = self.build_channels()
+        # Subscribe to creation notifications first so the
+        # discovery gap is as small as possible.
+        await self.subscribe_channel_batch(
+            websocket,
+            [
+                INSTRUMENT_CREATION_CHANNEL
+            ],
+            "Instrument-creation subscription"
+        )
+
+        channels = [
+            f"incremental_ticker.{name}"
+            for name in self.instrument_names
+        ]
 
         print(
             f"\nSubscribing to "
-            f"{len(channels)} option channels..."
+            f"{len(channels)} option "
+            f"ticker channels..."
         )
 
         batches = [
-            channels[i:i + SUBSCRIPTION_BATCH_SIZE]
+            channels[
+                i:i + SUBSCRIPTION_BATCH_SIZE
+            ]
             for i in range(
                 0,
                 len(channels),
@@ -129,23 +886,13 @@ class OptionStateCache:
             if self.stop_event.is_set():
                 return
 
-            request = {
-                "jsonrpc": "2.0",
-                "id": 1000 + batch_number,
-                "method": "public/subscribe",
-                "params": {
-                    "channels": batch
-                }
-            }
-
-            await websocket.send(
-                json.dumps(request)
-            )
-
-            print(
-                f"Subscription batch "
-                f"{batch_number}/{len(batches)}: "
-                f"{len(batch)} channels"
+            await self.subscribe_channel_batch(
+                websocket,
+                batch,
+                (
+                    "Ticker subscription batch "
+                    f"{batch_number}/{len(batches)}"
+                )
             )
 
         print(
@@ -161,35 +908,54 @@ class OptionStateCache:
         data: dict
     ) -> None:
 
-        instrument_name = data.get(
-            "instrument_name"
+        instrument_name = (
+            data.get(
+                "instrument_name"
+            )
         )
 
         if not instrument_name:
             return
 
+        # Ignore a ticker for an instrument we did not
+        # explicitly admit into this locked-expiry universe.
+        if (
+            instrument_name
+            not in self.metadata
+        ):
+
+            return
+
         received_timestamp_ms = int(
-            time.time() * 1000
+            time.time()
+            * 1000
         )
 
-        update_type = data.get(
-            "type"
+        update_type = (
+            data.get(
+                "type"
+            )
         )
 
         if (
             update_type == "snapshot"
-            or instrument_name not in self.state
+            or instrument_name
+            not in self.state
         ):
 
-            ticker_state = copy.deepcopy(
-                data
+            ticker_state = (
+                copy.deepcopy(
+                    data
+                )
             )
 
         else:
 
-            ticker_state = self.state[
-                instrument_name
-            ]
+            ticker_state = (
+                self.state[
+                    instrument_name
+                ]
+            )
 
             deep_merge(
                 ticker_state,
@@ -210,6 +976,39 @@ class OptionStateCache:
             received_timestamp_ms
         )
 
+        if (
+            self.fully_initialized_at_ms
+            is None
+            and self.expected_count > 0
+            and self.initialized_count
+            == self.expected_count
+        ):
+
+            self.fully_initialized_at_ms = (
+                received_timestamp_ms
+            )
+
+            ready_time = datetime.fromtimestamp(
+                received_timestamp_ms / 1000,
+                tz=timezone.utc
+            )
+
+            print(
+                "\nCURRENT CONNECTION "
+                "FULLY INITIALIZED"
+            )
+
+            print(
+                f"Ready at: "
+                f"{ready_time.isoformat()}"
+            )
+
+            print(
+                f"Instruments: "
+                f"{self.initialized_count}/"
+                f"{self.expected_count}"
+            )
+
     async def receive_messages(
         self,
         websocket
@@ -226,27 +1025,25 @@ class OptionStateCache:
 
             if "error" in message:
 
-                print(
-                    "\nDeribit error:"
-                )
-
-                print(
-                    json.dumps(
-                        message["error"],
-                        indent=2
+                raise RuntimeError(
+                    "Deribit subscription error: "
+                    + json.dumps(
+                        message[
+                            "error"
+                        ]
                     )
                 )
 
-                continue
-
-            # Subscription confirmation
+            # Subscription confirmation.
             if "id" in message:
 
                 if "result" in message:
 
-                    result = message[
-                        "result"
-                    ]
+                    result = (
+                        message[
+                            "result"
+                        ]
+                    )
 
                     if isinstance(
                         result,
@@ -261,36 +1058,121 @@ class OptionStateCache:
 
                 continue
 
-            params = message.get(
-                "params"
+            params = (
+                message.get(
+                    "params"
+                )
             )
 
             if not params:
                 continue
 
-            channel = params.get(
-                "channel",
-                ""
+            channel = str(
+                params.get(
+                    "channel",
+                    ""
+                )
             )
 
-            if not channel.startswith(
+            data = (
+                params.get(
+                    "data"
+                )
+            )
+
+            if channel.startswith(
                 "incremental_ticker."
             ):
+
+                if isinstance(
+                    data,
+                    dict
+                ):
+
+                    self.process_ticker(
+                        data
+                    )
+
                 continue
 
-            data = params.get(
-                "data"
-            )
-
-            if not isinstance(
-                data,
-                dict
+            if channel.startswith(
+                "instrument.creation.option."
             ):
+
+                if isinstance(
+                    data,
+                    dict
+                ):
+
+                    await self.handle_instrument_creation(
+                        data
+                    )
+
                 continue
 
-            self.process_ticker(
-                data
+    # --------------------------------------------------
+    # Feed watchdog
+    # --------------------------------------------------
+
+    async def feed_watchdog(
+        self
+    ) -> None:
+
+        while not self.stop_event.is_set():
+
+            await asyncio.sleep(
+                1
             )
+
+            if not self.connected:
+                continue
+
+            now_ms = int(
+                time.time()
+                * 1000
+            )
+
+            if (
+                self.last_message_received_at
+                is None
+            ):
+
+                if (
+                    self.connection_started_at_ms
+                    is not None
+                    and now_ms
+                    - self.connection_started_at_ms
+                    > (
+                        INITIAL_MESSAGE_GRACE_SECONDS
+                        * 1000
+                    )
+                ):
+
+                    raise FeedStaleError(
+                        "No ticker messages "
+                        "received during "
+                        "initialization grace period."
+                    )
+
+                continue
+
+            age_ms = (
+                now_ms
+                - self.last_message_received_at
+            )
+
+            if (
+                age_ms
+                > FEED_STALE_TIMEOUT_SECONDS
+                * 1000
+            ):
+
+                raise FeedStaleError(
+                    "Option ticker feed silent "
+                    f"for "
+                    f"{age_ms / 1000:.1f} "
+                    f"seconds."
+                )
 
     # --------------------------------------------------
     # Health monitoring
@@ -306,7 +1188,9 @@ class OptionStateCache:
 
                 await asyncio.wait_for(
                     self.stop_event.wait(),
-                    timeout=HEALTH_INTERVAL_SECONDS
+                    timeout=(
+                        HEALTH_INTERVAL_SECONDS
+                    )
                 )
 
                 break
@@ -315,20 +1199,15 @@ class OptionStateCache:
                 pass
 
             now_ms = int(
-                time.time() * 1000
-            )
-
-            expected = len(
-                self.instrument_names
-            )
-
-            initialized = len(
-                self.state
+                time.time()
+                * 1000
             )
 
             ages = []
 
-            for ticker in self.state.values():
+            for ticker in (
+                self.state.values()
+            ):
 
                 exchange_timestamp = (
                     ticker.get(
@@ -345,8 +1224,10 @@ class OptionStateCache:
 
             if ages:
 
-                median_age = statistics.median(
-                    ages
+                median_age = (
+                    statistics.median(
+                        ages
+                    )
                 )
 
                 max_age = max(
@@ -358,33 +1239,73 @@ class OptionStateCache:
                 median_age = None
                 max_age = None
 
-            initialized_pct = (
-                initialized
-                / expected
-                * 100
-                if expected
-                else 0
-            )
-
             print(
                 "\n[CACHE HEALTH]"
             )
 
             print(
+                f"Connected:            "
+                f"{self.connected}"
+            )
+
+            print(
+                f"Connection generation:"
+                f" {self.connection_count}"
+            )
+
+            print(
                 f"Expected instruments: "
-                f"{expected}"
+                f"{self.expected_count}"
             )
 
             print(
                 f"Initialized: "
-                f"{initialized} "
-                f"({initialized_pct:.1f}%)"
+                f"{self.initialized_count} "
+                f"({self.coverage_pct:.1f}%)"
+            )
+
+            print(
+                f"Fully initialized:    "
+                f"{self.is_fully_initialized()}"
+            )
+
+            print(
+                f"Dynamic instruments: "
+                f"{self.dynamic_instruments_added}"
+            )
+
+            print(
+                f"Creation notifications:"
+                f" {self.creation_notifications_received}"
+            )
+
+            print(
+                f"Universe reconciles:  "
+                f"{self.universe_reconciliations}"
+            )
+
+            print(
+                f"Reconcile errors:     "
+                f"{self.universe_reconciliation_errors}"
             )
 
             print(
                 f"Messages received: "
                 f"{self.messages_received:,}"
             )
+
+            last_age = (
+                self.last_message_age_ms(
+                    now_ms
+                )
+            )
+
+            if last_age is not None:
+
+                print(
+                    f"Last message age:     "
+                    f"{last_age:,.0f} ms"
+                )
 
             if median_age is not None:
 
@@ -418,27 +1339,45 @@ class OptionStateCache:
             * 1000
         )
 
+        # Copy the list so a dynamically discovered strike
+        # cannot change iteration membership mid-conversion.
+        instrument_names = list(
+            self.instrument_names
+        )
+
         rows = []
 
-        for instrument_name in self.instrument_names:
+        for instrument_name in (
+            instrument_names
+        ):
 
-            ticker = self.state.get(
-                instrument_name,
-                {}
+            ticker = (
+                self.state.get(
+                    instrument_name,
+                    {}
+                )
             )
 
-            metadata = self.metadata.get(
-                instrument_name,
-                {}
+            metadata = (
+                self.metadata.get(
+                    instrument_name,
+                    {}
+                )
             )
 
-            greeks = ticker.get(
-                "greeks"
-            ) or {}
+            greeks = (
+                ticker.get(
+                    "greeks"
+                )
+                or {}
+            )
 
-            stats = ticker.get(
-                "stats"
-            ) or {}
+            stats = (
+                ticker.get(
+                    "stats"
+                )
+                or {}
+            )
 
             exchange_timestamp_ms = (
                 ticker.get(
@@ -454,7 +1393,10 @@ class OptionStateCache:
 
             quote_age_ms = None
 
-            if exchange_timestamp_ms is not None:
+            if (
+                exchange_timestamp_ms
+                is not None
+            ):
 
                 quote_age_ms = (
                     snapshot_timestamp_ms
@@ -462,7 +1404,6 @@ class OptionStateCache:
                 )
 
             row = {
-
                 "snapshot_time":
                     snapshot_time,
 
@@ -673,7 +1614,9 @@ class OptionStateCache:
                 "minutes_to_expiry"
             ] = (
                 pd.to_datetime(
-                    df["expiration_time"],
+                    df[
+                        "expiration_time"
+                    ],
                     utc=True
                 )
                 - pd.Timestamp(
@@ -693,8 +1636,11 @@ class OptionStateCache:
 
         self.connection_count += 1
 
+        self.reset_connection_state()
+
         print(
-            "\nConnecting to Deribit WebSocket..."
+            "\nConnecting to Deribit "
+            "WebSocket..."
         )
 
         print(
@@ -710,7 +1656,16 @@ class OptionStateCache:
             max_size=None
         ) as websocket:
 
-            self.websocket = websocket
+            self.websocket = (
+                websocket
+            )
+
+            self.connected = True
+
+            self.connection_started_at_ms = int(
+                time.time()
+                * 1000
+            )
 
             print(
                 "WebSocket connected."
@@ -720,28 +1675,52 @@ class OptionStateCache:
                 websocket
             )
 
-            health_task = asyncio.create_task(
-                self.health_reporter()
-            )
-
-            receive_task = asyncio.create_task(
-                self.receive_messages(
-                    websocket
+            health_task = (
+                asyncio.create_task(
+                    self.health_reporter()
                 )
             )
 
-            shutdown_task = asyncio.create_task(
-                self.stop_event.wait()
+            receive_task = (
+                asyncio.create_task(
+                    self.receive_messages(
+                        websocket
+                    )
+                )
+            )
+
+            watchdog_task = (
+                asyncio.create_task(
+                    self.feed_watchdog()
+                )
+            )
+
+            universe_task = (
+                asyncio.create_task(
+                    self.universe_reconciler()
+                )
+            )
+
+            shutdown_task = (
+                asyncio.create_task(
+                    self.stop_event.wait()
+                )
             )
 
             try:
 
-                done, pending = await asyncio.wait(
-                    {
-                        receive_task,
-                        shutdown_task
-                    },
-                    return_when=asyncio.FIRST_COMPLETED
+                done, pending = (
+                    await asyncio.wait(
+                        {
+                            receive_task,
+                            watchdog_task,
+                            universe_task,
+                            shutdown_task
+                        },
+                        return_when=(
+                            asyncio.FIRST_COMPLETED
+                        )
+                    )
                 )
 
                 if (
@@ -753,57 +1732,71 @@ class OptionStateCache:
                         "\nShutdown requested."
                     )
 
-                    print(
-                        "Closing WebSocket..."
-                    )
-
                     await websocket.close(
                         code=1000,
-                        reason="Collector shutdown"
+                        reason=(
+                            "Collector shutdown"
+                        )
                     )
 
-                for task in pending:
+                if receive_task in done:
 
-                    task.cancel()
+                    receive_task.result()
 
-                for task in pending:
+                    if not self.stop_event.is_set():
+
+                        raise ConnectionError(
+                            "Option WebSocket "
+                            "receive loop ended "
+                            "unexpectedly."
+                        )
+
+                if watchdog_task in done:
+
+                    watchdog_task.result()
+
+                if universe_task in done:
+
+                    universe_task.result()
+
+                    if not self.stop_event.is_set():
+
+                        raise RuntimeError(
+                            "Universe reconciliation "
+                            "task ended unexpectedly."
+                        )
+
+            finally:
+
+                tasks = [
+                    receive_task,
+                    watchdog_task,
+                    universe_task,
+                    shutdown_task,
+                    health_task
+                ]
+
+                for task in tasks:
+
+                    if not task.done():
+
+                        task.cancel()
+
+                for task in tasks:
 
                     try:
+
                         await task
 
                     except asyncio.CancelledError:
                         pass
 
-            finally:
-
-                health_task.cancel()
-
-                try:
-                    await health_task
-
-                except asyncio.CancelledError:
-                    pass
-
-                if not receive_task.done():
-
-                    receive_task.cancel()
-
-                    try:
-                        await receive_task
-
-                    except asyncio.CancelledError:
+                    except Exception:
+                        # Primary completed-task exception is
+                        # propagated above.
                         pass
 
-                if not shutdown_task.done():
-
-                    shutdown_task.cancel()
-
-                    try:
-                        await shutdown_task
-
-                    except asyncio.CancelledError:
-                        pass
-
+                self.connected = False
                 self.websocket = None
 
                 print(
@@ -828,6 +1821,11 @@ class OptionStateCache:
                 if self.stop_event.is_set():
                     break
 
+                # Ticker state from a failed generation is
+                # never retained. The dynamic instrument
+                # universe itself remains intact.
+                self.reset_connection_state()
+
                 print(
                     f"\nWebSocket connection "
                     f"error: {exc}"
@@ -843,22 +1841,31 @@ class OptionStateCache:
 
                     await asyncio.wait_for(
                         self.stop_event.wait(),
-                        timeout=RECONNECT_DELAY_SECONDS
+                        timeout=(
+                            RECONNECT_DELAY_SECONDS
+                        )
                     )
 
                 except asyncio.TimeoutError:
                     pass
 
+        self.connected = False
+
         print(
-            "\nOption-state cache stopped cleanly."
+            "\nOption-state cache "
+            "stopped cleanly."
         )
 
 
 async def main():
 
-    stop_event = asyncio.Event()
+    stop_event = (
+        asyncio.Event()
+    )
 
-    loop = asyncio.get_running_loop()
+    loop = (
+        asyncio.get_running_loop()
+    )
 
     def request_shutdown(
         signum,
@@ -874,13 +1881,11 @@ async def main():
             stop_event.set
         )
 
-    # Ctrl+C
     signal.signal(
         signal.SIGINT,
         request_shutdown
     )
 
-    # Standard termination signal
     if hasattr(
         signal,
         "SIGTERM"
@@ -891,7 +1896,6 @@ async def main():
             request_shutdown
         )
 
-    # Windows Ctrl+Break
     if hasattr(
         signal,
         "SIGBREAK"
@@ -922,19 +1926,6 @@ async def main():
     print(
         f"Contracts: "
         f"{len(instruments)}"
-    )
-
-    print(
-        "\nContracts by underlying:"
-    )
-
-    print(
-        instruments
-        .groupby("underlying")
-        .size()
-        .sort_values(
-            ascending=False
-        )
     )
 
     cache = OptionStateCache(

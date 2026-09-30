@@ -52,11 +52,21 @@ TEST_SNAPSHOT_ROOT = (
 SNAPSHOT_INTERVAL_SECONDS = 5 * 60
 
 INITIALIZATION_TIMEOUT_SECONDS = 120
-MINIMUM_INITIALIZATION_PCT = 99.0
 
-# Only normal scheduler jitter is accepted for the true
-# 08:00 opening observation.
+# Opening-state validity requires the COMPLETE expected
+# universe on the current WebSocket generation.
+MINIMUM_INITIALIZATION_PCT = 100.0
+
+# Only normal scheduler jitter is accepted for the
+# true 08:00 opening observation.
 OPENING_CAPTURE_MAX_DELAY_SECONDS = 1.0
+
+# Overall-feed continuity threshold. Individual illiquid
+# option quotes may legitimately have older exchange
+# timestamps while still being the latest known state.
+OPENING_MAX_FEED_SILENCE_MS = 10_000
+
+WARMUP_STATUS_INTERVAL_SECONDS = 1.0
 
 
 # --------------------------------------------------
@@ -108,6 +118,7 @@ async def sleep_until(
     )
 
     try:
+
         await asyncio.wait_for(
             stop_event.wait(),
             timeout=delay
@@ -116,6 +127,7 @@ async def sleep_until(
         return False
 
     except asyncio.TimeoutError:
+
         return True
 
 
@@ -126,11 +138,7 @@ async def sleep_until(
 async def wait_for_cache(
     cache: OptionStateCache,
     stop_event: asyncio.Event
-) -> datetime | None:
-
-    expected = len(
-        cache.instrument_names
-    )
+) -> bool:
 
     print(
         "\nWaiting for WebSocket cache "
@@ -141,29 +149,18 @@ async def wait_for_cache(
 
     while not stop_event.is_set():
 
-        initialized = len(
-            cache.state
-        )
+        if cache.is_fully_initialized():
 
-        pct = (
-            initialized
-            / expected
-            * 100
-            if expected
-            else 0
-        )
-
-        if pct >= MINIMUM_INITIALIZATION_PCT:
-
-            ready_at = datetime.now(
-                timezone.utc
+            ready_at = datetime.fromtimestamp(
+                cache.fully_initialized_at_ms / 1000,
+                tz=timezone.utc
             )
 
             print(
                 f"Cache initialized: "
-                f"{initialized}/"
-                f"{expected} "
-                f"({pct:.1f}%)"
+                f"{cache.initialized_count}/"
+                f"{cache.expected_count} "
+                f"({cache.coverage_pct:.1f}%)"
             )
 
             print(
@@ -171,14 +168,17 @@ async def wait_for_cache(
                 f"{ready_at.isoformat()}"
             )
 
-            return ready_at
+            return True
 
         elapsed = (
             time.monotonic()
             - start
         )
 
-        if elapsed >= INITIALIZATION_TIMEOUT_SECONDS:
+        if (
+            elapsed
+            >= INITIALIZATION_TIMEOUT_SECONDS
+        ):
 
             print(
                 "\nInitialization timeout."
@@ -186,17 +186,23 @@ async def wait_for_cache(
 
             print(
                 f"Initialized: "
-                f"{initialized}/"
-                f"{expected} "
-                f"({pct:.1f}%)"
+                f"{cache.initialized_count}/"
+                f"{cache.expected_count} "
+                f"({cache.coverage_pct:.1f}%)"
             )
 
-            return None
+            return False
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(
+            0.25
+        )
 
-    return None
+    return False
 
+
+# --------------------------------------------------
+# Warm-up state
+# --------------------------------------------------
 
 def warmup_ready_file(
     session
@@ -210,9 +216,69 @@ def warmup_ready_file(
     )
 
 
-def write_warmup_ready_state(
+def opening_boundary_status(
     cache: OptionStateCache,
-    ready_at: datetime
+    scheduled_time: datetime
+) -> dict:
+
+    scheduled_ms = int(
+        scheduled_time.timestamp()
+        * 1000
+    )
+
+    readiness = (
+        cache.readiness_snapshot()
+    )
+
+    initialized_at_ms = (
+        readiness[
+            "fully_initialized_at_ms"
+        ]
+    )
+
+    initialized_before_boundary = (
+        initialized_at_ms is not None
+        and initialized_at_ms
+        <= scheduled_ms
+    )
+
+    feed_recent = (
+        readiness[
+            "last_message_age_ms"
+        ] is not None
+        and readiness[
+            "last_message_age_ms"
+        ]
+        <= OPENING_MAX_FEED_SILENCE_MS
+    )
+
+    valid = (
+        readiness[
+            "connected"
+        ]
+        and readiness[
+            "fully_initialized"
+        ]
+        and initialized_before_boundary
+        and feed_recent
+    )
+
+    return {
+        **readiness,
+
+        "cache_initialized_before_boundary":
+            initialized_before_boundary,
+
+        "feed_recent":
+            feed_recent,
+
+        "ready_for_opening_boundary":
+            valid
+    }
+
+
+def write_warmup_ready_state(
+    cache: OptionStateCache
 ) -> Path:
 
     output_file = warmup_ready_file(
@@ -224,43 +290,97 @@ def write_warmup_ready_state(
         exist_ok=True
     )
 
-    expected = len(
-        cache.instrument_names
+    now = datetime.now(
+        timezone.utc
     )
 
-    initialized = len(
-        cache.state
-    )
-
-    coverage_pct = (
-        initialized
-        / expected
-        * 100
-        if expected
-        else 0.0
+    boundary = opening_boundary_status(
+        cache,
+        cache.session.session_start
     )
 
     payload = {
-        "session_id": cache.session.session_id,
-        "expiry_date": cache.session.expiry_date,
-        "session_start_utc": (
-            cache.session.session_start.isoformat()
-        ),
-        "session_expiry_utc": (
-            cache.session.session_expiry.isoformat()
-        ),
-        "expected_instruments": expected,
-        "initialized_instruments": initialized,
-        "coverage_pct": coverage_pct,
-        "ready_at_utc": ready_at.isoformat(),
-        "ready_before_session_start": (
-            ready_at
-            <= cache.session.session_start
-        )
+        "session_id":
+            cache.session.session_id,
+
+        "expiry_date":
+            cache.session.expiry_date,
+
+        "session_start_utc":
+            cache.session.session_start.isoformat(),
+
+        "session_expiry_utc":
+            cache.session.session_expiry.isoformat(),
+
+        "updated_at_utc":
+            now.isoformat(),
+
+        "connected":
+            boundary[
+                "connected"
+            ],
+
+        "connection_count":
+            boundary[
+                "connection_count"
+            ],
+
+        "expected_instruments":
+            boundary[
+                "expected_instruments"
+            ],
+
+        "initialized_instruments":
+            boundary[
+                "initialized_instruments"
+            ],
+
+        "coverage_pct":
+            boundary[
+                "coverage_pct"
+            ],
+
+        "fully_initialized":
+            boundary[
+                "fully_initialized"
+            ],
+
+        "fully_initialized_at_ms":
+            boundary[
+                "fully_initialized_at_ms"
+            ],
+
+        "last_message_received_at_ms":
+            boundary[
+                "last_message_received_at_ms"
+            ],
+
+        "last_message_age_ms":
+            boundary[
+                "last_message_age_ms"
+            ],
+
+        "cache_initialized_before_boundary":
+            boundary[
+                "cache_initialized_before_boundary"
+            ],
+
+        "feed_recent":
+            boundary[
+                "feed_recent"
+            ],
+
+        "ready_for_opening_boundary":
+            boundary[
+                "ready_for_opening_boundary"
+            ]
     }
 
-    temporary_file = output_file.with_suffix(
-        ".tmp"
+    temporary_file = (
+        output_file
+        .with_name(
+            ".ready.tmp.json"
+        )
     )
 
     with open(
@@ -268,6 +388,7 @@ def write_warmup_ready_state(
         "w",
         encoding="utf-8"
     ) as file:
+
         json.dump(
             payload,
             file,
@@ -278,15 +399,105 @@ def write_warmup_ready_state(
         output_file
     )
 
-    print(
-        "\nWarm-up readiness state written:"
-    )
-
-    print(
-        output_file
-    )
-
     return output_file
+
+
+async def warmup_status_reporter(
+    cache: OptionStateCache,
+    stop_event: asyncio.Event
+) -> None:
+
+    last_signature = None
+
+    while not stop_event.is_set():
+
+        try:
+
+            path = (
+                write_warmup_ready_state(
+                    cache
+                )
+            )
+
+            status = (
+                opening_boundary_status(
+                    cache,
+                    cache.session.session_start
+                )
+            )
+
+            signature = (
+                status[
+                    "connected"
+                ],
+                status[
+                    "connection_count"
+                ],
+                status[
+                    "initialized_instruments"
+                ],
+                status[
+                    "expected_instruments"
+                ],
+                status[
+                    "ready_for_opening_boundary"
+                ]
+            )
+
+            if signature != last_signature:
+
+                print(
+                    "\n[WARMUP STATUS]"
+                )
+
+                print(
+                    f"Connected: "
+                    f"{status['connected']}"
+                )
+
+                print(
+                    f"Connection generation: "
+                    f"{status['connection_count']}"
+                )
+
+                print(
+                    f"Initialized: "
+                    f"{status['initialized_instruments']}/"
+                    f"{status['expected_instruments']}"
+                )
+
+                print(
+                    f"Ready for 08:00: "
+                    f"{status['ready_for_opening_boundary']}"
+                )
+
+                print(
+                    f"Status file: "
+                    f"{path}"
+                )
+
+                last_signature = (
+                    signature
+                )
+
+        except Exception as exc:
+
+            print(
+                f"\nWarm-up status "
+                f"write error: {exc}"
+            )
+
+        try:
+
+            await asyncio.wait_for(
+                stop_event.wait(),
+                timeout=(
+                    WARMUP_STATUS_INTERVAL_SECONDS
+                )
+            )
+
+        except asyncio.TimeoutError:
+            pass
 
 
 # --------------------------------------------------
@@ -296,7 +507,6 @@ def write_warmup_ready_state(
 def save_grid_snapshot(
     cache: OptionStateCache,
     scheduled_time: datetime,
-    cache_ready_at: datetime | None = None,
     test_mode: bool = False
 ) -> Path:
 
@@ -318,14 +528,22 @@ def save_grid_snapshot(
         == cache.session.session_start
     )
 
-    cache_initialized_before_boundary = (
-        cache_ready_at is not None
-        and cache_ready_at <= scheduled_time
+    readiness = (
+        cache.readiness_snapshot()
     )
 
-    opening_snapshot_valid = (
+    boundary = (
+        opening_boundary_status(
+            cache,
+            scheduled_time
+        )
+    )
+
+    opening_snapshot_valid_global = (
         is_opening_snapshot
-        and cache_initialized_before_boundary
+        and boundary[
+            "ready_for_opening_boundary"
+        ]
         and capture_delay_ms
         <= (
             OPENING_CAPTURE_MAX_DELAY_SECONDS
@@ -358,22 +576,86 @@ def save_grid_snapshot(
     )
 
     grid[
+        "cache_connection_count"
+    ] = readiness[
+        "connection_count"
+    ]
+
+    grid[
+        "cache_fully_initialized"
+    ] = readiness[
+        "fully_initialized"
+    ]
+
+    grid[
+        "cache_fully_initialized_at_ms"
+    ] = readiness[
+        "fully_initialized_at_ms"
+    ]
+
+    grid[
+        "feed_last_message_received_at_ms"
+    ] = readiness[
+        "last_message_received_at_ms"
+    ]
+
+    grid[
+        "feed_last_message_age_ms"
+    ] = readiness[
+        "last_message_age_ms"
+    ]
+
+    grid[
+        "initial_instrument_count"
+    ] = readiness[
+        "initial_instrument_count"
+    ]
+
+    grid[
+        "dynamic_instruments_added"
+    ] = readiness[
+        "dynamic_instruments_added"
+    ]
+
+    grid[
+        "universe_size_at_capture"
+    ] = readiness[
+        "expected_instruments"
+    ]
+
+    grid[
+        "last_universe_update_ms"
+    ] = readiness[
+        "last_universe_update_ms"
+    ]
+
+    grid[
         "is_opening_snapshot"
     ] = is_opening_snapshot
 
     grid[
         "cache_initialized_before_boundary"
-    ] = cache_initialized_before_boundary
+    ] = boundary[
+        "cache_initialized_before_boundary"
+    ]
 
+    # Row-level validity. An opening row cannot
+    # be valid if that row has no ticker state.
     grid[
         "opening_snapshot_valid"
-    ] = opening_snapshot_valid
+    ] = (
+        opening_snapshot_valid_global
+        & grid[
+            "has_ticker_state"
+        ]
+    )
 
     expected_rows = len(
         cache.instrument_names
     )
 
     if len(grid) != expected_rows:
+
         raise RuntimeError(
             f"Grid row mismatch: "
             f"expected {expected_rows}, "
@@ -383,6 +665,7 @@ def save_grid_snapshot(
     if not grid[
         "instrument_name"
     ].is_unique:
+
         raise RuntimeError(
             "Duplicate instrument names "
             "detected in grid snapshot."
@@ -437,6 +720,7 @@ def save_grid_snapshot(
         output_file.exists()
         and not test_mode
     ):
+
         print(
             "\nSnapshot already exists:"
         )
@@ -457,6 +741,7 @@ def save_grid_snapshot(
     )
 
     if not temporary_file.exists():
+
         raise RuntimeError(
             "Temporary Parquet file "
             "was not created."
@@ -550,9 +835,17 @@ def print_snapshot_summary(
             "is_opening_snapshot"
         ].iloc[0]
     ):
+
+        valid_rows = int(
+            grid[
+                "opening_snapshot_valid"
+            ].sum()
+        )
+
         print(
-            f"Opening valid:      "
-            f"{grid['opening_snapshot_valid'].iloc[0]}"
+            f"Opening valid rows: "
+            f"{valid_rows}/"
+            f"{rows}"
         )
 
     if ages:
@@ -587,8 +880,7 @@ def print_snapshot_summary(
 
 async def snapshot_writer(
     cache: OptionStateCache,
-    stop_event: asyncio.Event,
-    cache_ready_at: datetime
+    stop_event: asyncio.Event
 ) -> None:
 
     while not stop_event.is_set():
@@ -597,15 +889,20 @@ async def snapshot_writer(
             timezone.utc
         )
 
-        # Future-session warm-up collectors can never
-        # write before their true 08:00 start.
+        # Future-session warm-up collectors can
+        # never write before their true 08:00 start.
         if now < cache.session.session_start:
+
             scheduled_time = (
                 cache.session.session_start
             )
+
         else:
+
             scheduled_time = (
-                next_snapshot_time(now)
+                next_snapshot_time(
+                    now
+                )
             )
 
         if (
@@ -648,7 +945,6 @@ async def snapshot_writer(
             )
 
             stop_event.set()
-
             return
 
         print(
@@ -666,31 +962,17 @@ async def snapshot_writer(
         if not continue_running:
             return
 
-        # True 08:00 boundary rule.
         if (
             scheduled_time
             == cache.session.session_start
         ):
 
-            if (
-                cache_ready_at
-                > cache.session.session_start
-            ):
-                print(
-                    "\nOPENING SNAPSHOT MISSED"
+            status = (
+                opening_boundary_status(
+                    cache,
+                    scheduled_time
                 )
-
-                print(
-                    "Reason: cache was not ready "
-                    "before the 08:00 boundary."
-                )
-
-                print(
-                    f"Cache ready at: "
-                    f"{cache_ready_at.isoformat()}"
-                )
-
-                continue
+            )
 
             opening_delay = (
                 datetime.now(
@@ -699,10 +981,48 @@ async def snapshot_writer(
                 - scheduled_time
             ).total_seconds()
 
+            if not status[
+                "ready_for_opening_boundary"
+            ]:
+
+                print(
+                    "\nOPENING SNAPSHOT MISSED"
+                )
+
+                print(
+                    "Reason: current WebSocket "
+                    "generation was not fully "
+                    "ready/live at 08:00."
+                )
+
+                print(
+                    f"Connected: "
+                    f"{status['connected']}"
+                )
+
+                print(
+                    f"Initialized: "
+                    f"{status['initialized_instruments']}/"
+                    f"{status['expected_instruments']}"
+                )
+
+                print(
+                    f"Connection generation: "
+                    f"{status['connection_count']}"
+                )
+
+                print(
+                    f"Last message age: "
+                    f"{status['last_message_age_ms']} ms"
+                )
+
+                continue
+
             if (
                 opening_delay
                 > OPENING_CAPTURE_MAX_DELAY_SECONDS
             ):
+
                 print(
                     "\nOPENING SNAPSHOT MISSED"
                 )
@@ -720,14 +1040,15 @@ async def snapshot_writer(
                 continue
 
         try:
+
             save_grid_snapshot(
                 cache=cache,
                 scheduled_time=scheduled_time,
-                cache_ready_at=cache_ready_at,
                 test_mode=False
             )
 
         except Exception as exc:
+
             print(
                 f"\nSnapshot error: "
                 f"{exc}"
@@ -769,6 +1090,7 @@ def configure_signals(
         signal,
         "SIGTERM"
     ):
+
         signal.signal(
             signal.SIGTERM,
             request_shutdown
@@ -778,6 +1100,7 @@ def configure_signals(
         signal,
         "SIGBREAK"
     ):
+
         signal.signal(
             signal.SIGBREAK,
             request_shutdown
@@ -794,17 +1117,22 @@ async def run(
     warmup: bool = False
 ) -> None:
 
-    stop_event = asyncio.Event()
+    stop_event = (
+        asyncio.Event()
+    )
 
     configure_signals(
         stop_event
     )
 
     if expiry_date is None:
+
         session, instruments = (
             get_current_session()
         )
+
     else:
+
         session, instruments = (
             get_session_for_expiry_date(
                 expiry_date
@@ -816,6 +1144,7 @@ async def run(
     )
 
     if now >= session.session_expiry:
+
         raise RuntimeError(
             "Refusing to start collector for "
             f"expired session {session.session_id}."
@@ -864,18 +1193,31 @@ async def run(
         cache.run_forever()
     )
 
-    cache_ready_at = (
+    warmup_status_task = None
+
+    if warmup:
+
+        warmup_status_task = (
+            asyncio.create_task(
+                warmup_status_reporter(
+                    cache,
+                    stop_event
+                )
+            )
+        )
+
+    initialized = (
         await wait_for_cache(
             cache=cache,
             stop_event=stop_event
         )
     )
 
-    if cache_ready_at is None:
+    if not initialized:
 
         print(
             "\nCache did not reach "
-            "minimum initialization "
+            "100% initialization "
             "coverage."
         )
 
@@ -883,12 +1225,20 @@ async def run(
 
         await cache_task
 
+        if (
+            warmup_status_task
+            is not None
+            and not warmup_status_task.done()
+        ):
+
+            await warmup_status_task
+
         return
 
     if warmup:
+
         write_warmup_ready_state(
-            cache=cache,
-            ready_at=cache_ready_at
+            cache
         )
 
     if once:
@@ -900,7 +1250,6 @@ async def run(
         save_grid_snapshot(
             cache=cache,
             scheduled_time=test_time,
-            cache_ready_at=cache_ready_at,
             test_mode=True
         )
 
@@ -908,13 +1257,20 @@ async def run(
 
         await cache_task
 
+        if (
+            warmup_status_task
+            is not None
+            and not warmup_status_task.done()
+        ):
+
+            await warmup_status_task
+
         return
 
     writer_task = asyncio.create_task(
         snapshot_writer(
             cache=cache,
-            stop_event=stop_event,
-            cache_ready_at=cache_ready_at
+            stop_event=stop_event
         )
     )
 
@@ -922,12 +1278,17 @@ async def run(
 
     for task in [
         writer_task,
-        cache_task
+        cache_task,
+        warmup_status_task
     ]:
+
+        if task is None:
+            continue
 
         if not task.done():
 
             try:
+
                 await task
 
             except asyncio.CancelledError:
@@ -947,7 +1308,8 @@ def main():
 
     parser = argparse.ArgumentParser(
         description=(
-            "Deribit 0DTE option-grid collector"
+            "Deribit 0DTE "
+            "option-grid collector"
         )
     )
 
@@ -974,9 +1336,10 @@ def main():
         "--warmup",
         action="store_true",
         help=(
-            "Mark this process as a pre-warmed next-session "
-            "collector. No snapshot is written before the "
-            "session's true 08:00 UTC start."
+            "Pre-warm the next session. "
+            "The process continuously publishes "
+            "its current readiness state and cannot "
+            "write before the true session start."
         )
     )
 
@@ -992,4 +1355,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()

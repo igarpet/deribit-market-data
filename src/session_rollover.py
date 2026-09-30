@@ -48,8 +48,11 @@ DATABASE_FILE = (
     / "deribit.duckdb"
 )
 
-# 24 hours * 12 snapshots/hour
 EXPECTED_SNAPSHOTS = 288
+
+SNAPSHOT_INTERVAL = timedelta(
+    minutes=5
+)
 
 SETTLEMENT_HOUR_UTC = 8
 
@@ -97,7 +100,9 @@ def session_is_registered(
         FROM sessions
         WHERE expiry_date = ?
         """,
-        [expiry_date]
+        [
+            expiry_date
+        ]
     ).fetchone()
 
     return result[0] > 0
@@ -132,10 +137,6 @@ def refresh_option_grid_view(
 def expiry_datetime(
     expiry_date: str
 ) -> datetime:
-    """
-    Convert YYYY-MM-DD into the Deribit
-    08:00 UTC expiration timestamp.
-    """
 
     return datetime.strptime(
         expiry_date,
@@ -149,6 +150,20 @@ def expiry_datetime(
     )
 
 
+def session_start_datetime(
+    expiry_date: str
+) -> datetime:
+
+    return (
+        expiry_datetime(
+            expiry_date
+        )
+        - timedelta(
+            days=1
+        )
+    )
+
+
 def parse_expiry_folder(
     folder: Path
 ) -> str | None:
@@ -158,6 +173,7 @@ def parse_expiry_folder(
     if not name.startswith(
         "expiry="
     ):
+
         return None
 
     expiry_date = name.replace(
@@ -166,15 +182,154 @@ def parse_expiry_folder(
     )
 
     try:
+
         datetime.strptime(
             expiry_date,
             "%Y-%m-%d"
         )
 
     except ValueError:
+
         return None
 
     return expiry_date
+
+
+# --------------------------------------------------
+# Exact expected timestamp grid
+# --------------------------------------------------
+
+def expected_timestamp_grid(
+    expiry_date: str
+) -> set[datetime]:
+
+    start = (
+        session_start_datetime(
+            expiry_date
+        )
+    )
+
+    expiry = (
+        expiry_datetime(
+            expiry_date
+        )
+    )
+
+    result = set()
+
+    timestamp = start
+
+    while timestamp < expiry:
+
+        result.add(
+            timestamp
+        )
+
+        timestamp += (
+            SNAPSHOT_INTERVAL
+        )
+
+    if (
+        len(result)
+        != EXPECTED_SNAPSHOTS
+    ):
+
+        raise RuntimeError(
+            "Internal expected-grid "
+            f"error: {len(result)} "
+            "timestamps."
+        )
+
+    return result
+
+
+def normalize_utc_datetime(
+    value
+) -> datetime:
+
+    if isinstance(
+        value,
+        datetime
+    ):
+
+        result = value
+
+    else:
+
+        result = (
+            datetime.fromisoformat(
+                str(value)
+            )
+        )
+
+    if result.tzinfo is None:
+
+        result = result.replace(
+            tzinfo=timezone.utc
+        )
+
+    return result.astimezone(
+        timezone.utc
+    )
+
+
+def inspect_timestamp_grid(
+    connection: duckdb.DuckDBPyConnection,
+    source_glob: str,
+    expiry_date: str
+) -> dict:
+
+    rows = connection.execute(f"""
+        SELECT DISTINCT
+            scheduled_snapshot_time
+
+        FROM read_parquet(
+            '{source_glob}',
+            union_by_name = true
+        )
+
+        ORDER BY
+            scheduled_snapshot_time
+    """).fetchall()
+
+    actual = {
+        normalize_utc_datetime(
+            row[0]
+        )
+        for row in rows
+    }
+
+    expected = (
+        expected_timestamp_grid(
+            expiry_date
+        )
+    )
+
+    missing = sorted(
+        expected
+        - actual
+    )
+
+    unexpected = sorted(
+        actual
+        - expected
+    )
+
+    return {
+        "missing_expected_timestamps":
+            missing,
+
+        "unexpected_timestamps":
+            unexpected,
+
+        "exact_grid_complete":
+            (
+                len(missing) == 0
+                and len(unexpected) == 0
+                and len(actual)
+                == EXPECTED_SNAPSHOTS
+            )
+    }
 
 
 # --------------------------------------------------
@@ -184,14 +339,6 @@ def parse_expiry_folder(
 def find_latest_completed_session(
     connection: duckdb.DuckDBPyConnection
 ) -> str:
-    """
-    Find the newest raw snapshot session whose expiry
-    has already occurred and which has not already been
-    registered in DuckDB.
-
-    This deliberately ignores the newly-started session,
-    because its expiry is still in the future.
-    """
 
     now = datetime.now(
         timezone.utc
@@ -217,11 +364,9 @@ def find_latest_completed_session(
             expiry_date
         )
 
-        # Session has not expired yet.
         if expiry_time > now:
             continue
 
-        # No production snapshots.
         snapshot_files = list(
             folder.glob(
                 "snapshot_*.parquet"
@@ -231,11 +376,11 @@ def find_latest_completed_session(
         if not snapshot_files:
             continue
 
-        # Already successfully registered.
         if session_is_registered(
             connection,
             expiry_date
         ):
+
             continue
 
         candidates.append(
@@ -246,6 +391,7 @@ def find_latest_completed_session(
         )
 
     if not candidates:
+
         raise RuntimeError(
             "No completed, unregistered "
             "0DTE sessions were found."
@@ -253,8 +399,9 @@ def find_latest_completed_session(
 
     candidates.sort()
 
-    # Most recent completed session
-    return candidates[-1][1]
+    return candidates[
+        -1
+    ][1]
 
 
 # --------------------------------------------------
@@ -289,8 +436,10 @@ def validate_completed_expiry(
     expiry_date: str
 ) -> None:
 
-    expiry_time = expiry_datetime(
-        expiry_date
+    expiry_time = (
+        expiry_datetime(
+            expiry_date
+        )
     )
 
     now = datetime.now(
@@ -300,8 +449,8 @@ def validate_completed_expiry(
     if expiry_time > now:
 
         raise RuntimeError(
-            "\nRefusing to finalize an active "
-            "or future session.\n"
+            "\nRefusing to finalize "
+            "an active or future session.\n"
             f"Requested expiry: "
             f"{expiry_time.isoformat()}\n"
             f"Current UTC time: "
@@ -319,11 +468,13 @@ def inspect_session(
             COUNT(*) AS total_rows,
 
             COUNT(
-                DISTINCT scheduled_snapshot_time
+                DISTINCT
+                scheduled_snapshot_time
             ) AS snapshot_count,
 
             COUNT(
-                DISTINCT instrument_name
+                DISTINCT
+                instrument_name
             ) AS unique_instruments,
 
             MIN(
@@ -381,7 +532,8 @@ def count_duplicate_rows(
                 scheduled_snapshot_time,
                 instrument_name
 
-            HAVING COUNT(*) > 1
+            HAVING
+                COUNT(*) > 1
         )
     """).fetchone()
 
@@ -395,16 +547,22 @@ def count_duplicate_rows(
 def compact_session(
     connection: duckdb.DuckDBPyConnection,
     expiry_date: str
-) -> tuple[Path, dict]:
+) -> tuple[
+    Path,
+    dict
+]:
 
-    session_folder = get_session_folder(
-        expiry_date
+    session_folder = (
+        get_session_folder(
+            expiry_date
+        )
     )
 
     if not session_folder.exists():
 
         raise RuntimeError(
-            "Session folder does not exist:\n"
+            "Session folder does not "
+            "exist:\n"
             f"{session_folder}"
         )
 
@@ -417,7 +575,8 @@ def compact_session(
     if not files:
 
         raise RuntimeError(
-            "No production snapshots found in:\n"
+            "No production snapshots "
+            "found in:\n"
             f"{session_folder}"
         )
 
@@ -431,20 +590,34 @@ def compact_session(
         f"snapshot files."
     )
 
-    diagnostics = inspect_session(
-        connection,
-        source_glob
+    diagnostics = (
+        inspect_session(
+            connection,
+            source_glob
+        )
     )
 
     diagnostics[
         "duplicate_groups"
-    ] = count_duplicate_rows(
-        connection,
-        source_glob
+    ] = (
+        count_duplicate_rows(
+            connection,
+            source_glob
+        )
     )
 
-    daily_folder = get_daily_folder(
-        expiry_date
+    diagnostics.update(
+        inspect_timestamp_grid(
+            connection,
+            source_glob,
+            expiry_date
+        )
+    )
+
+    daily_folder = (
+        get_daily_folder(
+            expiry_date
+        )
     )
 
     daily_folder.mkdir(
@@ -465,14 +638,13 @@ def compact_session(
     if temporary_file.exists():
         temporary_file.unlink()
 
-    # Merge all snapshots.
-    # If a duplicate somehow exists, keep the most
-    # recently captured copy.
     connection.execute(f"""
         COPY (
 
             SELECT *
-            EXCLUDE (duplicate_rank)
+            EXCLUDE (
+                duplicate_rank
+            )
 
             FROM (
 
@@ -494,7 +666,8 @@ def compact_session(
                 )
             )
 
-            WHERE duplicate_rank = 1
+            WHERE
+                duplicate_rank = 1
 
             ORDER BY
                 scheduled_snapshot_time,
@@ -520,17 +693,18 @@ def compact_session(
             "was not created."
         )
 
-    # Validate the newly-created daily file.
     validation = connection.execute(f"""
         SELECT
             COUNT(*),
 
             COUNT(
-                DISTINCT scheduled_snapshot_time
+                DISTINCT
+                scheduled_snapshot_time
             ),
 
             COUNT(
-                DISTINCT instrument_name
+                DISTINCT
+                instrument_name
             )
 
         FROM read_parquet(
@@ -550,7 +724,6 @@ def compact_session(
         "final_unique_instruments"
     ] = validation[2]
 
-    # Atomic replacement.
     temporary_file.replace(
         final_file
     )
@@ -573,37 +746,47 @@ def register_session(
     source_file_count: int
 ) -> None:
 
-    expiry = expiry_datetime(
-        expiry_date
+    expiry = (
+        expiry_datetime(
+            expiry_date
+        )
     )
 
     session_start = (
         expiry
-        - timedelta(days=1)
+        - timedelta(
+            days=1
+        )
     )
 
-    snapshot_count = diagnostics[
-        "final_snapshot_count"
-    ]
+    snapshot_count = (
+        diagnostics[
+            "final_snapshot_count"
+        ]
+    )
 
-    missing_snapshots = max(
-        0,
-        EXPECTED_SNAPSHOTS
-        - snapshot_count
+    missing_snapshots = len(
+        diagnostics[
+            "missing_expected_timestamps"
+        ]
     )
 
     is_complete = (
-        snapshot_count
+        diagnostics[
+            "exact_grid_complete"
+        ]
+        and snapshot_count
         == EXPECTED_SNAPSHOTS
     )
 
-    # Allows --force reprocessing safely.
     connection.execute(
         """
         DELETE FROM sessions
         WHERE expiry_date = ?
         """,
-        [expiry_date]
+        [
+            expiry_date
+        ]
     )
 
     connection.execute(
@@ -659,7 +842,9 @@ def register_session(
             ],
 
             source_file_count,
-            str(daily_file),
+            str(
+                daily_file
+            ),
 
             datetime.now(
                 timezone.utc
@@ -678,14 +863,16 @@ def print_rollover_summary(
     diagnostics: dict
 ) -> None:
 
-    snapshot_count = diagnostics[
-        "final_snapshot_count"
-    ]
+    missing = (
+        diagnostics[
+            "missing_expected_timestamps"
+        ]
+    )
 
-    missing = max(
-        0,
-        EXPECTED_SNAPSHOTS
-        - snapshot_count
+    unexpected = (
+        diagnostics[
+            "unexpected_timestamps"
+        ]
     )
 
     print(
@@ -703,18 +890,23 @@ def print_rollover_summary(
 
     print(
         f"Snapshots:           "
-        f"{snapshot_count}/"
+        f"{diagnostics['final_snapshot_count']}/"
         f"{EXPECTED_SNAPSHOTS}"
     )
 
     print(
-        f"Missing snapshots:   "
-        f"{missing}"
+        f"Missing grid times:  "
+        f"{len(missing)}"
     )
 
     print(
-        f"Complete:            "
-        f"{snapshot_count == EXPECTED_SNAPSHOTS}"
+        f"Unexpected times:    "
+        f"{len(unexpected)}"
+    )
+
+    print(
+        f"Exact grid complete: "
+        f"{diagnostics['exact_grid_complete']}"
     )
 
     print(
@@ -746,6 +938,50 @@ def print_rollover_summary(
         f"Last snapshot:       "
         f"{diagnostics['last_snapshot']}"
     )
+
+    if missing:
+
+        print(
+            "\nMissing expected timestamps:"
+        )
+
+        for timestamp in missing[
+            :20
+        ]:
+
+            print(
+                f"  {timestamp.isoformat()}"
+            )
+
+        if len(missing) > 20:
+
+            print(
+                f"  ... and "
+                f"{len(missing) - 20} "
+                f"more"
+            )
+
+    if unexpected:
+
+        print(
+            "\nUnexpected timestamps:"
+        )
+
+        for timestamp in unexpected[
+            :20
+        ]:
+
+            print(
+                f"  {timestamp.isoformat()}"
+            )
+
+        if len(unexpected) > 20:
+
+            print(
+                f"  ... and "
+                f"{len(unexpected) - 20} "
+                f"more"
+            )
 
     print(
         "\nDaily Parquet:"
@@ -779,11 +1015,12 @@ def finalize_session(
     ):
 
         raise RuntimeError(
-            "\nSession is already registered "
-            "in DuckDB:\n"
+            "\nSession is already "
+            "registered in DuckDB:\n"
             f"{expiry_date}\n\n"
             "Use --force only if you "
-            "intentionally want to rebuild it."
+            "intentionally want to "
+            "rebuild it."
         )
 
     session_folder = (
@@ -836,8 +1073,8 @@ def main():
 
     parser = argparse.ArgumentParser(
         description=(
-            "Finalize completed Deribit "
-            "0DTE sessions."
+            "Finalize completed "
+            "Deribit 0DTE sessions."
         )
     )
 
@@ -848,8 +1085,9 @@ def main():
         help=(
             "Optional expiry date in "
             "YYYY-MM-DD format. "
-            "If omitted, the latest completed "
-            "unregistered session is selected."
+            "If omitted, the latest "
+            "completed unregistered "
+            "session is selected."
         )
     )
 
@@ -857,8 +1095,9 @@ def main():
         "--force",
         action="store_true",
         help=(
-            "Allow deliberate rebuilding of "
-            "an already-registered session."
+            "Allow deliberate rebuilding "
+            "of an already-registered "
+            "session."
         )
     )
 
@@ -870,7 +1109,9 @@ def main():
     )
 
     connection = duckdb.connect(
-        str(DATABASE_FILE)
+        str(
+            DATABASE_FILE
+        )
     )
 
     try:
@@ -916,4 +1157,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()
