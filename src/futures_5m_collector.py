@@ -211,6 +211,15 @@ async def wait_for_market_state(
 def save_bar_rows(
     rows: pd.DataFrame
 ) -> Path:
+    """
+    Append one finalized five-minute row per perpetual.
+
+    Schema evolution is explicit because L2 instability v0.1
+    introduces scalar columns plus two fixed-length list
+    distributions. If the collector is upgraded during an
+    existing UTC day, pre-upgrade rows receive NULL values for
+    the new columns and post-upgrade rows carry the new schema.
+    """
 
     if rows.empty:
 
@@ -218,6 +227,10 @@ def save_bar_rows(
             "No futures rows "
             "were produced."
         )
+
+    rows = (
+        rows.copy()
+    )
 
     bar_start = pd.Timestamp(
         rows[
@@ -277,6 +290,42 @@ def save_bar_rows(
                 output_file
             )
         )
+
+        # Add missing columns explicitly before concat.
+        # This is especially important for the two
+        # list-valued histogram columns.
+        for column in rows.columns:
+
+            if column not in existing.columns:
+
+                existing[
+                    column
+                ] = None
+
+        for column in existing.columns:
+
+            if column not in rows.columns:
+
+                rows[
+                    column
+                ] = None
+
+        column_order = list(
+            dict.fromkeys(
+                [
+                    *existing.columns.tolist(),
+                    *rows.columns.tolist()
+                ]
+            )
+        )
+
+        existing = existing[
+            column_order
+        ]
+
+        rows = rows[
+            column_order
+        ]
 
         combined = pd.concat(
             [
@@ -445,6 +494,44 @@ def print_bar_summary(
             f"{len(rows)}"
         )
 
+    if (
+        "book_obi_20_std"
+        in rows.columns
+    ):
+
+        valid_std = (
+            rows[
+                "book_obi_20_std"
+            ]
+            .dropna()
+        )
+
+        if not valid_std.empty:
+
+            print(
+                f"Median OBI20 std: "
+                f"{valid_std.median():.6f}"
+            )
+
+    if (
+        "book_obi_20_coherence_noise"
+        in rows.columns
+    ):
+
+        valid_noise = (
+            rows[
+                "book_obi_20_coherence_noise"
+            ]
+            .dropna()
+        )
+
+        if not valid_noise.empty:
+
+            print(
+                f"Median OBI20 noise: "
+                f"{valid_noise.median():.6f}"
+            )
+
     print(
         "File:"
     )
@@ -485,9 +572,8 @@ async def bar_writer(
 
             return
 
-        # Freeze ticker + L2 state as close as
-        # possible to the exact five-minute
-        # boundary.
+        # Freeze ticker + boundary L2 state as close
+        # as possible to the exact five-minute boundary.
         boundary_state = (
             cache.capture_boundary_state(
                 scheduled_end

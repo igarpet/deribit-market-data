@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+import math
 import statistics
 import time
 
@@ -44,6 +45,57 @@ BOOK_METRIC_NAMES = (
 
 
 # --------------------------------------------------
+# L2 instability distribution representation
+# --------------------------------------------------
+#
+# The collector deliberately does NOT select epsilon.
+#
+# Instead it retains:
+#
+#   1. epsilon-independent five-minute path summaries;
+#   2. a time-weighted distribution of |OBI-20|;
+#   3. a distribution of zero-crossing reversal strength.
+#
+# For a direct sign-changing transition:
+#
+#     previous_obi * current_obi < 0
+#
+# define:
+#
+#     reversal_strength =
+#         min(abs(previous_obi), abs(current_obi))
+#
+# For any later epsilon, that transition is a robust
+# +1 <-> -1 flip exactly when:
+#
+#     reversal_strength > epsilon
+#
+# Therefore epsilon can be modelled later from observed
+# distributions without retaining the 100 ms L2 sequence.
+#
+# The histogram is only a storage representation, not an
+# epsilon choice. Quadratic edges give finer resolution near
+# zero, where dead-band inference is most sensitive.
+
+OBI_HISTOGRAM_BIN_COUNT = 64
+
+OBI_HISTOGRAM_SCHEMA = (
+    "quadratic_0_1_64_v1"
+)
+
+OBI_HISTOGRAM_EDGES = tuple(
+    (
+        index
+        / OBI_HISTOGRAM_BIN_COUNT
+    ) ** 2
+    for index
+    in range(
+        OBI_HISTOGRAM_BIN_COUNT + 1
+    )
+)
+
+
+# --------------------------------------------------
 # Generic helpers
 # --------------------------------------------------
 
@@ -72,6 +124,57 @@ def deep_merge(
             original[key] = value
 
     return original
+
+
+def obi_histogram_bin_index(
+    value: float
+) -> int:
+    """
+    Return the fixed quadratic-histogram bin for an
+    OBI magnitude in [0, 1].
+
+    OBI is theoretically bounded by [-1, 1]. Values
+    are defensively clipped before binning.
+    """
+
+    magnitude = min(
+        max(
+            abs(
+                float(
+                    value
+                )
+            ),
+            0.0
+        ),
+        1.0
+    )
+
+    if magnitude >= 1.0:
+
+        return (
+            OBI_HISTOGRAM_BIN_COUNT
+            - 1
+        )
+
+    # Inverse of:
+    #
+    #     edge_j = (j / N)^2
+    #
+    index = int(
+        math.sqrt(
+            magnitude
+        )
+        * OBI_HISTOGRAM_BIN_COUNT
+    )
+
+    return min(
+        max(
+            index,
+            0
+        ),
+        OBI_HISTOGRAM_BIN_COUNT
+        - 1
+    )
 
 
 # --------------------------------------------------
@@ -441,12 +544,15 @@ class FuturesStateCache:
             set
         ] = {}
 
-        # Time-weighted L2 metric state.
+        # Latest valid L2 metric state used for
+        # time-weighted carry-forward.
         self.book_metric_state: dict[
             str,
             dict
         ] = {}
 
+        # One active constant-memory accumulator
+        # per instrument x five-minute bar.
         self.book_bar_accumulators: dict[
             tuple[str, int],
             dict
@@ -487,7 +593,7 @@ class FuturesStateCache:
         Public depth-limited aggregated order book.
 
         Every notification is a complete depth-20
-        snapshot, not an incremental delta.
+        snapshot, not an incremental raw-book delta.
         """
 
         return (
@@ -603,9 +709,15 @@ class FuturesStateCache:
         """
         Trade/bar accumulators are preserved.
 
-        Ticker and L2 state are discarded so the
-        new WebSocket connection seeds them again
+        Ticker and current L2 state are discarded so
+        the new WebSocket connection seeds them again
         with fresh snapshots.
+
+        The active five-minute accumulator is preserved,
+        but the crossed bar is marked incomplete by the
+        caller. No transition is measured across the
+        disconnected interval because book_metric_state
+        is cleared.
         """
 
         self.ticker_state.clear()
@@ -688,12 +800,9 @@ class FuturesStateCache:
 
             [price, amount]
 
-        We also defensively accept:
+        We defensively also accept:
 
             [action, price, amount]
-
-        even though our selected grouped channel
-        is treated as a complete snapshot.
         """
 
         if not isinstance(
@@ -785,6 +894,7 @@ class FuturesStateCache:
             )
 
             if parsed is None:
+
                 continue
 
             result.append(
@@ -911,7 +1021,7 @@ class FuturesStateCache:
         return result
 
     # --------------------------------------------------
-    # Time-weighted L2 statistics
+    # Time-weighted L2 + instability statistics
     # --------------------------------------------------
 
     def _new_book_accumulator(
@@ -938,8 +1048,57 @@ class FuturesStateCache:
                 in BOOK_METRIC_NAMES
             },
 
+            # Additional OBI-20 time-weighted moments.
+            "weighted_sq_sum_obi_20":
+                0.0,
+
+            "weighted_abs_sum_obi_20":
+                0.0,
+
+            # Clock-time distribution of |OBI-20|.
+            "obi_20_abs_histogram_ms":
+                [
+                    0.0
+                    for _
+                    in range(
+                        OBI_HISTOGRAM_BIN_COUNT
+                    )
+                ],
+
+            # Incoming valid book updates in this bar.
             "update_count":
                 0,
+
+            # Event-path state. This may be seeded from
+            # the book carried across the five-minute
+            # boundary before the first new update.
+            "previous_event_obi_20":
+                None,
+
+            "transition_count_obi_20":
+                0,
+
+            "abs_delta_sum_obi_20":
+                0.0,
+
+            # Epsilon-free raw sign-crossing data.
+            "zero_cross_count_obi_20":
+                0,
+
+            "reversal_strength_sum_obi_20":
+                0.0,
+
+            "reversal_strength_max_obi_20":
+                None,
+
+            "reversal_strength_histogram":
+                [
+                    0
+                    for _
+                    in range(
+                        OBI_HISTOGRAM_BIN_COUNT
+                    )
+                ],
 
             "min_obi_20":
                 None,
@@ -983,8 +1142,17 @@ class FuturesStateCache:
         end_ms: int,
         metrics: dict
     ) -> None:
+        """
+        Carry the previous complete L2 state forward
+        through clock time.
+
+        No L2 message history is retained. Only the
+        active metrics and constant-memory accumulator
+        are updated.
+        """
 
         if end_ms <= start_ms:
+
             return
 
         cursor = (
@@ -1038,6 +1206,7 @@ class FuturesStateCache:
                 )
 
                 if value is None:
+
                     continue
 
                 accumulator[
@@ -1054,6 +1223,92 @@ class FuturesStateCache:
                 ][
                     metric_name
                 ] += duration
+
+            obi_20 = (
+                metrics.get(
+                    "obi_20"
+                )
+            )
+
+            if obi_20 is not None:
+
+                obi_20 = float(
+                    obi_20
+                )
+
+                accumulator[
+                    "weighted_sq_sum_obi_20"
+                ] += (
+                    obi_20
+                    * obi_20
+                    * duration
+                )
+
+                accumulator[
+                    "weighted_abs_sum_obi_20"
+                ] += (
+                    abs(
+                        obi_20
+                    )
+                    * duration
+                )
+
+                histogram_index = (
+                    obi_histogram_bin_index(
+                        obi_20
+                    )
+                )
+
+                accumulator[
+                    "obi_20_abs_histogram_ms"
+                ][
+                    histogram_index
+                ] += duration
+
+                # If this is the first activity in a
+                # new five-minute bucket, seed the
+                # event path from the state that was
+                # already active at the boundary.
+                if (
+                    accumulator[
+                        "previous_event_obi_20"
+                    ]
+                    is None
+                ):
+
+                    accumulator[
+                        "previous_event_obi_20"
+                    ] = obi_20
+
+                current_min = (
+                    accumulator[
+                        "min_obi_20"
+                    ]
+                )
+
+                current_max = (
+                    accumulator[
+                        "max_obi_20"
+                    ]
+                )
+
+                if (
+                    current_min is None
+                    or obi_20 < current_min
+                ):
+
+                    accumulator[
+                        "min_obi_20"
+                    ] = obi_20
+
+                if (
+                    current_max is None
+                    or obi_20 > current_max
+                ):
+
+                    accumulator[
+                        "max_obi_20"
+                    ] = obi_20
 
             cursor = (
                 segment_end
@@ -1072,6 +1327,7 @@ class FuturesStateCache:
         )
 
         if state is None:
+
             return
 
         previous_timestamp_ms = (
@@ -1112,6 +1368,13 @@ class FuturesStateCache:
         timestamp_ms: int,
         metrics: dict
     ) -> None:
+        """
+        Update event-path statistics from one new
+        valid depth-20 snapshot.
+
+        The incoming snapshot itself is not retained
+        historically after current state is replaced.
+        """
 
         bucket_start_ms = (
             timestamp_ms
@@ -1139,7 +1402,12 @@ class FuturesStateCache:
         )
 
         if obi_20 is None:
+
             return
+
+        obi_20 = float(
+            obi_20
+        )
 
         current_min = (
             accumulator[
@@ -1171,6 +1439,91 @@ class FuturesStateCache:
                 "max_obi_20"
             ] = obi_20
 
+        previous_obi_20 = (
+            accumulator[
+                "previous_event_obi_20"
+            ]
+        )
+
+        if previous_obi_20 is not None:
+
+            accumulator[
+                "transition_count_obi_20"
+            ] += 1
+
+            delta_obi_20 = (
+                obi_20
+                - previous_obi_20
+            )
+
+            accumulator[
+                "abs_delta_sum_obi_20"
+            ] += abs(
+                delta_obi_20
+            )
+
+            # Raw direct sign crossing.
+            #
+            # No epsilon is selected here.
+            if (
+                previous_obi_20
+                * obi_20
+                < 0
+            ):
+
+                reversal_strength = min(
+                    abs(
+                        previous_obi_20
+                    ),
+                    abs(
+                        obi_20
+                    )
+                )
+
+                accumulator[
+                    "zero_cross_count_obi_20"
+                ] += 1
+
+                accumulator[
+                    "reversal_strength_sum_obi_20"
+                ] += (
+                    reversal_strength
+                )
+
+                current_max_strength = (
+                    accumulator[
+                        "reversal_strength_max_obi_20"
+                    ]
+                )
+
+                if (
+                    current_max_strength is None
+                    or reversal_strength
+                    > current_max_strength
+                ):
+
+                    accumulator[
+                        "reversal_strength_max_obi_20"
+                    ] = (
+                        reversal_strength
+                    )
+
+                histogram_index = (
+                    obi_histogram_bin_index(
+                        reversal_strength
+                    )
+                )
+
+                accumulator[
+                    "reversal_strength_histogram"
+                ][
+                    histogram_index
+                ] += 1
+
+        accumulator[
+            "previous_event_obi_20"
+        ] = obi_20
+
     # --------------------------------------------------
     # Grouped L2 processing
     # --------------------------------------------------
@@ -1183,11 +1536,12 @@ class FuturesStateCache:
         Process one complete grouped depth-20 snapshot.
 
         IMPORTANT:
-        book.<instrument>.none.20.100ms is not treated
-        as an incremental raw feed.
+        book.<instrument>.none.20.100ms is treated as
+        a sequence of complete top-20 snapshots.
 
-        Every message replaces the complete stored
-        top-20 state.
+        Each update is used once for streaming
+        aggregation. Historical snapshots are not
+        persisted.
         """
 
         instrument_name = (
@@ -1199,6 +1553,7 @@ class FuturesStateCache:
         if not instrument_name:
 
             self.book_parse_errors += 1
+
             return
 
         received_timestamp_ms = int(
@@ -1235,8 +1590,8 @@ class FuturesStateCache:
                     received_timestamp_ms
                 )
 
-        # The previous book remained active until
-        # this new exchange timestamp.
+        # The previous complete book remained active
+        # until this new exchange timestamp.
         self._advance_book_stats(
             instrument_name,
             timestamp_ms
@@ -1260,7 +1615,6 @@ class FuturesStateCache:
             )
         )
 
-        # Be defensive about ordering.
         bids = sorted(
             bids,
             key=lambda item:
@@ -1313,6 +1667,8 @@ class FuturesStateCache:
                     False
             }
 
+            # Do not carry an invalid book state
+            # forward through time.
             self.book_metric_state.pop(
                 instrument_name,
                 None
@@ -1320,7 +1676,6 @@ class FuturesStateCache:
 
             return
 
-        # Entire grouped top-20 state is replaced.
         self.order_book_state[
             instrument_name
         ] = {
@@ -1345,6 +1700,16 @@ class FuturesStateCache:
                 True
         }
 
+        # _advance_book_stats() above has already
+        # carried the previous state forward and,
+        # when needed, seeded the current bar's
+        # previous_event_obi_20.
+        self._record_book_observation(
+            instrument_name,
+            timestamp_ms,
+            metrics
+        )
+
         self.book_metric_state[
             instrument_name
         ] = {
@@ -1354,12 +1719,6 @@ class FuturesStateCache:
             "last_metrics":
                 metrics
         }
-
-        self._record_book_observation(
-            instrument_name,
-            timestamp_ms,
-            metrics
-        )
 
         self.book_messages_received += 1
 
@@ -1379,6 +1738,7 @@ class FuturesStateCache:
         )
 
         if not instrument_name:
+
             return
 
         timestamp_ms = (
@@ -1445,6 +1805,7 @@ class FuturesStateCache:
         ):
 
             self.ignored_late_trades += 1
+
             return
 
         key = (
@@ -1502,6 +1863,7 @@ class FuturesStateCache:
         )
 
         if dedup_key in seen:
+
             return
 
         seen.add(
@@ -2075,8 +2437,8 @@ class FuturesStateCache:
         bar_end_ms: int
     ) -> dict:
 
-        # Carry the most recent book state forward
-        # to the precise 5-minute boundary.
+        # Carry the most recent valid book state to
+        # the exact five-minute boundary.
         self._advance_book_stats(
             instrument,
             bar_end_ms
@@ -2108,7 +2470,69 @@ class FuturesStateCache:
                 None,
 
             "book_max_obi_20":
-                None
+                None,
+
+            # --------------------------------------
+            # L2 instability v0.1
+            # --------------------------------------
+
+            "book_twa_abs_obi_20":
+                None,
+
+            "book_obi_20_std":
+                None,
+
+            "book_obi_20_path_roughness_per_min":
+                None,
+
+            "book_obi_20_range":
+                None,
+
+            "book_obi_20_coherence_noise":
+                None,
+
+            # Exact number of consecutive OBI event
+            # transitions observed in the bar.
+            "book_obi_20_transition_count":
+                0,
+
+            # Epsilon-free raw sign crossing.
+            "book_obi_20_raw_zero_cross_count":
+                0,
+
+            "book_obi_20_raw_zero_cross_rate":
+                0.0,
+
+            "book_obi_20_reversal_strength_mean":
+                None,
+
+            "book_obi_20_reversal_strength_max":
+                None,
+
+            # Distribution metadata and observations.
+            "book_obi_20_histogram_schema":
+                OBI_HISTOGRAM_SCHEMA,
+
+            "book_obi_20_histogram_bin_count":
+                OBI_HISTOGRAM_BIN_COUNT,
+
+            "book_obi_20_abs_histogram_ms":
+                [
+                    0.0
+                    for _
+                    in range(
+                        OBI_HISTOGRAM_BIN_COUNT
+                    )
+                ],
+
+            "book_obi_20_reversal_strength_histogram":
+                [
+                    0
+                    for _
+                    in range(
+                        OBI_HISTOGRAM_BIN_COUNT
+                    )
+                ]
         }
 
         for metric_name in (
@@ -2148,26 +2572,59 @@ class FuturesStateCache:
             )
         )
 
-        result[
-            "book_update_count"
-        ] = int(
+        update_count = int(
             accumulator[
                 "update_count"
             ]
         )
 
+        transition_count = int(
+            accumulator[
+                "transition_count_obi_20"
+            ]
+        )
+
+        result[
+            "book_update_count"
+        ] = update_count
+
+        result[
+            "book_obi_20_transition_count"
+        ] = transition_count
+
+        min_obi_20 = (
+            accumulator[
+                "min_obi_20"
+            ]
+        )
+
+        max_obi_20 = (
+            accumulator[
+                "max_obi_20"
+            ]
+        )
+
         result[
             "book_min_obi_20"
-        ] = accumulator[
-            "min_obi_20"
-        ]
+        ] = min_obi_20
 
         result[
             "book_max_obi_20"
-        ] = accumulator[
-            "max_obi_20"
-        ]
+        ] = max_obi_20
 
+        if (
+            min_obi_20 is not None
+            and max_obi_20 is not None
+        ):
+
+            result[
+                "book_obi_20_range"
+            ] = (
+                max_obi_20
+                - min_obi_20
+            )
+
+        # Existing time-weighted L2 metrics.
         for metric_name in (
             BOOK_METRIC_NAMES
         ):
@@ -2181,6 +2638,7 @@ class FuturesStateCache:
             )
 
             if duration <= 0:
+
                 continue
 
             result[
@@ -2193,6 +2651,170 @@ class FuturesStateCache:
                 ]
                 / duration
             )
+
+        # ------------------------------------------
+        # OBI-20 time-weighted dispersion/coherence
+        # ------------------------------------------
+
+        obi_duration_ms = (
+            accumulator[
+                "weighted_duration"
+            ][
+                "obi_20"
+            ]
+        )
+
+        if obi_duration_ms > 0:
+
+            obi_mean = (
+                accumulator[
+                    "weighted_sum"
+                ][
+                    "obi_20"
+                ]
+                / obi_duration_ms
+            )
+
+            obi_second_moment = (
+                accumulator[
+                    "weighted_sq_sum_obi_20"
+                ]
+                / obi_duration_ms
+            )
+
+            obi_variance = max(
+                (
+                    obi_second_moment
+                    - (
+                        obi_mean
+                        * obi_mean
+                    )
+                ),
+                0.0
+            )
+
+            result[
+                "book_obi_20_std"
+            ] = math.sqrt(
+                obi_variance
+            )
+
+            result[
+                "book_twa_abs_obi_20"
+            ] = (
+                accumulator[
+                    "weighted_abs_sum_obi_20"
+                ]
+                / obi_duration_ms
+            )
+
+            weighted_abs_sum = (
+                accumulator[
+                    "weighted_abs_sum_obi_20"
+                ]
+            )
+
+            if weighted_abs_sum > 0:
+
+                coherence = (
+                    abs(
+                        accumulator[
+                            "weighted_sum"
+                        ][
+                            "obi_20"
+                        ]
+                    )
+                    / weighted_abs_sum
+                )
+
+                # Numerical safety only.
+                coherence = min(
+                    max(
+                        coherence,
+                        0.0
+                    ),
+                    1.0
+                )
+
+                result[
+                    "book_obi_20_coherence_noise"
+                ] = (
+                    1.0
+                    - coherence
+                )
+
+            # Total variation normalized by valid
+            # OBI clock time.
+            result[
+                "book_obi_20_path_roughness_per_min"
+            ] = (
+                accumulator[
+                    "abs_delta_sum_obi_20"
+                ]
+                / (
+                    obi_duration_ms
+                    / 60000.0
+                )
+            )
+
+        # ------------------------------------------
+        # Distributional observations for epsilon
+        # ------------------------------------------
+
+        zero_cross_count = int(
+            accumulator[
+                "zero_cross_count_obi_20"
+            ]
+        )
+
+        result[
+            "book_obi_20_raw_zero_cross_count"
+        ] = zero_cross_count
+
+        result[
+            "book_obi_20_raw_zero_cross_rate"
+        ] = (
+            zero_cross_count
+            / max(
+                transition_count,
+                1
+            )
+        )
+
+        if zero_cross_count > 0:
+
+            result[
+                "book_obi_20_reversal_strength_mean"
+            ] = (
+                accumulator[
+                    "reversal_strength_sum_obi_20"
+                ]
+                / zero_cross_count
+            )
+
+            result[
+                "book_obi_20_reversal_strength_max"
+            ] = (
+                accumulator[
+                    "reversal_strength_max_obi_20"
+                ]
+            )
+
+        result[
+            "book_obi_20_abs_histogram_ms"
+        ] = list(
+            accumulator[
+                "obi_20_abs_histogram_ms"
+            ]
+        )
+
+        result[
+            "book_obi_20_reversal_strength_histogram"
+        ] = list(
+            accumulator[
+                "reversal_strength_histogram"
+            ]
+        )
 
         return result
 
@@ -2569,6 +3191,7 @@ class FuturesStateCache:
         async for raw_message in websocket:
 
             if self.stop_event.is_set():
+
                 break
 
             message = json.loads(
@@ -2596,9 +3219,11 @@ class FuturesStateCache:
 
                 if "result" in message:
 
-                    result = message[
-                        "result"
-                    ]
+                    result = (
+                        message[
+                            "result"
+                        ]
+                    )
 
                     print(
                         "Futures market-data "
@@ -2624,6 +3249,7 @@ class FuturesStateCache:
             )
 
             if not params:
+
                 continue
 
             channel = str(
@@ -2774,10 +3400,7 @@ class FuturesStateCache:
                     )
                 )
 
-                if (
-                    timestamp_ms
-                    is not None
-                ):
+                if timestamp_ms is not None:
 
                     ticker_ages.append(
                         now_ms
@@ -2803,10 +3426,7 @@ class FuturesStateCache:
                     )
                 )
 
-                if (
-                    timestamp_ms
-                    is not None
-                ):
+                if timestamp_ms is not None:
 
                     book_ages.append(
                         now_ms
@@ -2963,9 +3583,7 @@ class FuturesStateCache:
                         )
                     )
 
-                if (
-                    receive_task in done
-                ):
+                if receive_task in done:
 
                     exception = (
                         receive_task.exception()
@@ -3055,6 +3673,7 @@ class FuturesStateCache:
             except Exception as exc:
 
                 if self.stop_event.is_set():
+
                     break
 
                 self.mark_current_bar_incomplete()
@@ -3065,6 +3684,7 @@ class FuturesStateCache:
                 )
 
             if self.stop_event.is_set():
+
                 break
 
             print(
