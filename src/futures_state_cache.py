@@ -570,6 +570,12 @@ class FuturesStateCache:
         self.book_parse_errors = 0
         self.ignored_late_trades = 0
 
+        # L2 snapshots whose exchange timestamp is older
+        # than the currently active book timestamp. These
+        # are rejected so event time can never move backward
+        # and clock time cannot be counted twice.
+        self.book_out_of_order_updates = 0
+
         self.connection_count = 0
 
         self.collector_started_ms = int(
@@ -1067,6 +1073,13 @@ class FuturesStateCache:
 
             # Incoming valid book updates in this bar.
             "update_count":
+                0,
+
+            # Incoming L2 snapshots rejected because their
+            # exchange timestamp was older than the active
+            # event-time state. Rejected snapshots never
+            # alter path statistics or the active book.
+            "out_of_order_update_count":
                 0,
 
             # Event-path state. This may be seeded from
@@ -1589,6 +1602,60 @@ class FuturesStateCache:
                 timestamp_ms = (
                     received_timestamp_ms
                 )
+
+        # Enforce monotonic L2 event time.
+        #
+        # Deribit book messages can occasionally arrive with
+        # an exchange timestamp a few milliseconds older than
+        # the currently active state. If that older timestamp
+        # were installed as last_timestamp_ms, the next normal
+        # update would carry book time forward across an interval
+        # that had already been accumulated, double-counting
+        # clock time and potentially creating artificial path
+        # transitions.
+        #
+        # A strictly older snapshot is therefore rejected in
+        # full. Equal timestamps remain valid: they contribute
+        # zero additional clock duration but may represent a real
+        # same-millisecond state transition.
+        active_metric_state = (
+            self.book_metric_state.get(
+                instrument_name
+            )
+        )
+
+        if active_metric_state is not None:
+
+            active_timestamp_ms = int(
+                active_metric_state[
+                    "last_timestamp_ms"
+                ]
+            )
+
+            if timestamp_ms < active_timestamp_ms:
+
+                self.book_out_of_order_updates += 1
+
+                audit_bucket_start_ms = (
+                    active_timestamp_ms
+                    - (
+                        active_timestamp_ms
+                        % BAR_INTERVAL_MS
+                    )
+                )
+
+                audit_accumulator = (
+                    self._get_book_accumulator(
+                        instrument_name,
+                        audit_bucket_start_ms
+                    )
+                )
+
+                audit_accumulator[
+                    "out_of_order_update_count"
+                ] += 1
+
+                return
 
         # The previous complete book remained active
         # until this new exchange timestamp.
@@ -2466,6 +2533,20 @@ class FuturesStateCache:
             "book_update_count":
                 0,
 
+            # Event-time monotonicity audit. A strictly
+            # older snapshot is rejected before it can affect
+            # the active book or event-path statistics.
+            "book_out_of_order_update_count":
+                0,
+
+            "book_event_time_monotonic":
+                True,
+
+            # Exact valid clock time represented by OBI-20
+            # moments and the |OBI-20| duration histogram.
+            "book_obi_20_duration_ms":
+                0.0,
+
             "book_min_obi_20":
                 None,
 
@@ -2588,6 +2669,22 @@ class FuturesStateCache:
             "book_update_count"
         ] = update_count
 
+        out_of_order_update_count = int(
+            accumulator[
+                "out_of_order_update_count"
+            ]
+        )
+
+        result[
+            "book_out_of_order_update_count"
+        ] = out_of_order_update_count
+
+        result[
+            "book_event_time_monotonic"
+        ] = (
+            out_of_order_update_count == 0
+        )
+
         result[
             "book_obi_20_transition_count"
         ] = transition_count
@@ -2662,6 +2759,12 @@ class FuturesStateCache:
             ][
                 "obi_20"
             ]
+        )
+
+        result[
+            "book_obi_20_duration_ms"
+        ] = float(
+            obi_duration_ms
         )
 
         if obi_duration_ms > 0:
@@ -3467,6 +3570,11 @@ class FuturesStateCache:
             print(
                 f"L2 parse errors:      "
                 f"{self.book_parse_errors:,}"
+            )
+
+            print(
+                f"Out-of-order L2:      "
+                f"{self.book_out_of_order_updates:,}"
             )
 
             print(
