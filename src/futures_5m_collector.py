@@ -10,6 +10,8 @@ import pandas as pd
 from dotenv import load_dotenv
 
 from futures_state_cache import (
+    COLLECTOR_CODE_SHA256,
+    COLLECTOR_VERSION,
     FuturesStateCache,
     discover_perpetuals
 )
@@ -452,6 +454,39 @@ def print_bar_summary(
         f"{incomplete_streams}"
     )
 
+    # v0.3: show why bars were not complete.
+    if (
+        incomplete_streams
+        and "stream_incomplete_reason"
+        in rows.columns
+    ):
+
+        reasons = (
+            rows[
+                "stream_incomplete_reason"
+            ]
+            .dropna()
+            .value_counts()
+        )
+
+        for reason, count in reasons.items():
+
+            print(
+                f"  {reason}: {count}"
+            )
+
+    if (
+        "trades_outside_book_bbo"
+        in rows.columns
+    ):
+
+        print(
+            f"Trades outside book BBO: "
+            f"{int(rows['trades_outside_book_bbo'].sum()):,}"
+            f" / "
+            f"{int(rows['trades_checked_vs_book'].sum()):,}"
+        )
+
     if (
         "book_valid"
         in rows.columns
@@ -550,6 +585,11 @@ async def bar_writer(
     stop_event: asyncio.Event
 ) -> None:
 
+    # v0.3: finalized bars that could not be written are
+    # kept in memory and retried on every later cycle, so a
+    # transient disk error no longer loses market data.
+    pending_writes: list[pd.DataFrame] = []
+
     while not stop_event.is_set():
 
         scheduled_end = (
@@ -570,7 +610,7 @@ async def bar_writer(
 
         if not reached_boundary:
 
-            return
+            break
 
         # Freeze ticker + boundary L2 state as close
         # as possible to the exact five-minute boundary.
@@ -592,7 +632,7 @@ async def bar_writer(
                 )
             )
 
-            return
+            break
 
         except asyncio.TimeoutError:
 
@@ -605,25 +645,69 @@ async def bar_writer(
             )
         )
 
+        pending_writes.append(
+            rows
+        )
+
+        await flush_pending_writes(
+            pending_writes
+        )
+
+    # Final attempt on shutdown.
+    if pending_writes:
+
+        await flush_pending_writes(
+            pending_writes
+        )
+
+        if pending_writes:
+
+            print(
+                f"\nWARNING: {len(pending_writes)} "
+                "finalized futures bar(s) could not "
+                "be written before shutdown."
+            )
+
+
+async def flush_pending_writes(
+    pending_writes: list[pd.DataFrame]
+) -> None:
+    """
+    Write queued bars in order, off the event loop so
+    Parquet I/O never blocks WebSocket processing.
+    Successfully written bars are removed from the queue.
+    """
+
+    while pending_writes:
+
+        rows = pending_writes[0]
+
         try:
 
             output_file = (
-                save_bar_rows(
+                await asyncio.to_thread(
+                    save_bar_rows,
                     rows
                 )
-            )
-
-            print_bar_summary(
-                rows,
-                output_file
             )
 
         except Exception as exc:
 
             print(
-                f"\nFutures bar "
-                f"write error: {exc}"
+                f"\nFutures bar write error "
+                f"(will retry next cycle; "
+                f"{len(pending_writes)} queued): "
+                f"{exc}"
             )
+
+            return
+
+        pending_writes.pop(0)
+
+        print_bar_summary(
+            rows,
+            output_file
+        )
 
 
 # --------------------------------------------------
@@ -711,6 +795,16 @@ async def run() -> None:
     print(
         f"Option session: "
         f"{session.session_id}"
+    )
+
+    print(
+        f"Collector version: "
+        f"{COLLECTOR_VERSION}"
+    )
+
+    print(
+        f"Source SHA256: "
+        f"{COLLECTOR_CODE_SHA256}"
     )
 
     perpetuals = (

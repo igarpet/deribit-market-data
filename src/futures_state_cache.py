@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import hashlib
 import json
 import math
 import statistics
 import time
+from pathlib import Path
 
 import pandas as pd
 import requests
@@ -27,6 +29,78 @@ BOOK_INTERVAL = "100ms"
 
 HEALTH_INTERVAL_SECONDS = 30
 RECONNECT_DELAY_SECONDS = 5
+
+
+# --------------------------------------------------
+# Collector version stamp
+# --------------------------------------------------
+#
+# Every finalized row carries the collector version and
+# the SHA256 of this exact source file. Feature-version
+# boundaries (for example the L2 event-time fix) are
+# therefore identifiable from the data itself.
+
+COLLECTOR_VERSION = "futures_5m_l2_v0.3.0"
+
+
+def _source_sha256() -> str | None:
+
+    try:
+
+        return hashlib.sha256(
+            Path(__file__).read_bytes()
+        ).hexdigest()
+
+    except OSError:
+
+        return None
+
+
+COLLECTOR_CODE_SHA256 = _source_sha256()
+
+
+# --------------------------------------------------
+# Feed-integrity configuration (v0.3)
+# --------------------------------------------------
+#
+# These are collection-integrity rules, not research
+# thresholds. Raw evidence (gaps, ages, REST checks) is
+# always written alongside the resulting flags.
+
+# Any WebSocket message at all. With seven perpetual
+# incremental tickers (mark/index update roughly every
+# second), silence this long means the connection is not
+# delivering data even if ping/pong still succeeds.
+FEED_SILENCE_RECONNECT_SECONDS = 15.0
+
+# A bar whose largest gap between consecutive received
+# WebSocket messages exceeds this value is not marked
+# stream_complete. The raw gap is always stored.
+FEED_MAX_GAP_FOR_COMPLETE_MS = 10_000
+
+# Subscription confirmation must arrive within this time.
+SUBSCRIPTION_CONFIRM_TIMEOUT_SECONDS = 15.0
+
+# REST cross-check of quiet streams. If an instrument's
+# L2 book (or ticker BBO) has not changed on the stream
+# for BOOK_QUIET_VERIFY_SECONDS, its REST top of book is
+# compared with the cached stream state. A mismatch that
+# persists after STALE_CONFIRM_DELAY_SECONDS, while the
+# stream still shows no update, is a confirmed stale feed.
+STREAM_VERIFY_INTERVAL_SECONDS = 20.0
+BOOK_QUIET_VERIFY_SECONDS = 20.0
+STALE_CONFIRM_DELAY_SECONDS = 3.0
+REST_TIMEOUT_SECONDS = 10
+
+# Clock grid for intrawindow mid-price path statistics.
+PATH_GRID_MS = 10_000
+PATH_GRID_POINTS = BAR_INTERVAL_MS // PATH_GRID_MS
+
+
+class FeedStaleError(
+    RuntimeError
+):
+    """Raised to force a reconnect after a feed fault."""
 
 
 BOOK_METRIC_NAMES = (
@@ -222,6 +296,60 @@ def get_future_instruments(
         ] = api_currency
 
     return df
+
+
+def fetch_rest_top_of_book(
+    instrument_name: str
+) -> tuple[float, float] | None:
+    """
+    v0.3: independent REST top of book used to verify that
+    a quiet WebSocket stream is genuinely quiet rather than
+    stale. Returns (best_bid, best_ask) or None on error.
+    """
+
+    try:
+
+        response = requests.get(
+            f"{REST_URL}/public/get_order_book",
+            params={
+                "instrument_name": instrument_name,
+                "depth": 1
+            },
+            timeout=REST_TIMEOUT_SECONDS
+        )
+
+        response.raise_for_status()
+
+        result = (
+            response.json()
+            .get("result")
+            or {}
+        )
+
+        bid = result.get(
+            "best_bid_price"
+        )
+
+        ask = result.get(
+            "best_ask_price"
+        )
+
+        if (
+            bid is None
+            or ask is None
+            or bid <= 0
+            or ask <= 0
+        ):
+            return None
+
+        return (
+            float(bid),
+            float(ask)
+        )
+
+    except Exception:
+
+        return None
 
 
 def discover_perpetuals(
@@ -587,6 +715,87 @@ class FuturesStateCache:
 
         self.websocket = None
 
+        # --------------------------------------------------
+        # v0.3 feed-integrity state
+        # --------------------------------------------------
+
+        # Local receive time of the latest WebSocket
+        # message of any kind.
+        self.last_message_received_ms: (
+            int | None
+        ) = None
+
+        # Largest gap between consecutive received
+        # WebSocket messages, keyed by bar start
+        # (local receive clock).
+        self.feed_gap_by_bucket: dict[
+            int,
+            float
+        ] = {}
+
+        # Start of an ongoing outage. While not None,
+        # every bar that ends after this instant is
+        # finalized as incomplete. Cleared only after the
+        # new connection has confirmed its subscriptions
+        # and re-seeded every ticker and L2 book, at which
+        # point the whole outage interval is marked.
+        self.degraded_since_ms: (
+            int | None
+        ) = None
+
+        self.connection_started_ms: (
+            int | None
+        ) = None
+
+        self.subscribe_request_id = 2001
+
+        self.requested_channels: set[
+            str
+        ] = set()
+
+        # None until the subscription response arrives
+        # on the current connection.
+        self.confirmed_channels: (
+            set[str] | None
+        ) = None
+
+        self.subscription_sent_ms: (
+            int | None
+        ) = None
+
+        # Instruments with at least one requested channel
+        # that the exchange did not confirm.
+        self.unconfirmed_instruments: set[
+            str
+        ] = set()
+
+        # Exchange / local time of the latest change of
+        # ticker best bid/ask PRICES, per instrument.
+        self.ticker_bbo_last_change: dict[
+            str,
+            dict
+        ] = {}
+
+        # Local receive time of the latest accepted L2
+        # update per instrument (for quiet-stream checks).
+        self.book_last_update_received_ms: dict[
+            str,
+            int
+        ] = {}
+
+        # REST cross-check evidence per (instrument, bar).
+        self.verify_stats: dict[
+            tuple[str, int],
+            dict
+        ] = {}
+
+        self.rest_verifications = 0
+        self.rest_verification_errors = 0
+        self.stale_feeds_detected = 0
+        self.feed_silence_reconnects = 0
+        self.subscription_failures = 0
+        self.unconfirmed_channel_count = 0
+
     # --------------------------------------------------
     # Subscription channels
     # --------------------------------------------------
@@ -650,7 +859,7 @@ class FuturesStateCache:
 
         request = {
             "jsonrpc": "2.0",
-            "id": 2001,
+            "id": self.subscribe_request_id,
             "method": "public/subscribe",
             "params": {
                 "channels": channels
@@ -663,11 +872,98 @@ class FuturesStateCache:
             f"market-data channels..."
         )
 
+        # v0.3: remember exactly what was requested so the
+        # confirmation can be checked channel by channel.
+        self.requested_channels = set(
+            channels
+        )
+
+        self.confirmed_channels = None
+
+        self.subscription_sent_ms = int(
+            time.time()
+            * 1000
+        )
+
         await websocket.send(
             json.dumps(
                 request
             )
         )
+
+    def handle_subscription_confirmation(
+        self,
+        result
+    ) -> None:
+        """
+        Compare the confirmed channel list with the request.
+
+        Missing channels are not retried in a loop: the
+        affected instruments are recorded and their rows are
+        finalized with subscription_confirmed = False and
+        stream_complete = False until a later connection
+        confirms them.
+        """
+
+        if not isinstance(
+            result,
+            list
+        ):
+            result = []
+
+        self.confirmed_channels = set(
+            str(channel)
+            for channel in result
+        )
+
+        missing = sorted(
+            self.requested_channels
+            - self.confirmed_channels
+        )
+
+        self.unconfirmed_instruments = set()
+
+        for instrument in (
+            self.instrument_names
+        ):
+
+            instrument_channels = {
+                channel
+                for channel in missing
+                if f".{instrument}" in channel
+            }
+
+            if instrument_channels:
+
+                self.unconfirmed_instruments.add(
+                    instrument
+                )
+
+        self.unconfirmed_channel_count = len(
+            missing
+        )
+
+        print(
+            "Futures market-data "
+            "subscriptions confirmed: "
+            f"{len(self.confirmed_channels)}/"
+            f"{len(self.requested_channels)}"
+        )
+
+        if missing:
+
+            self.subscription_failures += 1
+
+            print(
+                "WARNING: unconfirmed "
+                "futures channels:"
+            )
+
+            for channel in missing:
+
+                print(
+                    f"  {channel}"
+                )
 
     # --------------------------------------------------
     # Reconnect handling
@@ -693,6 +989,10 @@ class FuturesStateCache:
     def mark_current_bar_incomplete(
         self
     ) -> None:
+        """
+        Backward-compatible helper. v0.3 callers use
+        begin_outage() / mark_interval_incomplete().
+        """
 
         bucket_start_ms = (
             self.current_bucket_start_ms()
@@ -708,6 +1008,145 @@ class FuturesStateCache:
                     bucket_start_ms
                 )
             )
+
+    def mark_interval_incomplete(
+        self,
+        start_ms: int,
+        end_ms: int,
+        instruments: list[str] | None = None
+    ) -> None:
+        """
+        Mark every five-minute bar overlapping
+        [start_ms, end_ms] as incomplete for the given
+        instruments (default: all).
+        """
+
+        if instruments is None:
+            instruments = self.instrument_names
+
+        if end_ms < start_ms:
+            start_ms, end_ms = end_ms, start_ms
+
+        first_bucket = (
+            start_ms
+            - (
+                start_ms
+                % BAR_INTERVAL_MS
+            )
+        )
+
+        bucket = first_bucket
+
+        while bucket <= end_ms:
+
+            for instrument in instruments:
+
+                self.incomplete_bar_keys.add(
+                    (
+                        instrument,
+                        bucket
+                    )
+                )
+
+            bucket += BAR_INTERVAL_MS
+
+    def begin_outage(
+        self
+    ) -> None:
+        """
+        Start (or extend) an outage at the last instant data
+        was known to be flowing. The outage stays open until
+        the next connection is fully re-synchronized.
+        """
+
+        now_ms = int(
+            time.time()
+            * 1000
+        )
+
+        outage_start_ms = (
+            self.last_message_received_ms
+            if self.last_message_received_ms
+            is not None
+            else now_ms
+        )
+
+        if (
+            self.degraded_since_ms is None
+            or outage_start_ms
+            < self.degraded_since_ms
+        ):
+
+            self.degraded_since_ms = (
+                outage_start_ms
+            )
+
+        # Bars from the last good message up to now are
+        # incomplete regardless of how the outage ends.
+        self.mark_interval_incomplete(
+            self.degraded_since_ms,
+            now_ms
+        )
+
+    def is_resynchronized(
+        self
+    ) -> bool:
+
+        if self.confirmed_channels is None:
+            return False
+
+        for instrument in (
+            self.instrument_names
+        ):
+
+            if instrument not in self.ticker_state:
+                return False
+
+            book = self.order_book_state.get(
+                instrument
+            )
+
+            if not book or not book.get(
+                "valid",
+                False
+            ):
+                return False
+
+        return True
+
+    def check_resynchronized(
+        self
+    ) -> None:
+        """
+        Close an open outage once the current connection has
+        confirmed subscriptions and re-seeded every ticker and
+        L2 book. The full outage interval is then marked.
+        """
+
+        if self.degraded_since_ms is None:
+            return
+
+        if not self.is_resynchronized():
+            return
+
+        now_ms = int(
+            time.time()
+            * 1000
+        )
+
+        self.mark_interval_incomplete(
+            self.degraded_since_ms,
+            now_ms
+        )
+
+        print(
+            "\nFutures feed re-synchronized. "
+            "Outage interval marked incomplete: "
+            f"{self.degraded_since_ms} -> {now_ms} "
+            f"({(now_ms - self.degraded_since_ms) / 1000:.1f}s)"
+        )
+
+        self.degraded_since_ms = None
 
     def reset_realtime_state(
         self
@@ -729,6 +1168,15 @@ class FuturesStateCache:
         self.ticker_state.clear()
         self.order_book_state.clear()
         self.book_metric_state.clear()
+
+        # v0.3: change-tracking restarts from the fresh
+        # snapshots of the new connection. Nothing is known
+        # about BBO changes during the disconnected interval.
+        self.ticker_bbo_last_change.clear()
+        self.book_last_update_received_ms.clear()
+
+        self.confirmed_channels = None
+        self.unconfirmed_instruments = set()
 
     # --------------------------------------------------
     # Ticker processing
@@ -755,6 +1203,25 @@ class FuturesStateCache:
             )
         )
 
+        previous_state = (
+            self.ticker_state.get(
+                instrument_name
+            )
+        )
+
+        previous_bbo = (
+            (
+                previous_state.get(
+                    "best_bid_price"
+                ),
+                previous_state.get(
+                    "best_ask_price"
+                )
+            )
+            if previous_state is not None
+            else None
+        )
+
         if (
             update_type == "snapshot"
             or instrument_name
@@ -778,16 +1245,54 @@ class FuturesStateCache:
                 data
             )
 
-        state[
-            "_received_timestamp_ms"
-        ] = int(
+        received_ms = int(
             time.time()
             * 1000
         )
 
+        state[
+            "_received_timestamp_ms"
+        ] = received_ms
+
         self.ticker_state[
             instrument_name
         ] = state
+
+        # v0.3: the ticker "timestamp" moves whenever ANY
+        # field changes (mark/index tick every ~1s), so it
+        # cannot reveal a frozen BBO. Track the last time
+        # the best bid/ask PRICES actually changed.
+        current_bbo = (
+            state.get(
+                "best_bid_price"
+            ),
+            state.get(
+                "best_ask_price"
+            )
+        )
+
+        if (
+            previous_bbo is None
+            or current_bbo != previous_bbo
+            or instrument_name
+            not in self.ticker_bbo_last_change
+        ):
+
+            exchange_ms = state.get(
+                "timestamp"
+            )
+
+            self.ticker_bbo_last_change[
+                instrument_name
+            ] = {
+                "exchange_ms":
+                    int(exchange_ms)
+                    if exchange_ms is not None
+                    else received_ms,
+
+                "received_ms":
+                    received_ms
+            }
 
     # --------------------------------------------------
     # L2 parsing
@@ -973,7 +1478,23 @@ class FuturesStateCache:
                 spread,
 
             "microprice":
-                microprice
+                microprice,
+
+            # v0.3: explicit L2 top of book. Written at the
+            # boundary so ticker BBO and book BBO can be
+            # compared, and used for trade-vs-book checks
+            # and the intrawindow mid-price path.
+            "book_best_bid_price":
+                best_bid,
+
+            "book_best_ask_price":
+                best_ask,
+
+            "book_mid_price":
+                (
+                    best_bid
+                    + best_ask
+                ) / 2.0
         }
 
         for depth in [
@@ -1117,7 +1638,34 @@ class FuturesStateCache:
                 None,
 
             "max_obi_20":
-                None
+                None,
+
+            # --------------------------------------
+            # v0.3 feed-integrity evidence
+            # --------------------------------------
+
+            # Exchange time of the latest accepted L2
+            # update that fell inside this bar.
+            "last_update_in_bar_ms":
+                None,
+
+            # Largest interval inside the bar with no
+            # accepted L2 update (exchange time).
+            "max_update_gap_ms":
+                0.0,
+
+            # Mid price of the active book at each
+            # PATH_GRID_MS clock point of the bar
+            # (right-continuous: the state in force at
+            # the grid instant). None = no valid book.
+            "path_grid_mid":
+                [
+                    None
+                    for _
+                    in range(
+                        PATH_GRID_POINTS
+                    )
+                ]
         }
 
     def _get_book_accumulator(
@@ -1207,6 +1755,48 @@ class FuturesStateCache:
             accumulator[
                 "valid_duration_ms"
             ] += duration
+
+            # v0.3: sample the active mid price at every
+            # clock-grid instant g with cursor <= g < end.
+            mid_price = (
+                metrics.get(
+                    "book_mid_price"
+                )
+            )
+
+            if mid_price is not None:
+
+                first_index = -(
+                    -(
+                        cursor
+                        - bucket_start_ms
+                    )
+                    // PATH_GRID_MS
+                )
+
+                end_index = -(
+                    -(
+                        segment_end
+                        - bucket_start_ms
+                    )
+                    // PATH_GRID_MS
+                )
+
+                for grid_index in range(
+                    max(first_index, 0),
+                    min(
+                        end_index,
+                        PATH_GRID_POINTS
+                    )
+                ):
+
+                    accumulator[
+                        "path_grid_mid"
+                    ][
+                        grid_index
+                    ] = float(
+                        mid_price
+                    )
 
             for metric_name in (
                 BOOK_METRIC_NAMES
@@ -1407,6 +1997,34 @@ class FuturesStateCache:
         accumulator[
             "update_count"
         ] += 1
+
+        # v0.3: largest exchange-time interval without
+        # an accepted L2 update inside this bar.
+        gap_reference_ms = (
+            accumulator[
+                "last_update_in_bar_ms"
+            ]
+            if accumulator[
+                "last_update_in_bar_ms"
+            ] is not None
+            else bucket_start_ms
+        )
+
+        accumulator[
+            "max_update_gap_ms"
+        ] = max(
+            accumulator[
+                "max_update_gap_ms"
+            ],
+            float(
+                timestamp_ms
+                - gap_reference_ms
+            )
+        )
+
+        accumulator[
+            "last_update_in_bar_ms"
+        ] = timestamp_ms
 
         obi_20 = (
             metrics.get(
@@ -1787,6 +2405,10 @@ class FuturesStateCache:
                 metrics
         }
 
+        self.book_last_update_received_ms[
+            instrument_name
+        ] = received_timestamp_ms
+
         self.book_messages_received += 1
 
     # --------------------------------------------------
@@ -2044,7 +2666,17 @@ class FuturesStateCache:
                     0.0,
 
                 "native_volume_unit":
-                    native_unit
+                    native_unit,
+
+                # v0.3 trade-vs-book evidence.
+                "trades_checked_vs_book":
+                    0,
+
+                "trades_outside_book_bbo":
+                    0,
+
+                "max_trade_outside_book_bbo_bps":
+                    0.0
             }
 
             self.bars[
@@ -2157,6 +2789,76 @@ class FuturesStateCache:
             "trade_count"
         ] += 1
 
+        # v0.3: compare the execution price with the L2 top
+        # of book known when the trade is processed. Trades
+        # far outside a long-frozen cached BBO are the most
+        # direct evidence of a stale book stream. No
+        # threshold is applied here; legitimate sweeps and
+        # ~100 ms channel skew also produce small values.
+        book = self.order_book_state.get(
+            instrument_name
+        )
+
+        if (
+            book
+            and book.get("valid", False)
+            and book.get("bids")
+            and book.get("asks")
+        ):
+
+            book_bid = float(
+                book["bids"][0][0]
+            )
+
+            book_ask = float(
+                book["asks"][0][0]
+            )
+
+            book_mid = (
+                book_bid
+                + book_ask
+            ) / 2.0
+
+            bar[
+                "trades_checked_vs_book"
+            ] += 1
+
+            outside_distance = 0.0
+
+            if price > book_ask:
+
+                outside_distance = (
+                    price
+                    - book_ask
+                )
+
+            elif price < book_bid:
+
+                outside_distance = (
+                    book_bid
+                    - price
+                )
+
+            if (
+                outside_distance > 0
+                and book_mid > 0
+            ):
+
+                bar[
+                    "trades_outside_book_bbo"
+                ] += 1
+
+                bar[
+                    "max_trade_outside_book_bbo_bps"
+                ] = max(
+                    bar[
+                        "max_trade_outside_book_bbo_bps"
+                    ],
+                    outside_distance
+                    / book_mid
+                    * 10000.0
+                )
+
         self.trades_received += 1
 
     # --------------------------------------------------
@@ -2228,7 +2930,10 @@ class FuturesStateCache:
             "obi_10",
             "bid_depth_20",
             "ask_depth_20",
-            "obi_20"
+            "obi_20",
+            "book_best_bid_price",
+            "book_best_ask_price",
+            "book_mid_price"
         ]:
 
             fields[
@@ -2477,8 +3182,60 @@ class FuturesStateCache:
                     ),
 
                 "ticker_age_ms":
-                    ticker_age_ms
+                    ticker_age_ms,
+
+                # v0.3: perpetual funding (already in the
+                # incremental ticker; previously discarded).
+                "current_funding":
+                    ticker.get(
+                        "current_funding"
+                    ),
+
+                "funding_8h":
+                    ticker.get(
+                        "funding_8h"
+                    ),
+
+                "estimated_delivery_price":
+                    ticker.get(
+                        "estimated_delivery_price"
+                    )
             }
+
+            # v0.3: age of the ticker best bid/ask PRICES,
+            # independent of mark/index updates.
+            bbo_change = (
+                self.ticker_bbo_last_change.get(
+                    instrument
+                )
+            )
+
+            if bbo_change is not None:
+
+                state[
+                    "ticker_bbo_last_change_ms"
+                ] = bbo_change[
+                    "exchange_ms"
+                ]
+
+                state[
+                    "ticker_bbo_age_ms"
+                ] = (
+                    snapshot_ms
+                    - bbo_change[
+                        "exchange_ms"
+                    ]
+                )
+
+            else:
+
+                state[
+                    "ticker_bbo_last_change_ms"
+                ] = None
+
+                state[
+                    "ticker_bbo_age_ms"
+                ] = None
 
             state.update(
                 self._book_boundary_fields(
@@ -2486,6 +3243,36 @@ class FuturesStateCache:
                     snapshot_ms
                 )
             )
+
+            # v0.3: do the two independent top-of-book
+            # sources agree at the boundary?
+            book_bid = state.get(
+                "book_best_bid_price"
+            )
+
+            book_ask = state.get(
+                "book_best_ask_price"
+            )
+
+            if (
+                bid is not None
+                and ask is not None
+                and book_bid is not None
+                and book_ask is not None
+            ):
+
+                state[
+                    "ticker_book_bbo_match"
+                ] = (
+                    float(bid) == float(book_bid)
+                    and float(ask) == float(book_ask)
+                )
+
+            else:
+
+                state[
+                    "ticker_book_bbo_match"
+                ] = None
 
             result[
                 instrument
@@ -2613,7 +3400,50 @@ class FuturesStateCache:
                     in range(
                         OBI_HISTOGRAM_BIN_COUNT
                     )
-                ]
+                ],
+
+            # --------------------------------------
+            # v0.3 feed-integrity evidence
+            # --------------------------------------
+
+            # Largest exchange-time interval inside the bar
+            # with no accepted L2 update. 300000 means the
+            # book never changed during the bar.
+            "book_max_update_gap_ms":
+                None,
+
+            # --------------------------------------
+            # v0.3 intrawindow mid-price path
+            # --------------------------------------
+            # Book mid sampled on a PATH_GRID_MS clock grid
+            # (30 points at 10 s). Increments are computed
+            # only between consecutive valid grid points.
+            "mid_path_grid_ms":
+                PATH_GRID_MS,
+
+            "mid_path_valid_points":
+                0,
+
+            "mid_path_increment_count":
+                0,
+
+            # Sum of squared log increments.
+            "mid_path_realized_variance":
+                None,
+
+            "mid_path_zero_increments":
+                0,
+
+            "mid_path_nonzero_increments":
+                0,
+
+            # Sign changes between consecutive NON-ZERO
+            # increments (zero increments are skipped).
+            "mid_path_return_sign_flips":
+                0,
+
+            "mid_path_max_abs_log_return":
+                None
         }
 
         for metric_name in (
@@ -2919,6 +3749,129 @@ class FuturesStateCache:
             ]
         )
 
+        # ------------------------------------------
+        # v0.3: largest update gap, including the tail
+        # from the last update to the bar end.
+        # ------------------------------------------
+
+        last_update_in_bar = (
+            accumulator[
+                "last_update_in_bar_ms"
+            ]
+        )
+
+        tail_gap_ms = float(
+            bar_end_ms
+            - (
+                last_update_in_bar
+                if last_update_in_bar
+                is not None
+                else bar_start_ms
+            )
+        )
+
+        result[
+            "book_max_update_gap_ms"
+        ] = max(
+            float(
+                accumulator[
+                    "max_update_gap_ms"
+                ]
+            ),
+            tail_gap_ms
+        )
+
+        # ------------------------------------------
+        # v0.3: intrawindow mid-price path statistics
+        # ------------------------------------------
+
+        grid = accumulator[
+            "path_grid_mid"
+        ]
+
+        result[
+            "mid_path_valid_points"
+        ] = sum(
+            1
+            for value in grid
+            if value is not None
+            and value > 0
+        )
+
+        increments = []
+
+        for left, right in zip(
+            grid[:-1],
+            grid[1:]
+        ):
+
+            if (
+                left is None
+                or right is None
+                or left <= 0
+                or right <= 0
+            ):
+                continue
+
+            increments.append(
+                math.log(
+                    right
+                    / left
+                )
+            )
+
+        result[
+            "mid_path_increment_count"
+        ] = len(
+            increments
+        )
+
+        if increments:
+
+            result[
+                "mid_path_realized_variance"
+            ] = sum(
+                value * value
+                for value in increments
+            )
+
+            result[
+                "mid_path_max_abs_log_return"
+            ] = max(
+                abs(value)
+                for value in increments
+            )
+
+            nonzero = [
+                value
+                for value in increments
+                if value != 0.0
+            ]
+
+            result[
+                "mid_path_zero_increments"
+            ] = (
+                len(increments)
+                - len(nonzero)
+            )
+
+            result[
+                "mid_path_nonzero_increments"
+            ] = len(
+                nonzero
+            )
+
+            result[
+                "mid_path_return_sign_flips"
+            ] = sum(
+                1
+                for left, right in zip(
+                    nonzero[:-1],
+                    nonzero[1:]
+                )
+                if left * right < 0
+            )
+
         return result
 
     # --------------------------------------------------
@@ -3141,15 +4094,84 @@ class FuturesStateCache:
                     ]
                 )
 
-            stream_complete = (
+            # ------------------------------------------
+            # v0.3 stream completeness
+            # ------------------------------------------
+            #
+            # A bar is complete only if no evidence of a
+            # collection fault touches it. Each failed
+            # condition is written as an explicit reason.
+
+            feed_max_gap_ms = (
+                self.feed_gap_for_bar(
+                    bar_start_ms,
+                    bar_end_ms
+                )
+            )
+
+            incomplete_reasons = []
+
+            if (
                 self.collector_started_ms
-                <= bar_start_ms
-                and key
-                not in self.incomplete_bar_keys
+                > bar_start_ms
+            ):
+                incomplete_reasons.append(
+                    "collector_start"
+                )
+
+            if key in self.incomplete_bar_keys:
+                incomplete_reasons.append(
+                    "outage_or_stale_interval"
+                )
+
+            if (
+                self.degraded_since_ms
+                is not None
+                and self.degraded_since_ms
+                < bar_end_ms
+            ):
+                incomplete_reasons.append(
+                    "outage_open_at_finalize"
+                )
+
+            subscription_confirmed = (
+                self.confirmed_channels
+                is not None
+                and instrument
+                not in self.unconfirmed_instruments
+            )
+
+            if not subscription_confirmed:
+                incomplete_reasons.append(
+                    "subscription_unconfirmed"
+                )
+
+            if (
+                feed_max_gap_ms is None
+                or feed_max_gap_ms
+                > FEED_MAX_GAP_FOR_COMPLETE_MS
+            ):
+                incomplete_reasons.append(
+                    "feed_message_gap"
+                )
+
+            stream_complete = (
+                len(incomplete_reasons) == 0
             )
 
             self.incomplete_bar_keys.discard(
                 key
+            )
+
+            verify = self.verify_stats.pop(
+                key,
+                {}
+            )
+
+            trade_evidence = (
+                bar
+                if bar is not None
+                else {}
             )
 
             book_stats = (
@@ -3258,7 +4280,83 @@ class FuturesStateCache:
                     stream_complete,
 
                 "source":
-                    "deribit_ws_100ms_l2"
+                    "deribit_ws_100ms_l2",
+
+                # ------------------------------------------
+                # v0.3 provenance / integrity evidence
+                # ------------------------------------------
+
+                "collector_version":
+                    COLLECTOR_VERSION,
+
+                "collector_code_sha256":
+                    COLLECTOR_CODE_SHA256,
+
+                "connection_count":
+                    self.connection_count,
+
+                "stream_incomplete_reason":
+                    (
+                        ",".join(
+                            incomplete_reasons
+                        )
+                        if incomplete_reasons
+                        else None
+                    ),
+
+                "subscription_confirmed":
+                    subscription_confirmed,
+
+                "feed_max_message_gap_ms":
+                    feed_max_gap_ms,
+
+                "trades_checked_vs_book":
+                    int(
+                        trade_evidence.get(
+                            "trades_checked_vs_book",
+                            0
+                        )
+                    ),
+
+                "trades_outside_book_bbo":
+                    int(
+                        trade_evidence.get(
+                            "trades_outside_book_bbo",
+                            0
+                        )
+                    ),
+
+                "max_trade_outside_book_bbo_bps":
+                    float(
+                        trade_evidence.get(
+                            "max_trade_outside_book_bbo_bps",
+                            0.0
+                        )
+                    ),
+
+                "rest_verify_count":
+                    int(
+                        verify.get(
+                            "checks",
+                            0
+                        )
+                    ),
+
+                "rest_verify_mismatch_count":
+                    int(
+                        verify.get(
+                            "mismatches",
+                            0
+                        )
+                    ),
+
+                "rest_stale_confirmed":
+                    bool(
+                        verify.get(
+                            "stale_confirmed",
+                            False
+                        )
+                    )
             }
 
             row.update(
@@ -3278,9 +4376,549 @@ class FuturesStateCache:
             bar_end_ms
         )
 
+        # v0.3: release per-bar integrity state for every
+        # bucket that can no longer be finalized.
+        for bucket in [
+            bucket
+            for bucket in self.feed_gap_by_bucket
+            if bucket < bar_end_ms
+        ]:
+            self.feed_gap_by_bucket.pop(
+                bucket,
+                None
+            )
+
+        for stale_key in [
+            stale_key
+            for stale_key in self.verify_stats
+            if stale_key[1] < bar_end_ms
+        ]:
+            self.verify_stats.pop(
+                stale_key,
+                None
+            )
+
+        for stale_key in [
+            stale_key
+            for stale_key in self.book_bar_accumulators
+            if stale_key[1] < bar_start_ms
+        ]:
+            # Orphan accumulators (for example an
+            # out-of-order audit count that landed on an
+            # already-finalized bucket) are released.
+            self.book_bar_accumulators.pop(
+                stale_key,
+                None
+            )
+
         return pd.DataFrame(
             rows
         )
+
+    # --------------------------------------------------
+    # v0.3 feed-gap accounting
+    # --------------------------------------------------
+
+    def record_message_received(
+        self,
+        received_ms: int
+    ) -> None:
+        """
+        Track the largest interval without any WebSocket
+        message, split across the five-minute buckets it
+        overlaps (local receive clock).
+        """
+
+        previous_ms = (
+            self.last_message_received_ms
+        )
+
+        if (
+            previous_ms is not None
+            and received_ms > previous_ms
+        ):
+
+            cursor = previous_ms
+
+            while cursor < received_ms:
+
+                bucket_start = (
+                    cursor
+                    - (
+                        cursor
+                        % BAR_INTERVAL_MS
+                    )
+                )
+
+                segment_end = min(
+                    received_ms,
+                    bucket_start
+                    + BAR_INTERVAL_MS
+                )
+
+                self.feed_gap_by_bucket[
+                    bucket_start
+                ] = max(
+                    self.feed_gap_by_bucket.get(
+                        bucket_start,
+                        0.0
+                    ),
+                    float(
+                        segment_end
+                        - cursor
+                    )
+                )
+
+                cursor = segment_end
+
+        if (
+            previous_ms is None
+            or received_ms > previous_ms
+        ):
+
+            self.last_message_received_ms = (
+                received_ms
+            )
+
+    def feed_gap_for_bar(
+        self,
+        bar_start_ms: int,
+        bar_end_ms: int
+    ) -> float | None:
+        """
+        Largest message-free interval inside the bar,
+        including any silence still open at bar end.
+        """
+
+        if self.last_message_received_ms is None:
+            return None
+
+        gap_ms = self.feed_gap_by_bucket.get(
+            bar_start_ms,
+            0.0
+        )
+
+        if (
+            self.last_message_received_ms
+            < bar_end_ms
+        ):
+
+            gap_ms = max(
+                gap_ms,
+                float(
+                    bar_end_ms
+                    - max(
+                        self.last_message_received_ms,
+                        bar_start_ms
+                    )
+                )
+            )
+
+        return gap_ms
+
+    # --------------------------------------------------
+    # v0.3 silence / subscription watchdog
+    # --------------------------------------------------
+
+    async def feed_watchdog(
+        self
+    ) -> None:
+        """
+        Force a reconnect when the connection stops
+        delivering data or never confirms its subscription.
+        Ping/pong alone cannot detect either condition.
+        """
+
+        while not self.stop_event.is_set():
+
+            await asyncio.sleep(
+                1.0
+            )
+
+            now_ms = int(
+                time.time()
+                * 1000
+            )
+
+            reference_ms = max(
+                self.last_message_received_ms
+                or 0,
+                self.connection_started_ms
+                or 0
+            )
+
+            if (
+                reference_ms > 0
+                and now_ms - reference_ms
+                > FEED_SILENCE_RECONNECT_SECONDS
+                * 1000
+            ):
+
+                self.feed_silence_reconnects += 1
+
+                raise FeedStaleError(
+                    "Futures feed silent for "
+                    f"{(now_ms - reference_ms) / 1000:.1f}s."
+                )
+
+            if (
+                self.confirmed_channels is None
+                and self.subscription_sent_ms
+                is not None
+                and now_ms
+                - self.subscription_sent_ms
+                > SUBSCRIPTION_CONFIRM_TIMEOUT_SECONDS
+                * 1000
+            ):
+
+                self.subscription_failures += 1
+
+                raise FeedStaleError(
+                    "Futures subscription was not "
+                    "confirmed within "
+                    f"{SUBSCRIPTION_CONFIRM_TIMEOUT_SECONDS:.0f}s."
+                )
+
+    # --------------------------------------------------
+    # v0.3 REST cross-check of quiet streams
+    # --------------------------------------------------
+
+    def _verify_bucket_stats(
+        self,
+        instrument: str
+    ) -> dict:
+
+        now_ms = int(
+            time.time()
+            * 1000
+        )
+
+        bucket = (
+            now_ms
+            - (
+                now_ms
+                % BAR_INTERVAL_MS
+            )
+        )
+
+        return self.verify_stats.setdefault(
+            (
+                instrument,
+                bucket
+            ),
+            {
+                "checks": 0,
+                "mismatches": 0,
+                "stale_confirmed": False
+            }
+        )
+
+    def _cached_tops(
+        self,
+        instrument: str
+    ) -> tuple[
+        tuple | None,
+        tuple | None
+    ]:
+        """
+        Return (book_bbo, ticker_bbo) from the stream cache.
+        """
+
+        book_bbo = None
+
+        book = self.order_book_state.get(
+            instrument
+        )
+
+        if (
+            book
+            and book.get("valid", False)
+            and book.get("bids")
+            and book.get("asks")
+        ):
+
+            book_bbo = (
+                float(book["bids"][0][0]),
+                float(book["asks"][0][0])
+            )
+
+        ticker_bbo = None
+
+        ticker = self.ticker_state.get(
+            instrument
+        )
+
+        if ticker:
+
+            bid = ticker.get(
+                "best_bid_price"
+            )
+
+            ask = ticker.get(
+                "best_ask_price"
+            )
+
+            if (
+                bid is not None
+                and ask is not None
+                and bid > 0
+                and ask > 0
+            ):
+
+                ticker_bbo = (
+                    float(bid),
+                    float(ask)
+                )
+
+        return book_bbo, ticker_bbo
+
+    async def _stale_sources(
+        self,
+        instrument: str,
+        check_book: bool,
+        check_ticker: bool
+    ) -> list[str]:
+        """
+        Two-step confirmation. A source is stale only if its
+        cached top of book differs from REST on two checks
+        STALE_CONFIRM_DELAY_SECONDS apart AND the stream did
+        not deliver any change in between.
+        """
+
+        stats = self._verify_bucket_stats(
+            instrument
+        )
+
+        rest_bbo = await asyncio.to_thread(
+            fetch_rest_top_of_book,
+            instrument
+        )
+
+        self.rest_verifications += 1
+        stats["checks"] += 1
+
+        if rest_bbo is None:
+
+            self.rest_verification_errors += 1
+
+            return []
+
+        book_bbo, ticker_bbo = (
+            self._cached_tops(
+                instrument
+            )
+        )
+
+        suspects = []
+
+        if (
+            check_book
+            and book_bbo is not None
+            and book_bbo != rest_bbo
+        ):
+            suspects.append(
+                "book"
+            )
+
+        if (
+            check_ticker
+            and ticker_bbo is not None
+            and ticker_bbo != rest_bbo
+        ):
+            suspects.append(
+                "ticker"
+            )
+
+        if not suspects:
+            return []
+
+        stats["mismatches"] += 1
+
+        book_marker = (
+            self.book_last_update_received_ms.get(
+                instrument
+            )
+        )
+
+        ticker_marker = (
+            self.ticker_bbo_last_change
+            .get(instrument, {})
+            .get("received_ms")
+        )
+
+        await asyncio.sleep(
+            STALE_CONFIRM_DELAY_SECONDS
+        )
+
+        rest_bbo_2 = await asyncio.to_thread(
+            fetch_rest_top_of_book,
+            instrument
+        )
+
+        self.rest_verifications += 1
+        stats["checks"] += 1
+
+        if rest_bbo_2 is None:
+
+            self.rest_verification_errors += 1
+
+            return []
+
+        book_bbo_2, ticker_bbo_2 = (
+            self._cached_tops(
+                instrument
+            )
+        )
+
+        confirmed = []
+
+        if (
+            "book" in suspects
+            and self.book_last_update_received_ms.get(
+                instrument
+            ) == book_marker
+            and book_bbo_2 is not None
+            and book_bbo_2 != rest_bbo_2
+        ):
+            confirmed.append(
+                "book"
+            )
+
+        if (
+            "ticker" in suspects
+            and self.ticker_bbo_last_change
+            .get(instrument, {})
+            .get("received_ms") == ticker_marker
+            and ticker_bbo_2 is not None
+            and ticker_bbo_2 != rest_bbo_2
+        ):
+            confirmed.append(
+                "ticker"
+            )
+
+        return confirmed
+
+    async def stream_verifier(
+        self
+    ) -> None:
+        """
+        Periodically cross-check quiet streams against REST.
+        A confirmed stale source marks the affected bars
+        incomplete from the last observed stream change and
+        forces a reconnect.
+        """
+
+        while not self.stop_event.is_set():
+
+            try:
+
+                await asyncio.wait_for(
+                    self.stop_event.wait(),
+                    timeout=(
+                        STREAM_VERIFY_INTERVAL_SECONDS
+                    )
+                )
+
+                return
+
+            except asyncio.TimeoutError:
+
+                pass
+
+            if self.confirmed_channels is None:
+                continue
+
+            for instrument in list(
+                self.instrument_names
+            ):
+
+                now_ms = int(
+                    time.time()
+                    * 1000
+                )
+
+                book_received = (
+                    self.book_last_update_received_ms.get(
+                        instrument
+                    )
+                )
+
+                ticker_received = (
+                    self.ticker_bbo_last_change
+                    .get(instrument, {})
+                    .get("received_ms")
+                )
+
+                quiet_ms = (
+                    BOOK_QUIET_VERIFY_SECONDS
+                    * 1000
+                )
+
+                check_book = (
+                    book_received is not None
+                    and now_ms - book_received
+                    > quiet_ms
+                )
+
+                check_ticker = (
+                    ticker_received is not None
+                    and now_ms - ticker_received
+                    > quiet_ms
+                )
+
+                if not (
+                    check_book
+                    or check_ticker
+                ):
+                    continue
+
+                confirmed = await self._stale_sources(
+                    instrument,
+                    check_book,
+                    check_ticker
+                )
+
+                if not confirmed:
+                    continue
+
+                stale_since_ms = min(
+                    value
+                    for value in [
+                        book_received
+                        if "book" in confirmed
+                        else None,
+                        ticker_received
+                        if "ticker" in confirmed
+                        else None
+                    ]
+                    if value is not None
+                )
+
+                end_ms = int(
+                    time.time()
+                    * 1000
+                )
+
+                self.stale_feeds_detected += 1
+
+                self._verify_bucket_stats(
+                    instrument
+                )[
+                    "stale_confirmed"
+                ] = True
+
+                self.mark_interval_incomplete(
+                    stale_since_ms,
+                    end_ms,
+                    [instrument]
+                )
+
+                raise FeedStaleError(
+                    f"Stale {'/'.join(confirmed)} stream "
+                    f"confirmed by REST for {instrument}; "
+                    f"no stream change for "
+                    f"{(end_ms - stale_since_ms) / 1000:.1f}s."
+                )
 
     # --------------------------------------------------
     # WebSocket receive loop
@@ -3296,6 +4934,15 @@ class FuturesStateCache:
             if self.stop_event.is_set():
 
                 break
+
+            # v0.3: every received message advances the
+            # feed-gap clock (local receive time).
+            self.record_message_received(
+                int(
+                    time.time()
+                    * 1000
+                )
+            )
 
             message = json.loads(
                 raw_message
@@ -3316,32 +4963,37 @@ class FuturesStateCache:
                     )
                 )
 
+                # A rejected subscription request means this
+                # connection is not collecting what it should.
+                if (
+                    message.get("id")
+                    == self.subscribe_request_id
+                ):
+
+                    self.subscription_failures += 1
+
+                    raise FeedStaleError(
+                        "Futures subscription "
+                        "request was rejected."
+                    )
+
                 continue
 
             if "id" in message:
 
-                if "result" in message:
+                if (
+                    "result" in message
+                    and message.get("id")
+                    == self.subscribe_request_id
+                ):
 
-                    result = (
+                    self.handle_subscription_confirmation(
                         message[
                             "result"
                         ]
                     )
 
-                    print(
-                        "Futures market-data "
-                        "subscriptions confirmed."
-                    )
-
-                    if isinstance(
-                        result,
-                        list
-                    ):
-
-                        print(
-                            f"Confirmed channels: "
-                            f"{len(result)}"
-                        )
+                    self.check_resynchronized()
 
                 continue
 
@@ -3434,6 +5086,12 @@ class FuturesStateCache:
                     self.book_parse_errors += 1
 
             self.messages_received += 1
+
+            # v0.3: close an open outage as soon as the new
+            # connection is fully re-synchronized.
+            if self.degraded_since_ms is not None:
+
+                self.check_resynchronized()
 
     # --------------------------------------------------
     # Health
@@ -3582,6 +5240,34 @@ class FuturesStateCache:
                 f"{self.ignored_late_trades:,}"
             )
 
+            # v0.3 integrity counters.
+            print(
+                f"Subscriptions:        "
+                f"{len(self.confirmed_channels or [])}/"
+                f"{len(self.requested_channels)} confirmed"
+            )
+
+            print(
+                f"REST verifications:   "
+                f"{self.rest_verifications:,} "
+                f"(errors {self.rest_verification_errors:,})"
+            )
+
+            print(
+                f"Stale feeds detected: "
+                f"{self.stale_feeds_detected:,}"
+            )
+
+            print(
+                f"Silence reconnects:   "
+                f"{self.feed_silence_reconnects:,}"
+            )
+
+            print(
+                f"Outage open:          "
+                f"{self.degraded_since_ms is not None}"
+            )
+
             if ticker_ages:
 
                 print(
@@ -3635,6 +5321,11 @@ class FuturesStateCache:
                 websocket
             )
 
+            self.connection_started_ms = int(
+                time.time()
+                * 1000
+            )
+
             print(
                 "Futures WebSocket "
                 "connected."
@@ -3658,20 +5349,39 @@ class FuturesStateCache:
                 )
             )
 
+            # v0.3: silence/subscription watchdog and REST
+            # cross-check of quiet streams. Either task ends
+            # this connection by raising FeedStaleError.
+            watchdog_task = (
+                asyncio.create_task(
+                    self.feed_watchdog()
+                )
+            )
+
+            verifier_task = (
+                asyncio.create_task(
+                    self.stream_verifier()
+                )
+            )
+
             shutdown_task = (
                 asyncio.create_task(
                     self.stop_event.wait()
                 )
             )
 
+            monitored = {
+                receive_task,
+                watchdog_task,
+                verifier_task,
+                shutdown_task
+            }
+
             try:
 
                 done, pending = (
                     await asyncio.wait(
-                        {
-                            receive_task,
-                            shutdown_task
-                        },
+                        monitored,
                         return_when=(
                             asyncio.FIRST_COMPLETED
                         )
@@ -3691,21 +5401,35 @@ class FuturesStateCache:
                         )
                     )
 
-                if receive_task in done:
+                for task in (
+                    receive_task,
+                    watchdog_task,
+                    verifier_task
+                ):
 
-                    exception = (
-                        receive_task.exception()
-                    )
+                    if task in done:
 
-                    if exception is not None:
+                        exception = (
+                            task.exception()
+                        )
 
-                        raise exception
+                        if exception is not None:
 
-                for task in pending:
+                            raise exception
 
-                    task.cancel()
+            finally:
 
-                for task in pending:
+                for task in (
+                    receive_task,
+                    health_task,
+                    watchdog_task,
+                    verifier_task,
+                    shutdown_task
+                ):
+
+                    if not task.done():
+
+                        task.cancel()
 
                     try:
 
@@ -3715,40 +5439,10 @@ class FuturesStateCache:
 
                         pass
 
-            finally:
+                    except Exception:
 
-                health_task.cancel()
-
-                try:
-
-                    await health_task
-
-                except asyncio.CancelledError:
-
-                    pass
-
-                if not receive_task.done():
-
-                    receive_task.cancel()
-
-                    try:
-
-                        await receive_task
-
-                    except asyncio.CancelledError:
-
-                        pass
-
-                if not shutdown_task.done():
-
-                    shutdown_task.cancel()
-
-                    try:
-
-                        await shutdown_task
-
-                    except asyncio.CancelledError:
-
+                        # The primary exception (if any) was
+                        # already raised above.
                         pass
 
                 self.websocket = None
@@ -3767,7 +5461,10 @@ class FuturesStateCache:
                     not self.stop_event.is_set()
                 ):
 
-                    self.mark_current_bar_incomplete()
+                    # v0.3: open an outage interval that
+                    # stays open until the next connection
+                    # is fully re-synchronized.
+                    self.begin_outage()
 
                     print(
                         "\nFutures WebSocket "
@@ -3784,7 +5481,7 @@ class FuturesStateCache:
 
                     break
 
-                self.mark_current_bar_incomplete()
+                self.begin_outage()
 
                 print(
                     f"\nFutures WebSocket "

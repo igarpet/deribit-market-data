@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import signal
@@ -67,6 +68,44 @@ OPENING_CAPTURE_MAX_DELAY_SECONDS = 1.0
 OPENING_MAX_FEED_SILENCE_MS = 10_000
 
 WARMUP_STATUS_INTERVAL_SECONDS = 1.0
+
+
+# --------------------------------------------------
+# Collector version stamp
+# --------------------------------------------------
+#
+# Every snapshot row carries the collector version and a
+# SHA256 over the two source files that determine option
+# row content (this file + option_state_cache.py).
+
+OPTION_COLLECTOR_VERSION = "option_grid_v0.3.0"
+
+
+def _option_source_sha256() -> str | None:
+
+    try:
+
+        digest = hashlib.sha256()
+
+        source_dir = Path(__file__).resolve().parent
+
+        for name in [
+            "option_grid_collector.py",
+            "option_state_cache.py",
+        ]:
+
+            digest.update(
+                (source_dir / name).read_bytes()
+            )
+
+        return digest.hexdigest()
+
+    except OSError:
+
+        return None
+
+
+OPTION_COLLECTOR_CODE_SHA256 = _option_source_sha256()
 
 
 # --------------------------------------------------
@@ -632,6 +671,14 @@ def save_grid_snapshot(
     grid[
         "is_opening_snapshot"
     ] = is_opening_snapshot
+
+    grid[
+        "collector_version"
+    ] = OPTION_COLLECTOR_VERSION
+
+    grid[
+        "collector_code_sha256"
+    ] = OPTION_COLLECTOR_CODE_SHA256
 
     grid[
         "cache_initialized_before_boundary"
