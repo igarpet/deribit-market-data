@@ -21,7 +21,7 @@ from data_engineering.alignment.state_index import (
 )
 
 
-MARKET_FEATURE_VERSION = "0.2.0"
+MARKET_FEATURE_VERSION = "0.2.1"
 
 # v0.2.0: structural returns and realized volatility are computed from the
 # Deribit index (the option settlement reference), not the perpetual mid.
@@ -32,9 +32,21 @@ MARKET_FEATURE_VERSION = "0.2.0"
 # diagnostic work only.
 RETURN_SOURCE = "deribit_index"
 
-# The index arrives on the perpetual ticker channel. A ticker older than
-# this at the state boundary means the index value may be stale.
-INDEX_MAX_TICKER_AGE_MS = 30_000
+# The index arrives on the perpetual ticker channel, so the ticker age at
+# the state boundary bounds how old the captured index value can be.
+#
+# v0.2.1 rule, from the 2026-10-05 gate audit: of 76 states gated at a
+# 30 s age (70 of them TRX), the index had changed since the previous
+# state in 75. A late ticker on a quiet perpetual therefore means a
+# slightly old index value, not a frozen one.
+#   age <= INDEX_FRESH_TICKER_AGE_MS                       -> eligible
+#   age <= INDEX_MAX_TICKER_AGE_MS and index changed since
+#   the previous five-minute state                         -> eligible
+#   otherwise                                              -> not eligible
+# The hard cap keeps the timing error of an eligible index value below
+# 30% of one five-minute bar.
+INDEX_FRESH_TICKER_AGE_MS = 30_000
+INDEX_MAX_TICKER_AGE_MS = 90_000
 
 FIVE_MINUTE_PERIODS_PER_YEAR = (
     365.0
@@ -410,13 +422,10 @@ def create_market_time_series_state(
                     AND
                     r.futures_index_price > 0
                     AND
-                    r.futures_ticker_age_ms IS NOT NULL
-                    AND
-                    r.futures_ticker_age_ms
-                        <= {INDEX_MAX_TICKER_AGE_MS},
+                    r.futures_ticker_age_ms IS NOT NULL,
                     FALSE
                 )
-                    AS index_return_input_eligible,
+                    AS index_base_eligible,
 
                 m.open,
                 m.high,
@@ -451,6 +460,36 @@ def create_market_time_series_state(
 
             LEFT JOIN _feature_futures_reference_input r
                 ON m.state_id = r.state_id
+        ),
+
+        index_checked AS (
+
+            SELECT
+                *,
+
+                (
+                    index_base_eligible
+                    AND (
+                        futures_ticker_age_ms
+                            <= {INDEX_FRESH_TICKER_AGE_MS}
+                        OR (
+                            futures_ticker_age_ms
+                                <= {INDEX_MAX_TICKER_AGE_MS}
+                            AND
+                            futures_index_price
+                                IS DISTINCT FROM LAG(
+                                    futures_index_price,
+                                    1
+                                ) OVER (
+                                    PARTITION BY underlying
+                                    ORDER BY state_time
+                                )
+                        )
+                    )
+                )
+                    AS index_return_input_eligible
+
+            FROM base
         ),
 
         lagged AS (
@@ -574,7 +613,7 @@ def create_market_time_series_state(
                     ORDER BY state_time
                 ) AS lag_book_twa_obi_20_1
 
-            FROM base
+            FROM index_checked
         ),
 
         point_features AS (
