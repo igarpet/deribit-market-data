@@ -21,7 +21,15 @@ from data_engineering.features.market_time_series import (
 )
 
 
-OPTION_FEATURE_VERSION = "0.1.2"
+OPTION_FEATURE_VERSION = "0.2.0"
+
+# v0.2.0 (audit B2): surface changes are computed only when every node
+# involved has the same IV source class (QQ / QM / MQ / MM) at both
+# endpoints. A change that crosses a quote <-> mark switch mixes a market
+# move with a model switch; Notebook 03 showed such changes have 3-4x the
+# tail of same-source changes. Blocked changes are counted by the
+# *_source_switch_5m diagnostics instead of being silently dropped.
+# Mark-share columns expose how much of each surface is Deribit's model.
 
 
 def _timed_materialize(
@@ -194,6 +202,18 @@ def create_option_surface_feature_state(
                 s.two_sided_eligible_rows,
                 s.median_two_sided_spread_bps,
                 s.p90_two_sided_spread_bps,
+                s.option_snapshot_ready,
+                s.src_k_m050,
+                s.src_k_m025,
+                s.src_k_000,
+                s.src_k_p025,
+                s.src_k_p050,
+                s.core_iv_source_signature,
+                s.wing_050_iv_source_signature,
+                s.core_nodes_with_mark,
+                s.node_mark_share,
+                s.base_mark_iv_rows,
+                s.base_mark_iv_row_share,
 
                 d.iv_put_25d,
                 d.iv_call_25d,
@@ -209,7 +229,9 @@ def create_option_surface_feature_state(
                 d.full_delta_smile_available,
 
                 d.max_delta_interpolation_span,
-                d.median_delta_interpolation_span
+                d.median_delta_interpolation_span,
+                d.rr_25d_iv_source_signature,
+                d.bf_25d_iv_source_signature
 
             FROM _feature_option_smile_preferred s
 
@@ -365,7 +387,43 @@ def create_option_surface_feature_state(
                 LAG(bf_25d, 1) OVER (
                     PARTITION BY option_family_id
                     ORDER BY state_time
-                ) AS lag_bf_25d_1
+                ) AS lag_bf_25d_1,
+                LAG(src_k_000, 1) OVER (
+                    PARTITION BY option_family_id
+                    ORDER BY state_time
+                ) AS lag_src_atm_1,
+                LAG(src_k_000, 3) OVER (
+                    PARTITION BY option_family_id
+                    ORDER BY state_time
+                ) AS lag_src_atm_3,
+                LAG(src_k_000, 12) OVER (
+                    PARTITION BY option_family_id
+                    ORDER BY state_time
+                ) AS lag_src_atm_12,
+                LAG(core_iv_source_signature, 1) OVER (
+                    PARTITION BY option_family_id
+                    ORDER BY state_time
+                ) AS lag_core_sig_1,
+                LAG(core_iv_source_signature, 3) OVER (
+                    PARTITION BY option_family_id
+                    ORDER BY state_time
+                ) AS lag_core_sig_3,
+                LAG(core_iv_source_signature, 12) OVER (
+                    PARTITION BY option_family_id
+                    ORDER BY state_time
+                ) AS lag_core_sig_12,
+                LAG(wing_050_iv_source_signature, 1) OVER (
+                    PARTITION BY option_family_id
+                    ORDER BY state_time
+                ) AS lag_wing_sig_1,
+                LAG(rr_25d_iv_source_signature, 1) OVER (
+                    PARTITION BY option_family_id
+                    ORDER BY state_time
+                ) AS lag_rr_sig_1,
+                LAG(bf_25d_iv_source_signature, 1) OVER (
+                    PARTITION BY option_family_id
+                    ORDER BY state_time
+                ) AS lag_bf_sig_1
 
             FROM base
         )
@@ -401,7 +459,16 @@ def create_option_surface_feature_state(
 
                 lag_skew_050_1,
                 lag_rr_25d_1,
-                lag_bf_25d_1
+                lag_bf_25d_1,
+                lag_src_atm_1,
+                lag_src_atm_3,
+                lag_src_atm_12,
+                lag_core_sig_1,
+                lag_core_sig_3,
+                lag_core_sig_12,
+                lag_wing_sig_1,
+                lag_rr_sig_1,
+                lag_bf_sig_1
             ),
 
             CASE
@@ -414,6 +481,7 @@ def create_option_surface_feature_state(
                         lag_state_time_1,
                         state_time
                     ) = 5
+                    AND src_k_000 = lag_src_atm_1
                 THEN
                     iv_atm_forward
                     - lag_atm_iv_1
@@ -430,6 +498,7 @@ def create_option_surface_feature_state(
                         lag_state_time_3,
                         state_time
                     ) = 15
+                    AND src_k_000 = lag_src_atm_3
                 THEN
                     iv_atm_forward
                     - lag_atm_iv_3
@@ -446,6 +515,7 @@ def create_option_surface_feature_state(
                         lag_state_time_12,
                         state_time
                     ) = 60
+                    AND src_k_000 = lag_src_atm_12
                 THEN
                     iv_atm_forward
                     - lag_atm_iv_12
@@ -462,6 +532,7 @@ def create_option_surface_feature_state(
                         lag_state_time_1,
                         state_time
                     ) = 5
+                    AND core_iv_source_signature = lag_core_sig_1
                 THEN
                     symmetric_025_iv_difference
                     - lag_skew_025_1
@@ -478,6 +549,7 @@ def create_option_surface_feature_state(
                         lag_state_time_3,
                         state_time
                     ) = 15
+                    AND core_iv_source_signature = lag_core_sig_3
                 THEN
                     symmetric_025_iv_difference
                     - lag_skew_025_3
@@ -494,6 +566,7 @@ def create_option_surface_feature_state(
                         lag_state_time_12,
                         state_time
                     ) = 60
+                    AND core_iv_source_signature = lag_core_sig_12
                 THEN
                     symmetric_025_iv_difference
                     - lag_skew_025_12
@@ -510,6 +583,7 @@ def create_option_surface_feature_state(
                         lag_state_time_1,
                         state_time
                     ) = 5
+                    AND core_iv_source_signature = lag_core_sig_1
                 THEN
                     curvature_025
                     - lag_curvature_025_1
@@ -526,6 +600,7 @@ def create_option_surface_feature_state(
                         lag_state_time_3,
                         state_time
                     ) = 15
+                    AND core_iv_source_signature = lag_core_sig_3
                 THEN
                     curvature_025
                     - lag_curvature_025_3
@@ -542,6 +617,7 @@ def create_option_surface_feature_state(
                         lag_state_time_12,
                         state_time
                     ) = 60
+                    AND core_iv_source_signature = lag_core_sig_12
                 THEN
                     curvature_025
                     - lag_curvature_025_12
@@ -558,6 +634,7 @@ def create_option_surface_feature_state(
                         lag_state_time_1,
                         state_time
                     ) = 5
+                    AND wing_050_iv_source_signature = lag_wing_sig_1
                 THEN
                     symmetric_050_iv_difference
                     - lag_skew_050_1
@@ -574,6 +651,7 @@ def create_option_surface_feature_state(
                         lag_state_time_1,
                         state_time
                     ) = 5
+                    AND rr_25d_iv_source_signature = lag_rr_sig_1
                 THEN
                     rr_25d
                     - lag_rr_25d_1
@@ -590,6 +668,7 @@ def create_option_surface_feature_state(
                         lag_state_time_1,
                         state_time
                     ) = 5
+                    AND bf_25d_iv_source_signature = lag_bf_sig_1
                 THEN
                     bf_25d
                     - lag_bf_25d_1
@@ -605,8 +684,38 @@ def create_option_surface_feature_state(
                     lag_state_time_1,
                     state_time
                 ) = 5
+                AND core_iv_source_signature
+                    = lag_core_sig_1
             )
                 AS core_surface_change_5m_ready,
+
+            (
+                core_smile_usable
+                AND lag_core_usable_1
+                AND session_id = lag_session_id_1
+                AND date_diff(
+                    'minute',
+                    lag_state_time_1,
+                    state_time
+                ) = 5
+                AND core_iv_source_signature
+                    IS DISTINCT FROM lag_core_sig_1
+            )
+                AS core_source_switch_5m,
+
+            (
+                core_smile_usable
+                AND lag_core_usable_1
+                AND session_id = lag_session_id_1
+                AND date_diff(
+                    'minute',
+                    lag_state_time_1,
+                    state_time
+                ) = 5
+                AND src_k_000
+                    IS DISTINCT FROM lag_src_atm_1
+            )
+                AS atm_source_switch_5m,
 
             (
                 delta_25d_smile_available
@@ -617,6 +726,8 @@ def create_option_surface_feature_state(
                     lag_state_time_1,
                     state_time
                 ) = 5
+                AND bf_25d_iv_source_signature
+                    = lag_bf_sig_1
             )
                 AS delta_25d_change_5m_ready
 
@@ -860,6 +971,102 @@ def print_primary_family_summary(
             f"{row[4]:>10,}"
             f"{row[5]:>12,}"
             f"{row[6]:>10,}"
+        )
+
+
+def print_iv_source_summary(
+    connection
+) -> None:
+    """
+    How much of each primary surface is Deribit's mark model, and how
+    many 5-minute changes were withheld because the IV source switched.
+    """
+
+    rows = connection.execute(
+        """
+        SELECT
+            underlying,
+
+            COUNT(*)
+                AS states,
+
+            ROUND(
+                100.0 * AVG(node_mark_share),
+                1
+            )
+                AS node_mark_pct,
+
+            ROUND(
+                100.0 * AVG(
+                    CASE
+                        WHEN core_nodes_with_mark > 0
+                        THEN 1.0 ELSE 0.0
+                    END
+                ),
+                1
+            )
+                AS core_any_mark_pct,
+
+            ROUND(
+                100.0 * AVG(base_mark_iv_row_share),
+                1
+            )
+                AS row_mark_pct,
+
+            SUM(
+                CASE
+                    WHEN core_surface_change_5m_ready
+                    THEN 1 ELSE 0
+                END
+            )
+                AS core_changes,
+
+            SUM(
+                CASE
+                    WHEN core_source_switch_5m
+                    THEN 1 ELSE 0
+                END
+            )
+                AS core_switch_blocked
+
+        FROM primary_option_surface_feature_state
+
+        WHERE core_smile_usable
+
+        GROUP BY underlying
+
+        ORDER BY underlying
+        """
+    ).fetchall()
+
+    print(
+        "\nPRIMARY SURFACE IV SOURCE"
+    )
+
+    print(
+        "=" * 95
+    )
+
+    print(
+        f"{'Asset':<8}"
+        f"{'States':>9}"
+        f"{'Node mark %':>13}"
+        f"{'Core any mark %':>17}"
+        f"{'Row mark %':>12}"
+        f"{'Core chg 5m':>13}"
+        f"{'Blocked (switch)':>18}"
+    )
+
+    for row in rows:
+
+        print(
+            f"{row[0]:<8}"
+            f"{row[1]:>9,}"
+            f"{str(row[2]):>13}"
+            f"{str(row[3]):>17}"
+            f"{str(row[4]):>12}"
+            f"{int(row[5] or 0):>13,}"
+            f"{int(row[6] or 0):>18,}"
         )
 
 

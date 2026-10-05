@@ -51,7 +51,7 @@ from data_engineering.normalization.option_normalization import (
 )
 
 
-NORMALIZATION_SCHEMA_VERSION = "0.1"
+NORMALIZATION_SCHEMA_VERSION = "0.2"
 
 
 # --------------------------------------------------

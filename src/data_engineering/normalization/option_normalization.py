@@ -815,8 +815,13 @@ def create_normalized_option_chain(
                 AS preferred_iv_source,
 
 
+            -- v0.2 (audit B1): option-side readiness, not the
+            -- futures-dependent state_research_ready.
             (
-                state_research_ready
+                COALESCE(
+                    option_snapshot_ready,
+                    FALSE
+                )
 
                 AND
 
@@ -888,7 +893,10 @@ def create_normalized_option_chain(
 
 
             (
-                state_research_ready
+                COALESCE(
+                    option_snapshot_ready,
+                    FALSE
+                )
 
                 AND
 

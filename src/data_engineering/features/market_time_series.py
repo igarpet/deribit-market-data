@@ -21,7 +21,7 @@ from data_engineering.alignment.state_index import (
 )
 
 
-MARKET_FEATURE_VERSION = "0.2.1"
+MARKET_FEATURE_VERSION = "0.3.0"
 
 # v0.2.0: structural returns and realized volatility are computed from the
 # Deribit index (the option settlement reference), not the perpetual mid.
@@ -46,6 +46,14 @@ RETURN_SOURCE = "deribit_index"
 # The hard cap keeps the timing error of an eligible index value below
 # 30% of one five-minute bar.
 INDEX_FRESH_TICKER_AGE_MS = 30_000
+
+# v0.3.0 (audit B4): Deribit daily options settle to the 30-minute TWAP
+# of the index from 07:30 to 08:00 UTC. States with
+# minutes_to_expiry <= SETTLEMENT_WINDOW_MINUTES (07:30-07:55) are
+# flagged; settlement_locked_fraction is the share of the averaging
+# window already elapsed at the state (0 at 07:30, 25/30 at 07:55).
+# Nothing is dropped: models decide how to treat the window.
+SETTLEMENT_WINDOW_MINUTES = 30
 INDEX_MAX_TICKER_AGE_MS = 90_000
 
 FIVE_MINUTE_PERIODS_PER_YEAR = (
@@ -382,6 +390,20 @@ def create_market_time_series_state(
                 m.session_end,
                 m.minutes_to_expiry,
                 m.is_opening_state,
+
+                (
+                    m.minutes_to_expiry
+                        <= {SETTLEMENT_WINDOW_MINUTES}
+                )
+                    AS in_settlement_window,
+
+                GREATEST(
+                    0,
+                    {SETTLEMENT_WINDOW_MINUTES}
+                    - m.minutes_to_expiry
+                )
+                / {float(SETTLEMENT_WINDOW_MINUTES)}
+                    AS settlement_locked_fraction,
 
                 (
                     1440

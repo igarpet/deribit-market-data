@@ -15,7 +15,12 @@ from data_engineering.surfaces.surface_quality import (
     create_surface_quality_state,
 )
 
-DELTA_SMILE_VERSION = "0.1"
+DELTA_SMILE_VERSION = "0.2"
+
+# v0.2: option_snapshot_ready carried through (audit B1); every delta
+# node records the IV source class of its bracketing contracts
+# (QQ / QM / MQ / MM, see smile_grid.py) for source-consistent changes
+# (audit B2).
 
 
 def create_delta_smile_node_state(connection) -> None:
@@ -75,6 +80,13 @@ def create_delta_smile_node_state(connection) -> None:
                 t.delta_node,
                 t.target_delta,
                 t.option_side,
+
+                CASE
+                    WHEN s.surface_source = 'preferred'
+                        THEN n.preferred_iv_source
+                    WHEN s.surface_source = 'two_sided'
+                        THEN 'bid_ask_iv_mid'
+                END AS source_iv_origin,
 
                 CASE
                     WHEN s.surface_source = 'preferred'
@@ -198,6 +210,7 @@ def create_delta_smile_node_state(connection) -> None:
                 i.option_family_id,
                 i.option_forward_price,
                 i.state_research_ready,
+                i.option_snapshot_ready,
 
                 s.surface_source,
 
@@ -240,6 +253,23 @@ def create_delta_smile_node_state(connection) -> None:
                 AS right_quote_age_ms,
             u.option_relative_spread_bps
                 AS right_spread_bps,
+
+            CASE
+                WHEN
+                    l.source_iv IS NULL
+                    OR u.source_iv IS NULL
+                    THEN NULL
+                ELSE
+                    CASE
+                        WHEN l.source_iv_origin = 'bid_ask_iv_mid'
+                        THEN 'Q' ELSE 'M'
+                    END
+                    ||
+                    CASE
+                        WHEN u.source_iv_origin = 'bid_ask_iv_mid'
+                        THEN 'Q' ELSE 'M'
+                    END
+            END AS node_iv_source,
 
             CASE
                 WHEN
@@ -339,7 +369,35 @@ def create_delta_smile_state(connection) -> None:
                 MAX(state_research_ready)
                     AS state_research_ready,
 
+                MAX(option_snapshot_ready)
+                    AS option_snapshot_ready,
+
                 surface_source,
+
+                MAX(
+                    CASE
+                        WHEN delta_node = 'put_10d'
+                        THEN node_iv_source
+                    END
+                ) AS src_put_10d,
+                MAX(
+                    CASE
+                        WHEN delta_node = 'put_25d'
+                        THEN node_iv_source
+                    END
+                ) AS src_put_25d,
+                MAX(
+                    CASE
+                        WHEN delta_node = 'call_25d'
+                        THEN node_iv_source
+                    END
+                ) AS src_call_25d,
+                MAX(
+                    CASE
+                        WHEN delta_node = 'call_10d'
+                        THEN node_iv_source
+                    END
+                ) AS src_call_10d,
 
                 MAX(
                     CASE
@@ -407,6 +465,17 @@ def create_delta_smile_state(connection) -> None:
             p.*,
 
             s.iv_atm_forward,
+
+            s.src_k_000,
+
+            (
+                src_put_25d || '|' || src_call_25d
+            ) AS rr_25d_iv_source_signature,
+
+            (
+                src_put_25d || '|' || src_k_000
+                || '|' || src_call_25d
+            ) AS bf_25d_iv_source_signature,
 
             (
                 iv_call_25d

@@ -36,7 +36,16 @@ from data_engineering.normalization.build_normalized import (
 )
 
 
-SMILE_GRID_VERSION = "0.1"
+SMILE_GRID_VERSION = "0.2"
+
+# v0.2:
+#   - surface eligibility follows option_snapshot_ready (audit B1);
+#   - every interpolated node records the IV source of both bracketing
+#     contracts (audit B2). Node source class = left letter + right
+#     letter, Q = bid/ask-IV midpoint, M = Deribit mark IV
+#     (QQ, QM, MQ, MM). Downstream changes are computed only when the
+#     source class of every node involved is identical at both
+#     endpoints.
 
 
 # --------------------------------------------------
@@ -245,7 +254,25 @@ def create_surface_input_state(
             MAX(
                 state_research_ready
             )
-                AS state_research_ready
+                AS state_research_ready,
+
+
+            MAX(
+                option_snapshot_ready
+            )
+                AS option_snapshot_ready,
+
+
+            SUM(
+                CASE
+                    WHEN
+                        surface_base_eligible
+                        AND preferred_iv_source = 'mark_iv'
+                    THEN 1
+                    ELSE 0
+                END
+            )
+                AS base_mark_iv_rows
 
 
         FROM normalized_option_chain
@@ -375,6 +402,19 @@ def create_smile_node_state(
                 n.iv_mid,
 
                 s.surface_source,
+
+                CASE
+                    WHEN s.surface_source
+                        = 'preferred'
+                    THEN n.preferred_iv_source
+
+                    WHEN s.surface_source
+                        = 'two_sided'
+                    THEN 'bid_ask_iv_mid'
+
+                    ELSE NULL
+                END
+                    AS source_iv_origin,
 
                 t.target_log_moneyness,
 
@@ -596,6 +636,8 @@ def create_smile_node_state(
 
                 i.state_research_ready,
 
+                i.option_snapshot_ready,
+
                 s.surface_source,
 
                 t.target_log_moneyness
@@ -630,6 +672,8 @@ def create_smile_node_state(
             g.option_forward_price,
 
             g.state_research_ready,
+
+            g.option_snapshot_ready,
 
             g.surface_source,
 
@@ -672,6 +716,36 @@ def create_smile_node_state(
 
             u.option_relative_spread_bps
                 AS right_spread_bps,
+
+            l.source_iv_origin
+                AS left_iv_source,
+
+            u.source_iv_origin
+                AS right_iv_source,
+
+            CASE
+                WHEN
+                    l.source_iv IS NULL
+                    OR
+                    u.source_iv IS NULL
+                THEN NULL
+
+                ELSE
+                    CASE
+                        WHEN l.source_iv_origin
+                            = 'bid_ask_iv_mid'
+                        THEN 'Q'
+                        ELSE 'M'
+                    END
+                    ||
+                    CASE
+                        WHEN u.source_iv_origin
+                            = 'bid_ask_iv_mid'
+                        THEN 'Q'
+                        ELSE 'M'
+                    END
+            END
+                AS node_iv_source,
 
 
             CASE
@@ -878,7 +952,75 @@ def create_option_smile_state(
                 )
                     AS state_research_ready,
 
+                MAX(
+                    option_snapshot_ready
+                )
+                    AS option_snapshot_ready,
+
                 surface_source,
+
+                MAX(
+                    CASE
+                        WHEN target_log_moneyness = -0.05
+                        THEN node_iv_source
+                    END
+                )
+                    AS src_k_m050,
+
+                MAX(
+                    CASE
+                        WHEN target_log_moneyness = -0.025
+                        THEN node_iv_source
+                    END
+                )
+                    AS src_k_m025,
+
+                MAX(
+                    CASE
+                        WHEN target_log_moneyness = 0.00
+                        THEN node_iv_source
+                    END
+                )
+                    AS src_k_000,
+
+                MAX(
+                    CASE
+                        WHEN target_log_moneyness = 0.025
+                        THEN node_iv_source
+                    END
+                )
+                    AS src_k_p025,
+
+                MAX(
+                    CASE
+                        WHEN target_log_moneyness = 0.05
+                        THEN node_iv_source
+                    END
+                )
+                    AS src_k_p050,
+
+                SUM(
+                    CASE
+                        WHEN
+                            target_log_moneyness
+                                IN (-0.025, 0.00, 0.025)
+                            AND node_iv_source <> 'QQ'
+                        THEN 1
+                        ELSE 0
+                    END
+                )
+                    AS core_nodes_with_mark,
+
+                SUM(
+                    CASE
+                        WHEN
+                            interpolated_iv IS NOT NULL
+                            AND node_iv_source <> 'QQ'
+                        THEN 1
+                        ELSE 0
+                    END
+                )
+                    AS nodes_with_mark,
 
 
                 MAX(
@@ -1017,6 +1159,42 @@ def create_option_smile_state(
             i.median_two_sided_spread_bps,
 
             i.p90_two_sided_spread_bps,
+
+
+            i.base_mark_iv_rows,
+
+
+            CASE
+                WHEN i.base_eligible_rows > 0
+                THEN
+                    i.base_mark_iv_rows::DOUBLE
+                    / i.base_eligible_rows
+            END
+                AS base_mark_iv_row_share,
+
+
+            CASE
+                WHEN smile_node_count > 0
+                THEN
+                    nodes_with_mark::DOUBLE
+                    / smile_node_count
+            END
+                AS node_mark_share,
+
+
+            (
+                src_k_m025 || '|'
+                || src_k_000 || '|'
+                || src_k_p025
+            )
+                AS core_iv_source_signature,
+
+
+            (
+                src_k_m050 || '|'
+                || src_k_p050
+            )
+                AS wing_050_iv_source_signature,
 
 
             (

@@ -43,7 +43,7 @@ from data_engineering.quality_checks.quality_contract import (
 )
 
 
-CANONICAL_SCHEMA_VERSION = "0.1"
+CANONICAL_SCHEMA_VERSION = "0.2"
 
 
 # --------------------------------------------------
@@ -395,8 +395,15 @@ def create_canonical_option_chain(
                 AS contract_structurally_valid,
 
 
+            -- v0.2 (audit B1): option-side readiness only. The option
+            -- chain does not depend on the futures stream; the futures
+            -- and option blocks are joined only in the final readiness
+            -- flags of time_series_feature_state.
             (
-                q.state_research_ready
+                COALESCE(
+                    q.option_snapshot_ready,
+                    FALSE
+                )
 
                 AND
 

@@ -12,7 +12,10 @@ if str(SRC_ROOT) not in sys.path:
 from data_engineering.catalog.database import open_research_database
 from data_engineering.surfaces.build_surfaces import build_surfaces
 
-SURFACE_QUALITY_VERSION = "0.1"
+SURFACE_QUALITY_VERSION = "0.2"
+
+# v0.2 (audit B1): usability flags depend on option_snapshot_ready, not
+# on the futures-dependent state_research_ready.
 
 CORE_TIGHT_MAX_SPAN = 0.025
 CORE_USABLE_MAX_SPAN = 0.050
@@ -42,6 +45,8 @@ def create_surface_quality_state(connection) -> None:
 
                 MAX(state_research_ready)
                     AS state_research_ready,
+                MAX(option_snapshot_ready)
+                    AS option_snapshot_ready,
 
                 SUM(
                     CASE
@@ -119,47 +124,47 @@ def create_surface_quality_state(connection) -> None:
             *,
 
             (
-                state_research_ready
+                option_snapshot_ready
                 AND core_node_count = 3
                 AND core_max_interpolation_span
                     <= {CORE_TIGHT_MAX_SPAN}
             ) AS core_smile_tight,
 
             (
-                state_research_ready
+                option_snapshot_ready
                 AND core_node_count = 3
                 AND core_max_interpolation_span
                     <= {CORE_USABLE_MAX_SPAN}
             ) AS core_smile_usable,
 
             (
-                state_research_ready
+                option_snapshot_ready
                 AND wing_050_node_count = 3
                 AND wing_050_max_interpolation_span
                     <= {WING_050_MAX_SPAN}
             ) AS wing_050_usable,
 
             (
-                state_research_ready
+                option_snapshot_ready
                 AND full_grid_node_count = 7
                 AND full_grid_max_interpolation_span
                     <= {FULL_GRID_MAX_SPAN}
             ) AS full_grid_usable,
 
             CASE
-                WHEN state_research_ready
+                WHEN option_snapshot_ready
                     AND core_node_count = 3
                     AND core_max_interpolation_span
                         <= {CORE_TIGHT_MAX_SPAN}
                     THEN 'A'
 
-                WHEN state_research_ready
+                WHEN option_snapshot_ready
                     AND core_node_count = 3
                     AND core_max_interpolation_span
                         <= {CORE_USABLE_MAX_SPAN}
                     THEN 'B'
 
-                WHEN state_research_ready
+                WHEN option_snapshot_ready
                     AND core_node_count = 3
                     THEN 'C'
 

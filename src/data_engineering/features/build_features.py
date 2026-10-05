@@ -38,6 +38,7 @@ from data_engineering.features.option_time_series import (
     create_option_surface_feature_state,
     create_primary_option_surface_feature_state,
     materialize_option_feature_inputs,
+    print_iv_source_summary,
     print_primary_family_summary,
 )
 
@@ -45,7 +46,11 @@ from data_engineering.features.option_time_series import (
 # v0.2.0: return_5m/15m/30m/1h and realized volatility come from the
 # Deribit index (market feature v0.2.0); adds perp_mid_return_5m,
 # return_source and index_return_input_eligible.
-TIME_SERIES_FEATURE_SCHEMA_VERSION = "0.2.0"
+TIME_SERIES_FEATURE_SCHEMA_VERSION = "0.3.0"
+
+# v0.3.0: option surfaces no longer require the futures stream (B1);
+# IV-source columns and source-consistent option changes (B2);
+# settlement-window flag from market features v0.3.0 (B4).
 
 
 REQUIRED_UPSTREAM_RELATIONS = (
@@ -260,6 +265,27 @@ def create_time_series_feature_state(
             p.rr_25d_change_5m,
             p.bf_25d_change_5m,
 
+            p.option_snapshot_ready,
+
+            p.src_k_m050,
+            p.src_k_m025,
+            p.src_k_000,
+            p.src_k_p025,
+            p.src_k_p050,
+
+            p.core_iv_source_signature,
+            p.wing_050_iv_source_signature,
+            p.rr_25d_iv_source_signature,
+            p.bf_25d_iv_source_signature,
+
+            p.core_nodes_with_mark,
+            p.node_mark_share,
+            p.base_mark_iv_rows,
+            p.base_mark_iv_row_share,
+
+            p.core_source_switch_5m,
+            p.atm_source_switch_5m,
+
             p.delta_25d_change_5m_ready,
 
             (
@@ -466,6 +492,29 @@ def validate_feature_tables(
         """
     ).fetchone()[0]
 
+    cross_source_changes = connection.execute(
+        """
+        SELECT COUNT(*)
+        FROM option_surface_feature_state
+
+        WHERE
+            (
+                atm_iv_change_5m IS NOT NULL
+                AND atm_source_switch_5m
+            )
+            OR
+            (
+                skew_025_change_5m IS NOT NULL
+                AND core_source_switch_5m
+            )
+            OR
+            (
+                core_surface_change_5m_ready
+                AND core_iv_source_signature IS NULL
+            )
+        """
+    ).fetchone()[0]
+
     invalid_progress = connection.execute(
         """
         SELECT COUNT(*)
@@ -521,6 +570,11 @@ def validate_feature_tables(
         f"{invalid_progress:,}"
     )
 
+    print(
+        f"Cross-source option changes:   "
+        f"{cross_source_changes:,}"
+    )
+
     if market_duplicates:
         raise RuntimeError(
             "market_time_series_state contains "
@@ -555,6 +609,12 @@ def validate_feature_tables(
         raise RuntimeError(
             "Option-surface changes crossed an "
             "08:00 UTC session boundary."
+        )
+
+    if cross_source_changes:
+        raise RuntimeError(
+            "Option-surface changes were computed across an "
+            "IV-source switch (quote <-> mark)."
         )
 
     if invalid_progress:
@@ -742,6 +802,10 @@ def main() -> None:
         )
 
         print_primary_family_summary(
+            connection
+        )
+
+        print_iv_source_summary(
             connection
         )
 
