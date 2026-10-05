@@ -21,7 +21,20 @@ from data_engineering.alignment.state_index import (
 )
 
 
-MARKET_FEATURE_VERSION = "0.1.2"
+MARKET_FEATURE_VERSION = "0.2.0"
+
+# v0.2.0: structural returns and realized volatility are computed from the
+# Deribit index (the option settlement reference), not the perpetual mid.
+# The perpetual mid is exposed to frozen and one-sided books; Notebook 02
+# (Section 30) showed TRX 5m-return kurtosis of 1,508 on the mid against
+# 9.8 on the index, with identical median realized volatility.
+# The perpetual mid return is kept as `perp_mid_return_5m` for basis and
+# diagnostic work only.
+RETURN_SOURCE = "deribit_index"
+
+# The index arrives on the perpetual ticker channel. A ticker older than
+# this at the state boundary means the index value may be stale.
+INDEX_MAX_TICKER_AGE_MS = 30_000
 
 FIVE_MINUTE_PERIODS_PER_YEAR = (
     365.0
@@ -385,11 +398,25 @@ def create_market_time_series_state(
                 r.market_reference_price,
                 r.market_reference_source,
                 r.market_reference_is_tradable,
+                r.futures_ticker_age_ms,
                 r.futures_spread_bps,
                 r.perpetual_mid_vs_index_bps,
                 r.perpetual_mark_vs_index_bps,
                 r.microprice_vs_mid_bps,
                 r.return_input_eligible,
+
+                COALESCE(
+                    m.price_features_ready
+                    AND
+                    r.futures_index_price > 0
+                    AND
+                    r.futures_ticker_age_ms IS NOT NULL
+                    AND
+                    r.futures_ticker_age_ms
+                        <= {INDEX_MAX_TICKER_AGE_MS},
+                    FALSE
+                )
+                    AS index_return_input_eligible,
 
                 m.open,
                 m.high,
@@ -452,6 +479,70 @@ def create_market_time_series_state(
                 ) AS lag_state_time_12,
 
                 LAG(
+                    futures_index_price,
+                    1
+                ) OVER (
+                    PARTITION BY underlying
+                    ORDER BY state_time
+                ) AS lag_index_1,
+
+                LAG(
+                    index_return_input_eligible,
+                    1
+                ) OVER (
+                    PARTITION BY underlying
+                    ORDER BY state_time
+                ) AS lag_index_ready_1,
+
+                LAG(
+                    futures_index_price,
+                    3
+                ) OVER (
+                    PARTITION BY underlying
+                    ORDER BY state_time
+                ) AS lag_index_3,
+
+                LAG(
+                    index_return_input_eligible,
+                    3
+                ) OVER (
+                    PARTITION BY underlying
+                    ORDER BY state_time
+                ) AS lag_index_ready_3,
+
+                LAG(
+                    futures_index_price,
+                    6
+                ) OVER (
+                    PARTITION BY underlying
+                    ORDER BY state_time
+                ) AS lag_index_6,
+
+                LAG(
+                    index_return_input_eligible,
+                    6
+                ) OVER (
+                    PARTITION BY underlying
+                    ORDER BY state_time
+                ) AS lag_index_ready_6,
+
+                LAG(
+                    futures_index_price,
+                    12
+                ) OVER (
+                    PARTITION BY underlying
+                    ORDER BY state_time
+                ) AS lag_index_12,
+
+                LAG(
+                    index_return_input_eligible,
+                    12
+                ) OVER (
+                    PARTITION BY underlying
+                    ORDER BY state_time
+                ) AS lag_index_ready_12,
+
+                LAG(
                     futures_tradable_mid_price,
                     1
                 ) OVER (
@@ -460,60 +551,12 @@ def create_market_time_series_state(
                 ) AS lag_mid_1,
 
                 LAG(
-                    futures_tradable_mid_price,
-                    3
-                ) OVER (
-                    PARTITION BY underlying
-                    ORDER BY state_time
-                ) AS lag_mid_3,
-
-                LAG(
-                    futures_tradable_mid_price,
-                    6
-                ) OVER (
-                    PARTITION BY underlying
-                    ORDER BY state_time
-                ) AS lag_mid_6,
-
-                LAG(
-                    futures_tradable_mid_price,
-                    12
-                ) OVER (
-                    PARTITION BY underlying
-                    ORDER BY state_time
-                ) AS lag_mid_12,
-
-                LAG(
                     return_input_eligible,
                     1
                 ) OVER (
                     PARTITION BY underlying
                     ORDER BY state_time
                 ) AS lag_return_ready_1,
-
-                LAG(
-                    return_input_eligible,
-                    3
-                ) OVER (
-                    PARTITION BY underlying
-                    ORDER BY state_time
-                ) AS lag_return_ready_3,
-
-                LAG(
-                    return_input_eligible,
-                    6
-                ) OVER (
-                    PARTITION BY underlying
-                    ORDER BY state_time
-                ) AS lag_return_ready_6,
-
-                LAG(
-                    return_input_eligible,
-                    12
-                ) OVER (
-                    PARTITION BY underlying
-                    ORDER BY state_time
-                ) AS lag_return_ready_12,
 
                 LAG(
                     open_interest,
@@ -541,6 +584,84 @@ def create_market_time_series_state(
 
                 CASE
                     WHEN
+                        index_return_input_eligible
+                        AND lag_index_ready_1
+                        AND futures_index_price > 0
+                        AND lag_index_1 > 0
+                        AND date_diff(
+                            'minute',
+                            lag_state_time_1,
+                            state_time
+                        ) = 5
+                    THEN
+                        LN(
+                            futures_index_price
+                            / lag_index_1
+                        )
+                END
+                    AS return_5m,
+
+                CASE
+                    WHEN
+                        index_return_input_eligible
+                        AND lag_index_ready_3
+                        AND futures_index_price > 0
+                        AND lag_index_3 > 0
+                        AND date_diff(
+                            'minute',
+                            lag_state_time_3,
+                            state_time
+                        ) = 15
+                    THEN
+                        LN(
+                            futures_index_price
+                            / lag_index_3
+                        )
+                END
+                    AS return_15m,
+
+                CASE
+                    WHEN
+                        index_return_input_eligible
+                        AND lag_index_ready_6
+                        AND futures_index_price > 0
+                        AND lag_index_6 > 0
+                        AND date_diff(
+                            'minute',
+                            lag_state_time_6,
+                            state_time
+                        ) = 30
+                    THEN
+                        LN(
+                            futures_index_price
+                            / lag_index_6
+                        )
+                END
+                    AS return_30m,
+
+                CASE
+                    WHEN
+                        index_return_input_eligible
+                        AND lag_index_ready_12
+                        AND futures_index_price > 0
+                        AND lag_index_12 > 0
+                        AND date_diff(
+                            'minute',
+                            lag_state_time_12,
+                            state_time
+                        ) = 60
+                    THEN
+                        LN(
+                            futures_index_price
+                            / lag_index_12
+                        )
+                END
+                    AS return_1h,
+
+                -- Diagnostic only: perpetual-mid return (pre-v0.2.0
+                -- definition of return_5m). Not a structural input.
+                CASE
+                    WHEN
                         return_input_eligible
                         AND lag_return_ready_1
                         AND futures_tradable_mid_price > 0
@@ -556,64 +677,10 @@ def create_market_time_series_state(
                             / lag_mid_1
                         )
                 END
-                    AS return_5m,
+                    AS perp_mid_return_5m,
 
-                CASE
-                    WHEN
-                        return_input_eligible
-                        AND lag_return_ready_3
-                        AND futures_tradable_mid_price > 0
-                        AND lag_mid_3 > 0
-                        AND date_diff(
-                            'minute',
-                            lag_state_time_3,
-                            state_time
-                        ) = 15
-                    THEN
-                        LN(
-                            futures_tradable_mid_price
-                            / lag_mid_3
-                        )
-                END
-                    AS return_15m,
-
-                CASE
-                    WHEN
-                        return_input_eligible
-                        AND lag_return_ready_6
-                        AND futures_tradable_mid_price > 0
-                        AND lag_mid_6 > 0
-                        AND date_diff(
-                            'minute',
-                            lag_state_time_6,
-                            state_time
-                        ) = 30
-                    THEN
-                        LN(
-                            futures_tradable_mid_price
-                            / lag_mid_6
-                        )
-                END
-                    AS return_30m,
-
-                CASE
-                    WHEN
-                        return_input_eligible
-                        AND lag_return_ready_12
-                        AND futures_tradable_mid_price > 0
-                        AND lag_mid_12 > 0
-                        AND date_diff(
-                            'minute',
-                            lag_state_time_12,
-                            state_time
-                        ) = 60
-                    THEN
-                        LN(
-                            futures_tradable_mid_price
-                            / lag_mid_12
-                        )
-                END
-                    AS return_1h,
+                '{RETURN_SOURCE}'
+                    AS return_source,
 
                 CASE
                     WHEN volume_usd >= 0
@@ -874,15 +941,18 @@ def create_market_time_series_state(
                 lag_state_time_6,
                 lag_state_time_12,
 
-                lag_mid_1,
-                lag_mid_3,
-                lag_mid_6,
-                lag_mid_12,
+                lag_index_1,
+                lag_index_3,
+                lag_index_6,
+                lag_index_12,
 
+                lag_index_ready_1,
+                lag_index_ready_3,
+                lag_index_ready_6,
+                lag_index_ready_12,
+
+                lag_mid_1,
                 lag_return_ready_1,
-                lag_return_ready_3,
-                lag_return_ready_6,
-                lag_return_ready_12,
 
                 lag_open_interest_1,
                 lag_book_twa_obi_20_1,
@@ -988,6 +1058,136 @@ def create_market_time_series_state(
         FROM rolling
         """
     )
+
+
+def validate_market_returns(
+    connection
+) -> None:
+    """
+    Return-source checks for market_time_series_state.
+
+    Hard invariants (raise):
+        - every structural return comes from an eligible index state;
+        - return_source is the declared source on every row.
+
+    Diagnostic (print only): how often the perpetual-mid return departs
+    from the index return by more than 100 bps in one bar.
+    """
+
+    violations = connection.execute(
+        """
+        SELECT
+            SUM(
+                CASE
+                    WHEN
+                        return_5m IS NOT NULL
+                        AND NOT index_return_input_eligible
+                    THEN 1 ELSE 0
+                END
+            ),
+
+            SUM(
+                CASE
+                    WHEN
+                        return_source IS DISTINCT FROM ?
+                    THEN 1 ELSE 0
+                END
+            )
+
+        FROM market_time_series_state
+        """,
+        [RETURN_SOURCE]
+    ).fetchone()
+
+    rows = connection.execute(
+        """
+        SELECT
+            underlying,
+
+            COUNT(return_5m)
+                AS index_returns,
+
+            COUNT(perp_mid_return_5m)
+                AS perp_mid_returns,
+
+            SUM(
+                CASE
+                    WHEN
+                        ABS(
+                            perp_mid_return_5m
+                            - return_5m
+                        ) > 0.01
+                    THEN 1 ELSE 0
+                END
+            )
+                AS divergent_bars,
+
+            ROUND(
+                CORR(
+                    perp_mid_return_5m,
+                    return_5m
+                ),
+                4
+            )
+                AS corr_perp_index
+
+        FROM market_time_series_state
+
+        GROUP BY underlying
+
+        ORDER BY underlying
+        """
+    ).fetchall()
+
+    print(
+        "\nMARKET RETURN SOURCE"
+    )
+
+    print(
+        "=" * 85
+    )
+
+    print(
+        f"Structural return source:        {RETURN_SOURCE}"
+    )
+
+    print(
+        f"Returns on ineligible index:     {int(violations[0] or 0):,}"
+    )
+
+    print(
+        f"Rows with wrong return_source:   {int(violations[1] or 0):,}"
+    )
+
+    print(
+        f"\n{'Asset':<10}"
+        f"{'Index ret':>12}"
+        f"{'Perp ret':>12}"
+        f"{'|perp-idx|>100bp':>18}"
+        f"{'Corr':>10}"
+    )
+
+    for row in rows:
+
+        print(
+            f"{row[0]:<10}"
+            f"{row[1]:>12,}"
+            f"{row[2]:>12,}"
+            f"{int(row[3] or 0):>18,}"
+            f"{str(row[4]):>10}"
+        )
+
+    if violations[0]:
+        raise RuntimeError(
+            "market_time_series_state has structural returns "
+            "on states whose index input is not eligible."
+        )
+
+    if violations[1]:
+        raise RuntimeError(
+            "market_time_series_state has rows whose "
+            "return_source differs from RETURN_SOURCE."
+        )
 
 
 def print_market_feature_summary(
@@ -1193,6 +1393,10 @@ def main() -> None:
         )
 
         create_market_time_series_state(
+            connection
+        )
+
+        validate_market_returns(
             connection
         )
 

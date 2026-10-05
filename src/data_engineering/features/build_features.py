@@ -30,6 +30,7 @@ from data_engineering.features.market_time_series import (
     materialize_market_feature_inputs,
     print_l2_instability_summary,
     print_market_feature_summary,
+    validate_market_returns,
 )
 
 from data_engineering.features.option_time_series import (
@@ -41,7 +42,10 @@ from data_engineering.features.option_time_series import (
 )
 
 
-TIME_SERIES_FEATURE_SCHEMA_VERSION = "0.1.2"
+# v0.2.0: return_5m/15m/30m/1h and realized volatility come from the
+# Deribit index (market feature v0.2.0); adds perp_mid_return_5m,
+# return_source and index_return_input_eligible.
+TIME_SERIES_FEATURE_SCHEMA_VERSION = "0.2.0"
 
 
 REQUIRED_UPSTREAM_RELATIONS = (
@@ -675,6 +679,10 @@ def build_features(
     )
 
     create_market_time_series_state(
+        connection
+    )
+
+    validate_market_returns(
         connection
     )
 
