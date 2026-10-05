@@ -223,38 +223,121 @@ c5.handle_subscription_confirmation(
 check("missing book channel -> instrument unconfirmed", INSTR in c5.unconfirmed_instruments)
 
 # --------------------------------------------------
-# 7. REST stale verification (fake REST)
+# 7. REST stale verification (fake REST) - v0.3.1 behaviour
 # --------------------------------------------------
-def run_verifier_case(rest_bbo):
+class FakeWebSocket:
+    def __init__(self):
+        self.sent = []
+
+    async def send(self, payload):
+        import json as _json
+        self.sent.append(_json.loads(payload))
+
+
+REST = {"bbo": (100.0, 101.0)}
+fsc.fetch_rest_top_of_book = lambda name: REST["bbo"]
+fsc.STALE_CONFIRM_DELAY_SECONDS = 0.0
+fsc.STREAM_VERIFY_INTERVAL_SECONDS = 0.01
+
+
+def make_verifier_cache():
     clock6 = Clock(T0)
     c6 = new_cache(clock6)
     confirm(c6)
+    c6.websocket = FakeWebSocket()
     c6.ticker_state[INSTR] = {"best_bid_price": 100.0, "best_ask_price": 101.0}
     c6.process_book(book(T0, 100.0, 101.0))
     c6.ticker_bbo_last_change[INSTR] = {"exchange_ms": T0, "received_ms": T0}
-    clock6.ms = T0 + 30_000  # quiet for 30 s
-    fsc.fetch_rest_top_of_book = lambda name: rest_bbo
-    fsc.STALE_CONFIRM_DELAY_SECONDS = 0.0
-    fsc.STREAM_VERIFY_INTERVAL_SECONDS = 0.01
+    c6.book_last_update_received_ms[INSTR] = T0
+    return clock6, c6
 
+
+def run_verifier(c6, seconds=0.2):
     async def go():
+        c6.stop_event = asyncio.Event()  # bind to this run's event loop
         try:
-            await asyncio.wait_for(c6.stream_verifier(), timeout=0.2)
+            await asyncio.wait_for(c6.stream_verifier(), timeout=seconds)
         except asyncio.TimeoutError:
             return None
         except fsc.FeedStaleError as exc:
             return exc
-    return c6, asyncio.run(go())
+    return asyncio.run(go())
 
 
-c6, outcome = run_verifier_case((100.0, 101.0))
-check("quiet but matching REST -> no reconnect", outcome is None)
+# 7a. quiet but matching REST
+REST["bbo"] = (100.0, 101.0)
+clock6, c6 = make_verifier_cache()
+clock6.ms = T0 + 30_000
+outcome = run_verifier(c6)
+check("quiet but matching REST -> no action", outcome is None and not c6.stale_streams)
 check("REST checks counted", c6.rest_verifications >= 1, c6.rest_verifications)
 
-c7, outcome = run_verifier_case((150.0, 151.0))
-check("stale confirmed -> FeedStaleError", isinstance(outcome, fsc.FeedStaleError), str(outcome))
+# 7b. stale confirmed -> no reconnect, instrument flagged, one channel resubscribed
+REST["bbo"] = (150.0, 151.0)
+clock7, c7 = make_verifier_cache()
+c7.ticker_bbo_last_change[INSTR] = {"exchange_ms": T0 + 29_000, "received_ms": T0 + 29_000}
+clock7.ms = T0 + 30_000
+outcome = run_verifier(c7)
+check("stale confirmed -> no reconnect raised", outcome is None, str(outcome))
+check("book stale state open", (INSTR, "book") in c7.stale_streams)
+check("ticker not flagged (not quiet)", (INSTR, "ticker") not in c7.stale_streams)
 check("stale interval marked", (INSTR, T0) in c7.incomplete_bar_keys)
-check("stale counter", c7.stale_feeds_detected == 1)
+check("stale counter", c7.stale_feeds_detected == 1, c7.stale_feeds_detected)
+methods = [(m["method"], tuple(m["params"]["channels"])) for m in c7.websocket.sent]
+book_ch = c7.book_channel(INSTR)
+check("unsubscribe+subscribe of book channel only",
+      methods == [("public/unsubscribe", (book_ch,)), ("public/subscribe", (book_ch,))], methods)
+
+# 7c. frozen after resubscribe (one snapshot, REST still differs): stays stale, rate-limited
+c7.process_book(book(T0 + 30_500, 100.0, 101.0))          # resubscribe snapshot (frozen)
+clock7.ms = T0 + 50_000
+run_verifier(c7)
+check("frozen snapshot -> still stale", (INSTR, "book") in c7.stale_streams)
+def book_sends(cache):
+    channel = cache.book_channel(INSTR)
+    return sum(1 for m in cache.websocket.sent if m["params"]["channels"] == [channel])
+
+
+check("no second book resubscribe within 60 s", book_sends(c7) == 2, book_sends(c7))
+check("frozen ticker also flagged independently", (INSTR, "ticker") in c7.stale_streams)
+clock7.ms = T0 + 95_000
+run_verifier(c7)
+check("book resubscribed again after 60 s", book_sends(c7) == 4, book_sends(c7))
+bnd = c7.capture_boundary_state(datetime.fromtimestamp((T0 + BAR) / 1000, tz=timezone.utc))
+clock7.ms = T0 + BAR + 1000
+feed_messages(c7, clock7, T0, T0 + BAR + 1000, 500)
+r7 = c7.finalize_bar(datetime.fromtimestamp((T0 + BAR) / 1000, tz=timezone.utc), bnd).iloc[0]
+check("bar reason stale_stream_open:book", "stale_stream_open:book" in str(r7["stream_incomplete_reason"]),
+      r7["stream_incomplete_reason"])
+
+# 7d. live stream again (>=2 changes since resubscribe) -> cleared without REST match
+c7.process_book(book(T0 + BAR + 2000, 150.0, 151.0))
+c7.process_book(book(T0 + BAR + 2500, 150.5, 151.5))
+REST["bbo"] = (999.0, 1000.0)                                # REST disagrees: must not matter
+clock7.ms = T0 + BAR + 3000
+run_verifier(c7)
+check("live stream clears stale state", (INSTR, "book") not in c7.stale_streams)
+check("cleared interval marked", (INSTR, T0 + BAR) in c7.incomplete_bar_keys)
+
+# 7e. REST match clears a stale state
+REST["bbo"] = (150.0, 151.0)
+clock8b, c8b = make_verifier_cache()
+c8b.ticker_bbo_last_change[INSTR] = {"exchange_ms": T0 + 29_000, "received_ms": T0 + 29_000}
+clock8b.ms = T0 + 30_000
+run_verifier(c8b)
+REST["bbo"] = (100.0, 101.0)                                 # market came back to cached top
+clock8b.ms = T0 + 40_000
+run_verifier(c8b)
+check("REST match clears stale state", not c8b.stale_streams)
+
+# 7f. stale state survives a reconnect reset
+REST["bbo"] = (150.0, 151.0)
+clock9b, c9b = make_verifier_cache()
+c9b.ticker_bbo_last_change[INSTR] = {"exchange_ms": T0 + 29_000, "received_ms": T0 + 29_000}
+clock9b.ms = T0 + 30_000
+run_verifier(c9b)
+c9b.reset_realtime_state()
+check("stale state survives reconnect reset", (INSTR, "book") in c9b.stale_streams)
 
 # --------------------------------------------------
 # 8. Silence watchdog

@@ -40,7 +40,7 @@ RECONNECT_DELAY_SECONDS = 5
 # boundaries (for example the L2 event-time fix) are
 # therefore identifiable from the data itself.
 
-COLLECTOR_VERSION = "futures_5m_l2_v0.3.0"
+COLLECTOR_VERSION = "futures_5m_l2_v0.3.1"
 
 
 def _source_sha256() -> str | None:
@@ -91,6 +91,10 @@ STREAM_VERIFY_INTERVAL_SECONDS = 20.0
 BOOK_QUIET_VERIFY_SECONDS = 20.0
 STALE_CONFIRM_DELAY_SECONDS = 3.0
 REST_TIMEOUT_SECONDS = 10
+
+# v0.3.1: a stale channel is resubscribed at most this often
+# while its stale state remains open.
+STALE_RESUBSCRIBE_MIN_SECONDS = 60.0
 
 # Clock grid for intrawindow mid-price path statistics.
 PATH_GRID_MS = 10_000
@@ -796,6 +800,27 @@ class FuturesStateCache:
         self.subscription_failures = 0
         self.unconfirmed_channel_count = 0
 
+        # v0.3.1 per-instrument stale-stream state:
+        # (instrument, "book"|"ticker") -> {since_ms,
+        # last_resubscribe_ms}. Survives reconnects; only a
+        # REST match clears it.
+        self.stale_streams: dict[
+            tuple[str, str],
+            dict
+        ] = {}
+
+        # Monotonic per-instrument counters of stream
+        # changes (accepted L2 updates; ticker BBO price
+        # changes). Used to tell a live stream from a
+        # single resubscribe snapshot of a frozen feed.
+        self.stream_change_counter: dict[
+            tuple[str, str],
+            int
+        ] = {}
+
+        self.resubscribe_request_id = 3000
+        self.channel_resubscriptions = 0
+
     # --------------------------------------------------
     # Subscription channels
     # --------------------------------------------------
@@ -1281,6 +1306,18 @@ class FuturesStateCache:
             exchange_ms = state.get(
                 "timestamp"
             )
+
+            counter_key = (
+                instrument_name,
+                "ticker"
+            )
+
+            self.stream_change_counter[
+                counter_key
+            ] = self.stream_change_counter.get(
+                counter_key,
+                0
+            ) + 1
 
             self.ticker_bbo_last_change[
                 instrument_name
@@ -2408,6 +2445,18 @@ class FuturesStateCache:
         self.book_last_update_received_ms[
             instrument_name
         ] = received_timestamp_ms
+
+        counter_key = (
+            instrument_name,
+            "book"
+        )
+
+        self.stream_change_counter[
+            counter_key
+        ] = self.stream_change_counter.get(
+            counter_key,
+            0
+        ) + 1
 
         self.book_messages_received += 1
 
@@ -4134,6 +4183,27 @@ class FuturesStateCache:
                     "outage_open_at_finalize"
                 )
 
+            open_stale_sources = sorted(
+                source
+                for (
+                    stale_instrument,
+                    source
+                ), stale_state in (
+                    self.stale_streams.items()
+                )
+                if stale_instrument == instrument
+                and stale_state["since_ms"]
+                < bar_end_ms
+            )
+
+            if open_stale_sources:
+                incomplete_reasons.append(
+                    "stale_stream_open:"
+                    + "+".join(
+                        open_stale_sources
+                    )
+                )
+
             subscription_confirmed = (
                 self.confirmed_channels
                 is not None
@@ -4798,14 +4868,254 @@ class FuturesStateCache:
 
         return confirmed
 
+    async def resubscribe_channels(
+        self,
+        channels: list[str],
+        label: str
+    ) -> None:
+        """
+        v0.3.1: refresh individual channels on the existing
+        connection (unsubscribe + subscribe). Other
+        instruments and channels keep streaming, so no data
+        is lost elsewhere. A fresh subscription delivers a
+        new full snapshot for book and ticker channels.
+        """
+
+        websocket = self.websocket
+
+        if websocket is None or not channels:
+            return
+
+        for method in [
+            "public/unsubscribe",
+            "public/subscribe"
+        ]:
+
+            self.resubscribe_request_id += 1
+
+            await websocket.send(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": self.resubscribe_request_id,
+                        "method": method,
+                        "params": {
+                            "channels": channels
+                        }
+                    }
+                )
+            )
+
+        self.channel_resubscriptions += 1
+
+        print(
+            f"\nResubscribed {label}: "
+            f"{', '.join(channels)}"
+        )
+
+    def _stale_source_channel(
+        self,
+        instrument: str,
+        source: str
+    ) -> str:
+
+        if source == "book":
+            return self.book_channel(
+                instrument
+            )
+
+        return (
+            f"incremental_ticker."
+            f"{instrument}"
+        )
+
+    def _close_stale_state(
+        self,
+        instrument: str,
+        source: str
+    ) -> None:
+
+        stale_key = (
+            instrument,
+            source
+        )
+
+        state = self.stale_streams.pop(
+            stale_key,
+            None
+        )
+
+        if state is None:
+            return
+
+        end_ms = int(
+            time.time()
+            * 1000
+        )
+
+        self.mark_interval_incomplete(
+            state["since_ms"],
+            end_ms,
+            [instrument]
+        )
+
+        print(
+            f"\nStale {source} stream for {instrument} "
+            "resolved (stream live / matches REST). "
+            "Interval marked incomplete: "
+            f"{(end_ms - state['since_ms']) / 1000:.1f}s."
+        )
+
+    async def _recheck_stale_streams(
+        self
+    ) -> None:
+        """
+        For every open stale state: clear it when the cached
+        stream top of book matches REST again; otherwise
+        keep the instrument marked and resubscribe the
+        channel at most once per STALE_RESUBSCRIBE_MIN_SECONDS.
+        """
+
+        for (
+            instrument,
+            source
+        ) in list(
+            self.stale_streams
+        ):
+
+            state = self.stale_streams.get(
+                (instrument, source)
+            )
+
+            if state is None:
+                continue
+
+            # A live stream delivers more than the single
+            # snapshot that follows a resubscription. Two or
+            # more changes since the last resubscription mean
+            # the channel is updating again; REST equality is
+            # not required (a busy book rarely matches a REST
+            # snapshot taken milliseconds apart).
+            changes_since = (
+                self.stream_change_counter.get(
+                    (instrument, source),
+                    0
+                )
+                - state["counter_at_resubscribe"]
+            )
+
+            if changes_since >= 2:
+
+                self._close_stale_state(
+                    instrument,
+                    source
+                )
+
+                continue
+
+            rest_bbo = await asyncio.to_thread(
+                fetch_rest_top_of_book,
+                instrument
+            )
+
+            self.rest_verifications += 1
+
+            self._verify_bucket_stats(
+                instrument
+            )["checks"] += 1
+
+            if rest_bbo is None:
+
+                self.rest_verification_errors += 1
+
+                continue
+
+            book_bbo, ticker_bbo = (
+                self._cached_tops(
+                    instrument
+                )
+            )
+
+            cached = (
+                book_bbo
+                if source == "book"
+                else ticker_bbo
+            )
+
+            if (
+                cached is not None
+                and cached == rest_bbo
+            ):
+
+                self._close_stale_state(
+                    instrument,
+                    source
+                )
+
+                continue
+
+            self._verify_bucket_stats(
+                instrument
+            )["mismatches"] += 1
+
+            now_ms = int(
+                time.time()
+                * 1000
+            )
+
+            # Keep the ongoing interval marked so bars that
+            # close while the stream is still stale are
+            # incomplete for this instrument.
+            self.mark_interval_incomplete(
+                state["since_ms"],
+                now_ms,
+                [instrument]
+            )
+
+            if (
+                now_ms
+                - state["last_resubscribe_ms"]
+                >= STALE_RESUBSCRIBE_MIN_SECONDS
+                * 1000
+            ):
+
+                state["last_resubscribe_ms"] = now_ms
+
+                state["counter_at_resubscribe"] = (
+                    self.stream_change_counter.get(
+                        (instrument, source),
+                        0
+                    )
+                )
+
+                await self.resubscribe_channels(
+                    [
+                        self._stale_source_channel(
+                            instrument,
+                            source
+                        )
+                    ],
+                    f"stale {source} stream "
+                    f"({instrument}, still stale)"
+                )
+
     async def stream_verifier(
         self
     ) -> None:
         """
         Periodically cross-check quiet streams against REST.
-        A confirmed stale source marks the affected bars
-        incomplete from the last observed stream change and
-        forces a reconnect.
+
+        v0.3.1: a confirmed stale source no longer forces a
+        full reconnect. Live data (2026-10-05 14:35-14:40 UTC)
+        showed exchange-side book freezes that survive a
+        reconnect, so reconnecting every ~45 s only destroyed
+        trades and tickers for every other instrument.
+
+        Instead the affected instrument/source enters a stale
+        state: its bars are finalized incomplete with reason
+        'stale_stream', the single channel is resubscribed
+        (rate-limited), and the state is cleared when the
+        stream again matches REST.
         """
 
         while not self.stop_event.is_set():
@@ -4827,6 +5137,8 @@ class FuturesStateCache:
 
             if self.confirmed_channels is None:
                 continue
+
+            await self._recheck_stale_streams()
 
             for instrument in list(
                 self.instrument_names
@@ -4858,12 +5170,16 @@ class FuturesStateCache:
                     book_received is not None
                     and now_ms - book_received
                     > quiet_ms
+                    and (instrument, "book")
+                    not in self.stale_streams
                 )
 
                 check_ticker = (
                     ticker_received is not None
                     and now_ms - ticker_received
                     > quiet_ms
+                    and (instrument, "ticker")
+                    not in self.stale_streams
                 )
 
                 if not (
@@ -4881,25 +5197,10 @@ class FuturesStateCache:
                 if not confirmed:
                     continue
 
-                stale_since_ms = min(
-                    value
-                    for value in [
-                        book_received
-                        if "book" in confirmed
-                        else None,
-                        ticker_received
-                        if "ticker" in confirmed
-                        else None
-                    ]
-                    if value is not None
-                )
-
                 end_ms = int(
                     time.time()
                     * 1000
                 )
-
-                self.stale_feeds_detected += 1
 
                 self._verify_bucket_stats(
                     instrument
@@ -4907,18 +5208,57 @@ class FuturesStateCache:
                     "stale_confirmed"
                 ] = True
 
-                self.mark_interval_incomplete(
-                    stale_since_ms,
-                    end_ms,
-                    [instrument]
-                )
+                for source in confirmed:
 
-                raise FeedStaleError(
-                    f"Stale {'/'.join(confirmed)} stream "
-                    f"confirmed by REST for {instrument}; "
-                    f"no stream change for "
-                    f"{(end_ms - stale_since_ms) / 1000:.1f}s."
-                )
+                    since_ms = (
+                        book_received
+                        if source == "book"
+                        else ticker_received
+                    )
+
+                    self.stale_feeds_detected += 1
+
+                    self.stale_streams[
+                        (instrument, source)
+                    ] = {
+                        "since_ms":
+                            since_ms,
+
+                        "last_resubscribe_ms":
+                            end_ms,
+
+                        "counter_at_resubscribe":
+                            self.stream_change_counter.get(
+                                (instrument, source),
+                                0
+                            )
+                    }
+
+                    self.mark_interval_incomplete(
+                        since_ms,
+                        end_ms,
+                        [instrument]
+                    )
+
+                    print(
+                        f"\nStale {source} stream "
+                        f"confirmed by REST for {instrument}; "
+                        "no stream change for "
+                        f"{(end_ms - since_ms) / 1000:.1f}s. "
+                        "Instrument marked; other "
+                        "instruments unaffected."
+                    )
+
+                    await self.resubscribe_channels(
+                        [
+                            self._stale_source_channel(
+                                instrument,
+                                source
+                            )
+                        ],
+                        f"stale {source} stream "
+                        f"({instrument})"
+                    )
 
     # --------------------------------------------------
     # WebSocket receive loop
@@ -5266,6 +5606,12 @@ class FuturesStateCache:
             print(
                 f"Outage open:          "
                 f"{self.degraded_since_ms is not None}"
+            )
+
+            print(
+                f"Stale streams open:   "
+                f"{len(self.stale_streams)} "
+                f"(resubscriptions {self.channel_resubscriptions:,})"
             )
 
             if ticker_ages:
