@@ -46,7 +46,10 @@ from data_engineering.features.option_time_series import (
 # v0.2.0: return_5m/15m/30m/1h and realized volatility come from the
 # Deribit index (market feature v0.2.0); adds perp_mid_return_5m,
 # return_source and index_return_input_eligible.
-TIME_SERIES_FEATURE_SCHEMA_VERSION = "0.3.0"
+TIME_SERIES_FEATURE_SCHEMA_VERSION = "0.4.0"
+
+# v0.4.0: quote-only fitted smile, exit-liquidity counts, 30m/1h option
+# changes and option quote flags (option features v0.3.0).
 
 # v0.3.0: option surfaces no longer require the futures stream (B1);
 # IV-source columns and source-consistent option changes (B2);
@@ -60,6 +63,7 @@ REQUIRED_UPSTREAM_RELATIONS = (
     "option_smile_state",
     "surface_quality_state",
     "delta_smile_state",
+    "quote_smile_fit_state",
 )
 
 
@@ -286,6 +290,42 @@ def create_time_series_feature_state(
             p.core_source_switch_5m,
             p.atm_source_switch_5m,
 
+            p.fit_ok,
+            p.fit_n_quotes,
+            p.fit_n_quotes_z1,
+            p.fit_z_min,
+            p.fit_z_max,
+            p.fit_atm_iv,
+            p.fit_skew,
+            p.fit_curvature,
+            p.fit_skew_rel,
+            p.fit_curvature_rel,
+            p.fit_wrmse,
+            p.fit_atm_iv_change_5m,
+            p.fit_atm_iv_change_15m,
+            p.fit_atm_iv_change_30m,
+            p.fit_atm_iv_change_1h,
+            p.fit_skew_change_5m,
+            p.fit_skew_change_15m,
+            p.fit_skew_change_30m,
+            p.fit_skew_change_1h,
+            p.fit_curvature_change_5m,
+            p.fit_curvature_change_15m,
+            p.fit_curvature_change_30m,
+            p.fit_curvature_change_1h,
+            p.atm_iv_change_30m,
+            p.skew_025_change_30m,
+            p.curvature_025_change_30m,
+            p.option_atm_quote_ok,
+            p.option_shape_quote_ok,
+            p.otm_contracts_z1,
+            p.otm_with_bid_z1,
+            p.otm_with_ask_z1,
+            p.otm_contracts_z2,
+            p.otm_with_bid_z2,
+            p.otm_with_ask_z2,
+            p.otm_bid_share_z2,
+
             p.delta_25d_change_5m_ready,
 
             (
@@ -488,6 +528,12 @@ def validate_feature_tables(
                 rr_25d_change_5m IS NOT NULL
                 OR
                 bf_25d_change_5m IS NOT NULL
+                OR
+                atm_iv_change_30m IS NOT NULL
+                OR
+                fit_atm_iv_change_5m IS NOT NULL
+                OR
+                fit_skew_change_1h IS NOT NULL
             )
         """
     ).fetchone()[0]
@@ -511,6 +557,29 @@ def validate_feature_tables(
             (
                 core_surface_change_5m_ready
                 AND core_iv_source_signature IS NULL
+            )
+            OR
+            (
+                atm_iv_change_30m IS NOT NULL
+                AND src_k_000 IS NULL
+            )
+        """
+    ).fetchone()[0]
+
+    invalid_fit_changes = connection.execute(
+        """
+        SELECT COUNT(*)
+        FROM option_surface_feature_state
+
+        WHERE
+            (
+                NOT COALESCE(fit_ok, FALSE)
+                AND (
+                    fit_atm_iv IS NOT NULL
+                    OR fit_atm_iv_change_5m IS NOT NULL
+                    OR fit_skew_change_30m IS NOT NULL
+                    OR fit_curvature_change_1h IS NOT NULL
+                )
             )
         """
     ).fetchone()[0]
@@ -575,6 +644,11 @@ def validate_feature_tables(
         f"{cross_source_changes:,}"
     )
 
+    print(
+        f"Invalid fit values/changes:    "
+        f"{invalid_fit_changes:,}"
+    )
+
     if market_duplicates:
         raise RuntimeError(
             "market_time_series_state contains "
@@ -609,6 +683,12 @@ def validate_feature_tables(
         raise RuntimeError(
             "Option-surface changes crossed an "
             "08:00 UTC session boundary."
+        )
+
+    if invalid_fit_changes:
+        raise RuntimeError(
+            "Fitted-smile values or changes exist without an "
+            "accepted fit."
         )
 
     if cross_source_changes:

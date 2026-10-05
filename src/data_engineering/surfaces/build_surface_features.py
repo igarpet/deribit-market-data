@@ -33,8 +33,17 @@ from data_engineering.surfaces.delta_smile import (
     print_source_overlap_summary,
 )
 
+from data_engineering.surfaces.smile_fit import (
+    SMILE_FIT_VERSION,
+    create_quote_smile_fit_state,
+    validate_quote_smile_fit,
+)
 
-SURFACE_FEATURE_SCHEMA_VERSION = "0.1"
+
+SURFACE_FEATURE_SCHEMA_VERSION = "0.2"
+
+# v0.2: adds quote_smile_fit_state (quote-only fitted smile in
+# standardized moneyness, plus exit-liquidity counts).
 
 
 def register_surface_feature_metadata(connection) -> None:
@@ -53,6 +62,10 @@ def register_surface_feature_metadata(connection) -> None:
         (
             "surface_feature_schema_version",
             SURFACE_FEATURE_SCHEMA_VERSION,
+        ),
+        (
+            "smile_fit_version",
+            SMILE_FIT_VERSION,
         ),
     ]:
         connection.execute(
@@ -202,9 +215,13 @@ def build_surface_features(connection) -> None:
 
     create_surface_source_comparison(connection)
 
+    create_quote_smile_fit_state(connection)
+
     register_surface_feature_metadata(connection)
 
     validate_surface_features(connection)
+
+    validate_quote_smile_fit(connection)
 
 
 def main() -> None:
