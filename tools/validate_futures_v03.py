@@ -109,3 +109,87 @@ print(v3.groupby("instrument_name").agg(
 print("\n6. Funding fields populated")
 for column in ["current_funding", "funding_8h"]:
     print(f"   {column}: {int(v3[column].notna().sum()):,} / {len(v3):,}")
+
+with pd.option_context("display.width", 250, "display.max_columns", 30, "display.max_colwidth", 90):
+
+    print("\n7. Incident timeline (bar_end UTC, any instrument incomplete)")
+    complete_flag = v3["stream_complete"].fillna(False).astype(bool)
+    incidents = v3[~complete_flag]
+    if incidents.empty:
+        print("   none")
+    else:
+        timeline = incidents.groupby("bar_end").agg(
+            instruments=("instrument_name", "nunique"),
+            reasons=(
+                "stream_incomplete_reason",
+                lambda s: " | ".join(sorted(set(s.dropna())))
+            ),
+            feed_gap_ms=("feed_max_message_gap_ms", "max"),
+            max_book_gap_ms=("book_max_update_gap_ms", "max"),
+            connection_count=("connection_count", "max"),
+            rest_stale=("rest_stale_confirmed", "sum"),
+        )
+        print(timeline.to_string())
+
+    print("\n   Reconnects (connection_count increases between consecutive bars):")
+    connections = v3.groupby("bar_end")["connection_count"].max().sort_index()
+    increases = connections[connections.diff() > 0]
+    if increases.empty:
+        print("   none")
+    else:
+        print(increases.to_string())
+
+    print("\n   REST-confirmed stale streams:")
+    stale = v3[v3["rest_stale_confirmed"].fillna(False).astype(bool)]
+    if stale.empty:
+        print("   none")
+    else:
+        print(stale[[
+            "bar_end", "instrument_name", "rest_verify_count",
+            "rest_verify_mismatch_count", "book_max_update_gap_ms",
+            "ticker_bbo_age_ms", "trade_count"
+        ]].to_string(index=False))
+
+    print("\n8. Trades outside book BBO, measured in boundary spreads")
+    print("   (count is dominated by 1-tick channel timing; distance is the staleness signal)")
+    work = v3.copy()
+    bid = pd.to_numeric(work["best_bid_price"], errors="coerce")
+    ask = pd.to_numeric(work["best_ask_price"], errors="coerce")
+    mid = (bid + ask) / 2.0
+    work["boundary_spread_bps"] = (ask - bid) / mid * 10000.0
+    work["outside_share"] = (
+        work["trades_outside_book_bbo"]
+        / work["trades_checked_vs_book"].where(work["trades_checked_vs_book"] > 0)
+    )
+    has_outside = (work["trades_outside_book_bbo"] > 0) & (work["boundary_spread_bps"] > 0)
+    work.loc[has_outside, "max_outside_in_spreads"] = (
+        work.loc[has_outside, "max_trade_outside_book_bbo_bps"]
+        / work.loc[has_outside, "boundary_spread_bps"]
+    )
+    per_instrument = work.groupby("instrument_name").agg(
+        med_spread_bps=("boundary_spread_bps", "median"),
+        med_outside_share=("outside_share", "median"),
+        bars_with_outside=("max_outside_in_spreads", "count"),
+        p50_spreads=("max_outside_in_spreads", "median"),
+        p90_spreads=("max_outside_in_spreads", lambda s: s.quantile(0.90)),
+        p99_spreads=("max_outside_in_spreads", lambda s: s.quantile(0.99)),
+        max_spreads=("max_outside_in_spreads", "max"),
+        max_bps=("max_trade_outside_book_bbo_bps", "max"),
+    )
+    print(per_instrument.to_string())
+
+    print("\n   Ten largest outside-BBO distances (bps):")
+    print(work.nlargest(10, "max_trade_outside_book_bbo_bps")[[
+        "bar_end", "instrument_name", "max_trade_outside_book_bbo_bps",
+        "max_outside_in_spreads", "boundary_spread_bps", "trades_outside_book_bbo",
+        "trades_checked_vs_book", "trade_count", "book_max_update_gap_ms",
+        "stream_complete"
+    ]].to_string(index=False))
+
+    print("\n9. Out-of-order L2 rejections per instrument")
+    l2 = v3.groupby("instrument_name").agg(
+        out_of_order=("book_out_of_order_update_count", "sum"),
+        accepted_updates=("book_update_count", "sum"),
+    )
+    l2["rejected_pct"] = 100.0 * l2["out_of_order"] / (l2["out_of_order"] + l2["accepted_updates"])
+    print(l2.to_string())
