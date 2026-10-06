@@ -28,7 +28,9 @@ Displacement in units of expected movement over the anchor's horizon:
              returns, de-annualized). This is the RAW scale; the regime
              layer rescales with the clock-adjusted scale
              (modeling.clock_baseline), so G_t is stored as well.
-    h:       H for EWMA anchors; bars since 08:00 for session VWAP;
+    h:       h_eff(H) = lam / (1 - lam^2) for EWMA anchors (v0.2), so that
+             Var(G_t) = sigma^2 h for a random walk; bars since 08:00 for
+             session VWAP;
              W / 2 for rolling VWAP (centre of mass of the window).
 
 Persistence statistics on index returns over the trailing N bars (all N
@@ -42,6 +44,9 @@ because the index is continuous):
 
 Version history
   0.1  first version (6 Oct 2026).
+  0.2  EWMA displacement in standard units: h = h_eff(H) = lam / (1 - lam^2),
+       the stationary variance of the EWMA gap of a random walk in units of
+       the per-bar variance (was h = H, which gave SD ~0.7).
 """
 
 from __future__ import annotations
@@ -52,7 +57,7 @@ import numpy as np
 import pandas as pd
 
 
-REGIME_INPUT_VERSION = "0.1"
+REGIME_INPUT_VERSION = "0.2"
 
 PERIODS_PER_YEAR = 365.0 * 24.0 * 12.0
 BAR = pd.Timedelta(minutes=5)
@@ -87,6 +92,12 @@ def _contiguous(times: pd.Series) -> np.ndarray:
 # --------------------------------------------------
 # Anchors
 # --------------------------------------------------
+
+def ewma_h_eff(half_life: int) -> float:
+    """Stationary Var(log I - EWMA anchor) / per-bar variance for a random walk."""
+    lam = 0.5 ** (1.0 / half_life)
+    return lam / (1.0 - lam * lam)
+
 
 def ewma_anchor(log_price: np.ndarray, restart: np.ndarray, half_life: int) -> tuple[np.ndarray, np.ndarray]:
     """Causal EWMA of log price. `restart[i]` starts a new recursion at i.
@@ -237,7 +248,7 @@ def compute_asset(g: pd.DataFrame) -> pd.DataFrame:
         gap = log_index - a
         out[f"ewma_hl{H}_gap"] = gap
         out[f"ewma_hl{H}_age"] = age
-        out[f"D_ewma_hl{H}"] = gap / (sigma * math.sqrt(H))
+        out[f"D_ewma_hl{H}"] = gap / (sigma * math.sqrt(ewma_h_eff(H)))
         out[f"D_ewma_hl{H}_ready"] = np.isfinite(out[f"D_ewma_hl{H}"]) & (age >= H)
 
     perp_ok = _as_bool(g["perp_integrity_ok"]).to_numpy() if "perp_integrity_ok" in g else np.zeros(len(g), bool)
