@@ -35,6 +35,9 @@ Flags (TRUE = suspect):
   flag_rest_stale          collector v0.3 REST cross-check confirmed a stale feed
   flag_trades_outside_bbo  collector v0.3: a trade printed more than
                            TRADE_OUTSIDE_BBO_MIN_BPS outside the live book BBO
+                           while the book had no update for at least
+                           STALE_BOOK_GAP_MS in the bar, or more than
+                           HARD_TRADE_OUTSIDE_BBO_BPS outside it
 
 The two collector-v0.3 flags are FALSE on earlier rows, where the evidence
 does not exist (not "passed").
@@ -52,7 +55,15 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 
-FUTURES_INTEGRITY_VERSION = "0.1"
+FUTURES_INTEGRITY_VERSION = "0.2"
+
+# v0.2 (first real run, 6 Oct 2026): the trades-outside-BBO test fired on
+# 7-21% of collector v0.3 bars (SOL 99, ETH/HYPE 66). A market order that
+# sweeps several levels legitimately prints beyond the pre-trade top of
+# book, and the trade and book channels are ~100 ms apart. A print outside
+# the BBO is evidence of a STALE book only when the book was also silent.
+# The flag now requires a long book-update gap in the same bar, or an
+# extreme distance.
 
 # Trailing history used by the relative tests: 7 days of 5-minute states.
 TRAILING_WINDOW_STATES = 2016
@@ -69,6 +80,8 @@ HARD_BASIS_BPS = 50.0
 
 FROZEN_MIN_BARS = 3
 TRADE_OUTSIDE_BBO_MIN_BPS = 5.0
+STALE_BOOK_GAP_MS = 30_000
+HARD_TRADE_OUTSIDE_BBO_BPS = 50.0
 
 
 # --------------------------------------------------
@@ -151,6 +164,7 @@ def create_futures_integrity_state(
     rest_stale = _optional(columns, "rest_stale_confirmed", "BOOLEAN")
     outside_bps = _optional(columns, "max_trade_outside_book_bbo_bps", "DOUBLE")
     book_updates = _optional(columns, "book_update_count", "BIGINT")
+    book_gap = _optional(columns, "book_max_update_gap_ms", "DOUBLE")
     trades = _optional(columns, "trade_count", "BIGINT")
 
     kind = "TEMP TABLE" if temporary else "TABLE"
@@ -179,6 +193,7 @@ def create_futures_integrity_state(
                 {book_updates} AS book_update_count,
                 {rest_stale} AS rest_stale_confirmed,
                 {outside_bps} AS max_trade_outside_book_bbo_bps,
+                {book_gap} AS book_max_update_gap_ms,
 
                 (
                     s.best_bid_price > 0
@@ -363,10 +378,19 @@ def create_futures_integrity_state(
 
                 COALESCE(
                     max_trade_outside_book_bbo_bps
-                        > {TRADE_OUTSIDE_BBO_MIN_BPS},
+                        >= {HARD_TRADE_OUTSIDE_BBO_BPS}
+                    OR (
+                        max_trade_outside_book_bbo_bps
+                            > {TRADE_OUTSIDE_BBO_MIN_BPS}
+                        AND book_max_update_gap_ms
+                            >= {STALE_BOOK_GAP_MS}
+                    ),
                     FALSE
                 )
                     AS flag_trades_outside_bbo,
+
+                max_trade_outside_book_bbo_bps,
+                book_max_update_gap_ms,
 
                 (max_trade_outside_book_bbo_bps IS NOT NULL
                  OR rest_stale_confirmed IS NOT NULL)
