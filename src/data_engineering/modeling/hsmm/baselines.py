@@ -6,8 +6,8 @@ are scored on the same test rows by the one-step predictive log density:
 
   no_regime_lags   one regime: y ~ const + 3 lags                 (Student-t)
   no_regime_D      one regime: y ~ const + D + 3 lags             (Student-t)
-  hsmm_K2/K3       explicit-duration HSMM, negative-binomial durations
-  sticky_hmm_K2    same emission, geometric durations (a plain HMM)
+  hsmm_K<k>        explicit-duration HSMM, negative-binomial durations (K from hsmm_K)
+  sticky_hmm_K<k>  same emission, geometric durations (a plain HMM), at the smallest K >= 2
   ms_ar1_K2        Markov-switching AR(1): y ~ const_k + phi_k z_{t-1}, geometric
   jump_K2          statistical jump model on [D, z1, mean(z1..z3), VR6] with a jump
                    penalty (Nystrup et al.), online greedy labels out of sample,
@@ -126,7 +126,7 @@ def hac_t(d: np.ndarray, lags: int = 12) -> float:
 
 
 def compare_models(design: Design, train: np.ndarray, test: np.ndarray, spec_kw: dict | None = None,
-                   seed: int = 0) -> tuple[pd.DataFrame, dict]:
+                   seed: int = 0, hsmm_K=(2, 3)) -> tuple[pd.DataFrame, dict]:
     """Fit every model on train rows; score on the common test rows."""
     spec_kw = dict(spec_kw or {})
     rng = np.random.default_rng(seed)
@@ -147,9 +147,10 @@ def compare_models(design: Design, train: np.ndarray, test: np.ndarray, spec_kw:
 
     hsmm("no_regime_lags", 1, xs=("const",))
     hsmm("no_regime_D", 1)
-    hsmm("hsmm_K2", 2)
-    hsmm("hsmm_K3", 3)
-    hsmm("sticky_hmm_K2", 2, duration="geometric")
+    for K in sorted(set(int(k) for k in hsmm_K if int(k) >= 2)):
+        hsmm(f"hsmm_K{K}", K)
+    K_sticky = max(2, min(int(k) for k in hsmm_K)) if len(hsmm_K) else 2
+    hsmm(f"sticky_hmm_K{K_sticky}", K_sticky, duration="geometric")
     hsmm("ms_ar1_K2", 2, duration="geometric", xs=("const", "z1"), xc=())
 
     # hard-label baselines: features known at t-1

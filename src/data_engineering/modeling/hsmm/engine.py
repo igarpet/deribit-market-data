@@ -44,6 +44,7 @@ predictive density of y_t given y_<t (used for out-of-sample scoring).
 from __future__ import annotations
 
 import math
+import os
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -51,7 +52,15 @@ from scipy.special import gammaln
 from scipy.stats import nbinom
 
 
-ENGINE_VERSION = "0.1"
+ENGINE_VERSION = "0.1.1"
+
+# Compiled kernels (numba) when available; HSMM_NO_NUMBA=1 forces the numpy path.
+try:
+    from data_engineering.modeling.hsmm import kernels as _kernels
+    USE_NUMBA = _kernels.HAVE_NUMBA and os.getenv("HSMM_NO_NUMBA", "0") != "1"
+except Exception:          # pragma: no cover
+    _kernels = None
+    USE_NUMBA = False
 LOG_2PI = math.log(2.0 * math.pi)
 
 
@@ -190,15 +199,17 @@ def fit_duration(counts: np.ndarray, kind: str, d_max: int) -> tuple[np.ndarray,
             if ll > best_ll:
                 best, best_ll = (q,), ll
         return duration_pmf("geometric", d_max, *best), ("geometric", *best)
-    best, best_ll = None, -np.inf
-    for r in R_GRID:
-        for scale in (0.8, 0.9, 1.0, 1.1, 1.25):
-            m = mean_m1 * scale
-            pr = r / (r + m)
-            p = duration_pmf("negbin", d_max, r, pr)
-            ll = float((w * np.log(p)).sum())
-            if ll > best_ll:
-                best, best_ll = (float(r), float(pr)), ll
+    # all (r, mean) candidates at once: truncated negative-binomial log-pmf on x = d - 1
+    rr = np.repeat(R_GRID, 5)
+    mm = np.tile(mean_m1 * np.array([0.8, 0.9, 1.0, 1.1, 1.25]), len(R_GRID))
+    pr = rr / (rr + mm)
+    x = (d - 1)[None, :]
+    logp = (gammaln(x + rr[:, None]) - gammaln(rr)[:, None] - gammaln(x + 1)
+            + rr[:, None] * np.log(pr)[:, None] + x * np.log1p(-pr)[:, None])
+    logp -= np.logaddexp.reduce(logp, axis=1, keepdims=True)          # truncation at d_max
+    ll = logp @ w
+    i = int(np.argmax(ll))
+    best = (float(rr[i]), float(pr[i]))
     return duration_pmf("negbin", d_max, *best), ("negbin", *best)
 
 
@@ -234,12 +245,33 @@ def emission_logdens(params: HSMMParams, data: HSMMData) -> tuple[np.ndarray, np
 # Forward-backward on the countdown representation
 # --------------------------------------------------
 
+def _seg_arrays(data: HSMMData):
+    return np.ascontiguousarray(data.starts, dtype=np.int64), np.ascontiguousarray(data.ends, dtype=np.int64)
+
+
+def _y_scores(pred: np.ndarray, logy: np.ndarray) -> np.ndarray:
+    mx = logy.max(axis=1)
+    return mx + np.log((pred * np.exp(logy - mx[:, None])).sum(axis=1))
+
+
 def forward(params: HSMMParams, data: HSMMData, logb: np.ndarray, logy: np.ndarray | None = None):
     """
     Scaled forward pass. Returns (alpha (T,K,D), c (T,), loglik, pred (T,K),
     y_logscore (T,) or None). pred[t] = P(s_t | obs_<t); y_logscore[t] =
     log p(y_t | obs_<t).
     """
+    if USE_NUMBA:
+        shift = logb.max(axis=1)
+        b = np.ascontiguousarray(np.exp(logb - shift[:, None]))
+        st, en = _seg_arrays(data)
+        alpha, c, pred = _kernels.forward_kernel(b, np.ascontiguousarray(params.pmf), np.ascontiguousarray(params.A),
+                                                 np.ascontiguousarray(params.pi), st, en)
+        loglik = float(np.log(c).sum() + shift.sum())
+        return alpha, c, loglik, pred, (_y_scores(pred, logy) if logy is not None else None)
+    return _forward_np(params, data, logb, logy)
+
+
+def _forward_np(params: HSMMParams, data: HSMMData, logb: np.ndarray, logy: np.ndarray | None = None):
     T, K = logb.shape
     D = params.pmf.shape[1]
     shift = logb.max(axis=1)
@@ -275,6 +307,14 @@ def forward(params: HSMMParams, data: HSMMData, logb: np.ndarray, logy: np.ndarr
 
 
 def backward(params: HSMMParams, data: HSMMData, logb: np.ndarray, c: np.ndarray) -> np.ndarray:
+    if USE_NUMBA:
+        b = np.ascontiguousarray(np.exp(logb - logb.max(axis=1)[:, None]))
+        st, en = _seg_arrays(data)
+        return _kernels.backward_kernel(b, np.ascontiguousarray(params.pmf), np.ascontiguousarray(params.A), c, st, en)
+    return _backward_np(params, data, logb, c)
+
+
+def _backward_np(params: HSMMParams, data: HSMMData, logb: np.ndarray, c: np.ndarray) -> np.ndarray:
     T, K = logb.shape
     D = params.pmf.shape[1]
     b = np.exp(logb - logb.max(axis=1)[:, None])
@@ -293,6 +333,15 @@ def backward(params: HSMMParams, data: HSMMData, logb: np.ndarray, c: np.ndarray
 def expectations(params: HSMMParams, data: HSMMData, logb, alpha, beta, c):
     """Posterior state marginals, expected episode-entry counts by duration,
     expected type transitions, expected initial types."""
+    if USE_NUMBA:
+        b = np.ascontiguousarray(np.exp(logb - logb.max(axis=1)[:, None]))
+        st, en = _seg_arrays(data)
+        return _kernels.expectations_kernel(b, np.ascontiguousarray(params.pmf), np.ascontiguousarray(params.A),
+                                            np.ascontiguousarray(params.pi), c, alpha, beta, st, en)
+    return _expectations_np(params, data, logb, alpha, beta, c)
+
+
+def _expectations_np(params: HSMMParams, data: HSMMData, logb, alpha, beta, c):
     T, K, D = alpha.shape
     b = np.exp(logb - logb.max(axis=1)[:, None])
     gamma = (alpha * beta).sum(axis=2)
