@@ -170,8 +170,20 @@ def create_futures_integrity_state(
     kind = "TEMP TABLE" if temporary else "TABLE"
 
     if not temporary:
-        connection.execute(f"DROP VIEW IF EXISTS {target_table}")
-        connection.execute(f"DROP TABLE IF EXISTS {target_table}")
+        # DuckDB's DROP VIEW IF EXISTS raises when the name exists as a
+        # table (and vice versa), so drop by the object's actual type.
+        existing = connection.execute(
+            """
+            SELECT 'VIEW' FROM duckdb_views()
+            WHERE view_name = ? AND NOT temporary
+            UNION ALL
+            SELECT 'TABLE' FROM duckdb_tables()
+            WHERE table_name = ? AND NOT temporary
+            """,
+            [target_table, target_table],
+        ).fetchall()
+        for (object_type,) in existing:
+            connection.execute(f"DROP {object_type} {target_table}")
 
     connection.execute(
         f"""
