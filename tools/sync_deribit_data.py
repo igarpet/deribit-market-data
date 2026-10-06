@@ -420,6 +420,35 @@ def list_files_under(
     )
 
 
+def remote_file_info(
+    project: str,
+    zone: str,
+    remote_path: str
+) -> dict | None:
+    """
+    Current size/mtime of one remote file, or None if it
+    no longer exists.
+    """
+
+    command = (
+        f'if [ -f "{remote_path}" ]; then '
+        f'find "{remote_path}" '
+        f'-maxdepth 0 '
+        f'-printf "%p\\t%s\\t%T@\\n"; '
+        f'fi'
+    )
+
+    files = parse_remote_listing(
+        remote_command(
+            project,
+            zone,
+            command
+        )
+    )
+
+    return files[0] if files else None
+
+
 # ==================================================
 # DATASET DISCOVERY
 # ==================================================
@@ -681,11 +710,29 @@ def file_needs_download(
 # DOWNLOAD
 # ==================================================
 
+# Files that the collectors are still writing (the current
+# UTC day of futures_5m.parquet is atomically REPLACED every
+# five minutes) can change between the remote listing and the
+# download. The collector writes via temp file + rename, so a
+# download is always one complete version; only the version
+# can differ from the listing. A size mismatch is therefore
+# resolved by re-reading the remote file's current size.
+MAX_DOWNLOAD_ATTEMPTS = 3
+
+
 def download_file(
     project: str,
     zone: str,
     file_info: dict
-) -> Path:
+) -> tuple[Path, dict]:
+    """
+    Download one remote file atomically.
+
+    Returns (local_path, final_file_info), where
+    final_file_info is the remote size/mtime of the version
+    actually saved. The manifest must record that version,
+    not the (possibly older) listing.
+    """
 
     remote_path = (
         file_info[
@@ -711,83 +758,152 @@ def download_file(
         )
     )
 
-    if temporary_file.exists():
-
-        temporary_file.unlink()
-
-    logging.info(
-        "Downloading: %s",
-        remote_path
+    expected = dict(
+        file_info
     )
 
-    run_gcloud(
-        [
-            "compute",
-            "scp",
-
-            (
-                f"{VM_NAME}:"
-                f"{remote_path}"
-            ),
-
-            str(
-                temporary_file
-            ),
-
-            "--project",
-            project,
-
-            "--zone",
-            zone,
-
-            "--quiet"
-        ]
-    )
-
-    if not temporary_file.exists():
-
-        raise RuntimeError(
-            "gcloud completed but "
-            "the downloaded file "
-            "does not exist:\n"
-            f"{temporary_file}"
-        )
-
-    local_size = (
-        temporary_file
-        .stat()
-        .st_size
-    )
-
-    if (
-        local_size
-        != file_info["size"]
+    for attempt in range(
+        1,
+        MAX_DOWNLOAD_ATTEMPTS + 1
     ):
 
-        temporary_file.unlink(
-            missing_ok=True
+        if temporary_file.exists():
+
+            temporary_file.unlink()
+
+        logging.info(
+            "Downloading: %s%s",
+            remote_path,
+            (
+                f" (attempt {attempt})"
+                if attempt > 1
+                else ""
+            )
         )
 
-        raise RuntimeError(
-            "File size mismatch after download.\n"
-            f"Remote: "
-            f"{file_info['size']:,} bytes\n"
-            f"Local:  "
-            f"{local_size:,} bytes\n"
-            f"File: {remote_path}"
+        run_gcloud(
+            [
+                "compute",
+                "scp",
+
+                (
+                    f"{VM_NAME}:"
+                    f"{remote_path}"
+                ),
+
+                str(
+                    temporary_file
+                ),
+
+                "--project",
+                project,
+
+                "--zone",
+                zone,
+
+                "--quiet"
+            ]
         )
 
-    os.replace(
-        temporary_file,
-        local_path
+        if not temporary_file.exists():
+
+            raise RuntimeError(
+                "gcloud completed but "
+                "the downloaded file "
+                "does not exist:\n"
+                f"{temporary_file}"
+            )
+
+        local_size = (
+            temporary_file
+            .stat()
+            .st_size
+        )
+
+        if local_size == expected["size"]:
+
+            os.replace(
+                temporary_file,
+                local_path
+            )
+
+            logging.info(
+                "Saved: %s",
+                local_path
+            )
+
+            return (
+                local_path,
+                expected
+            )
+
+        # The remote file may have been replaced by the
+        # collector after it was listed. Accept the
+        # download if it equals the CURRENT remote version.
+        current = remote_file_info(
+            project,
+            zone,
+            remote_path
+        )
+
+        if current is None:
+
+            temporary_file.unlink(
+                missing_ok=True
+            )
+
+            raise RuntimeError(
+                "Remote file disappeared during "
+                f"download: {remote_path}"
+            )
+
+        if local_size == current["size"]:
+
+            logging.info(
+                "Remote file was updated during sync "
+                "(listed %s bytes, now %s bytes); "
+                "downloaded copy matches the current "
+                "version.",
+                f"{expected['size']:,}",
+                f"{current['size']:,}"
+            )
+
+            os.replace(
+                temporary_file,
+                local_path
+            )
+
+            logging.info(
+                "Saved: %s",
+                local_path
+            )
+
+            return (
+                local_path,
+                current
+            )
+
+        logging.warning(
+            "Size mismatch (attempt %d/%d): "
+            "downloaded %s bytes, remote now %s bytes. "
+            "Retrying.",
+            attempt,
+            MAX_DOWNLOAD_ATTEMPTS,
+            f"{local_size:,}",
+            f"{current['size']:,}"
+        )
+
+        expected = current
+
+    temporary_file.unlink(
+        missing_ok=True
     )
 
-    logging.info(
-        "Saved: %s",
-        local_path
+    raise RuntimeError(
+        "File size mismatch after "
+        f"{MAX_DOWNLOAD_ATTEMPTS} attempts.\n"
+        f"File: {remote_path}"
     )
-
-    return local_path
 
 
 # ==================================================
@@ -824,7 +940,7 @@ def sync_collection(
             manifest
         ):
 
-            download_file(
+            _, saved_info = download_file(
                 project,
                 zone,
                 file_info
@@ -836,12 +952,12 @@ def sync_collection(
                 remote_path
             ] = {
                 "size":
-                    file_info[
+                    saved_info[
                         "size"
                     ],
 
                 "mtime":
-                    file_info[
+                    saved_info[
                         "mtime"
                     ]
             }
