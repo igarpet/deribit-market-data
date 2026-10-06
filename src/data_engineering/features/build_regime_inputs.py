@@ -48,7 +48,8 @@ SOURCE_COLUMNS = [
     "state_id", "state_time", "underlying", "session_id",
     "futures_index_price", "return_5m", "realized_vol_1h_annualized",
     "index_return_input_eligible", "perp_integrity_ok",
-    "vwap", "volume_usd", "futures_tradable_mid_price",
+    "vwap", "volume_usd", "futures_tradable_mid_price", "trade_count",
+    "known_exchange_event", "integrity_flag_trades_outside_bbo",
 ]
 
 
@@ -104,6 +105,17 @@ def print_summary(out: pd.DataFrame) -> None:
 
     d = [c for c in out.columns if c.startswith("D_") and not c.endswith("_ready")]
     sd = out.groupby("underlying")[d].std().round(2)
+    if "session_vwap_h" in out:
+        sv = out.groupby("underlying").agg(
+            trade_bars_in_vwap=("vwap_trade_ok", "mean"),
+            D_session_vwap_ready=("D_session_vwap_ready", "mean"),
+            median_h_bars=("session_vwap_h", "median"),
+        )
+        sv[["trade_bars_in_vwap", "D_session_vwap_ready"]] *= 100
+        print("\nSESSION VWAP (primary anchor): % of bars whose trades enter, % ready, median effective horizon h")
+        print("=" * 110)
+        print(sv.round(1).to_string())
+
     print("\nDISPLACEMENT STANDARD DEVIATION (raw scale; ~1 if sigma and h are consistent)")
     print("=" * 110)
     print(sd.to_string())

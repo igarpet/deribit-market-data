@@ -2,8 +2,9 @@
 Regime-free null for the HSMM (framework v2.1 §6, board b2).
 
 Simulated returns replace the real ones on the real grid, and the whole
-pipeline is rerun: index path, anchor, clock-adjusted scale, z, D, design
-rows, and the HSMM fits. If K = 2 states with separated displacement slopes
+pipeline is rerun: index path, perpetual path (simulated index + real basis),
+session VWAP (real volume weights, Brownian-bridge bar VWAPs, real gates),
+clock-adjusted scale, z, D, design rows, and the HSMM fits. If K = 2 states with separated displacement slopes
 appear as often on regime-free paths as on the real data, the real states
 are construction artifacts.
 
@@ -83,17 +84,18 @@ def path_statistics(design, train, test, spec: HSMMSpec, init=None) -> dict:
 
 
 def run_null(g: pd.DataFrame, f_clock: np.ndarray, train_dates: set, n_paths: int, kind: str = "ar_bootstrap",
-             spec: HSMMSpec | None = None, seed: int = 0, oos: bool = True, verbose: bool = True) -> tuple[dict, pd.DataFrame]:
+             spec: HSMMSpec | None = None, seed: int = 0, oos: bool = True, verbose: bool = True,
+             anchor: str = "session_vwap") -> tuple[dict, pd.DataFrame]:
     """Real statistics and the null distribution for one asset."""
     spec = spec or HSMMSpec(K=2, n_init=2, max_iter=150)
     rng = np.random.default_rng(seed)
-    real = build_design(g, f_clock)
+    real = build_design(g, f_clock, anchor=anchor)
     tr = real.frame["session_date"].isin(train_dates).to_numpy() if oos else None
     real_stats, real_fit = path_statistics(real, tr, None if tr is None else ~tr, spec)
     rows = []
     for b in range(n_paths):
         r_star = simulate_returns(g, f_clock, kind, rng, real_design=real)
-        d = build_design(g, f_clock, returns=r_star)
+        d = build_design(g, f_clock, returns=r_star, anchor=real.anchor, rng=rng)
         trb = d.frame["session_date"].isin(train_dates).to_numpy() if oos else None
         st, _ = path_statistics(d, trb, None if trb is None else ~trb, spec, init=None)
         rows.append({"path": b, **st})

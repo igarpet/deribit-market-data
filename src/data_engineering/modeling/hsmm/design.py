@@ -7,16 +7,28 @@ For one asset, on the exact 5-minute grid:
     sigma~_t  = EWMA_{hl 12}(r~^2)^(1/2)          (causal, restarted on gaps)
     sigma^c_t = f_t * sigma~_t
     z_t       = r_t / sigma^c_{t-1}               (standardized return)
-    G_t       = log I_t - log A_t                 (index EWMA anchor, half-life H, restarted on gaps only:
-                                                   the underlying chain is continuous across 08:00, contract v0)
-    D_t       = G_t / (sigma^c_t * sqrt(h_eff(H)))
+    Anchor (framework v2.2): session VWAP of the perpetual since 08:00 UTC,
+    rebuilt exactly from the collector's bar aggregates (base-currency
+    weights w_i = volume_usd_i / vwap_i, trade-quality gate):
+    G_t       = log P_t - log A_t                 (P = perpetual mid at the bar close, full integrity gate)
+    D_t       = G_t / sqrt(Var(G_t)),  Var(G_t) = sum_j (sigma^c_j)^2 (C_{j-1}^2 + C_{j-1} w_j + w_j^2/3) / C_t^2
+                                                  (exact random-walk variance; regime_inputs v0.3)
+    The VWAP resets at 08:00; the underlying chain stays continuous (contract v0):
+    D is defined from the first traded bar of each session, so segments do not
+    break at 08:00.
+
+    anchor="ewma" keeps the v0.1 index EWMA anchor (half-life H, h_eff(H)) for
+    comparison only.
 
 Model row t:  y_t = z_t;  state-specific [1, D_{t-1}];  shared [z_{t-1}, z_{t-2}, z_{t-3}]
 (all regressors known at t-1). Rows need every term finite and the grid
 contiguous from t-3 to t; contiguous runs of valid rows form segments.
 
 The same builder is used for real returns and for simulated (null) returns, so
-the null passes through exactly the same pipeline.
+the null passes through exactly the same pipeline. For simulated returns the
+perpetual path is rebuilt as simulated index + real basis, the bar VWAPs as
+Brownian-bridge averages within each bar, with the real volume weights and
+the real trade and price gates (regime_inputs.synthetic_perp_path).
 """
 
 from __future__ import annotations
@@ -27,13 +39,26 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from data_engineering.features.regime_inputs import ewma_anchor, ewma_h_eff, trailing_complete, variance_ratio
+from data_engineering.features.regime_inputs import (
+    base_volume,
+    ewma_anchor,
+    ewma_h_eff,
+    perp_log_mid,
+    session_vwap_displacement,
+    synthetic_perp_path,
+    trailing_complete,
+    variance_ratio,
+    vwap_trade_gate,
+)
 from data_engineering.modeling.hsmm.engine import HSMMData
 
 
 SIGMA_HALF_LIFE = 12
 SIGMA_SEED_BARS = 12
 ANCHOR_HALF_LIFE = 12
+DEFAULT_ANCHOR = "session_vwap"
+ANCHORS = ("session_vwap", "ewma")
+VWAP_COLUMNS = ("vwap", "volume_usd", "futures_tradable_mid_price", "futures_index_price")
 N_LAGS = 3
 MIN_SEGMENT = 24
 BAR = pd.Timedelta(minutes=5)
@@ -75,6 +100,8 @@ class Design:
     block_names: list
     block: np.ndarray | None
     block_mask: np.ndarray | None
+    anchor: str = DEFAULT_ANCHOR
+    coverage: dict | None = None
 
     def data(self, xs=STRUCTURAL[0], xc=STRUCTURAL[1], rows: np.ndarray | None = None,
              with_block: bool = False) -> HSMMData:
@@ -120,15 +147,49 @@ class Design:
         return pos[np.concatenate([np.arange(a, b) for a, b in zip(st[ok], en[ok])])] if ok.any() else np.array([], int)
 
 
+def _session_vwap_D(g: pd.DataFrame, r: np.ndarray, sigma_c: np.ndarray, new_session: np.ndarray,
+                    simulated: bool, rng: np.random.Generator | None) -> tuple[np.ndarray, np.ndarray, dict]:
+    missing = [c for c in VWAP_COLUMNS if c not in g]
+    if missing:
+        raise ValueError(f"Session VWAP anchor needs columns {missing}")
+    vwap = pd.to_numeric(g["vwap"], errors="coerce").to_numpy(float)
+    w = base_volume(pd.to_numeric(g["volume_usd"], errors="coerce").to_numpy(float), vwap)
+    trade_ok = vwap_trade_gate(g)
+    log_mid = perp_log_mid(g)
+    if simulated:
+        idx = pd.to_numeric(g["futures_index_price"], errors="coerce").to_numpy(float)
+        log_idx = np.where(idx > 0, np.log(np.where(idx > 0, idx, 1.0)), np.nan)
+        basis = log_mid - log_idx
+        fill = np.nanmedian(basis) if np.isfinite(basis).any() else 0.0
+        basis_f = pd.Series(basis).ffill().fillna(fill).to_numpy()
+        first = np.flatnonzero(np.isfinite(log_idx))
+        start = log_idx[first[0]] if len(first) else 0.0
+        log_idx_star = start + np.cumsum(np.where(np.isfinite(r), r, 0.0))
+        lp_full, vwap = synthetic_perp_path(log_idx_star, basis_f, sigma_c, rng or np.random.default_rng(0))
+        log_mid = np.where(np.isfinite(log_mid), lp_full, np.nan)        # real price gate
+    sv = session_vwap_displacement(log_mid, vwap, w, trade_ok, new_session, sigma_c)
+    cov = {"vwap_trade_bars": float(trade_ok.mean()), "price_ok": float(np.isfinite(log_mid).mean()),
+           "D_finite": float(np.isfinite(sv["D"]).mean())}
+    return sv["D"], sv["h"], cov
+
+
 def build_design(g: pd.DataFrame, f_clock: np.ndarray, returns: np.ndarray | None = None,
                  log_price: np.ndarray | None = None, block: pd.DataFrame | None = None,
-                 block_mask: pd.DataFrame | None = None, anchor_half_life: int = ANCHOR_HALF_LIFE) -> Design:
+                 block_mask: pd.DataFrame | None = None, anchor: str = DEFAULT_ANCHOR,
+                 anchor_half_life: int = ANCHOR_HALF_LIFE, rng: np.random.Generator | None = None) -> Design:
     """
-    g: one asset, sorted by state_time, with state_time, session_date and (unless
-    `returns` is given) r. log_price defaults to log futures_index_price where
-    returns are eligible; for simulated returns pass returns and leave
-    log_price None (the path is rebuilt as a cumulative sum within contiguous runs).
+    g: one asset, sorted by state_time, with state_time and (unless `returns`
+    is given) r; for the session VWAP anchor also vwap, volume_usd,
+    futures_tradable_mid_price, futures_index_price and the gate columns
+    (perp_integrity_ok; trade_count, known_exchange_event,
+    integrity_flag_trades_outside_bbo when available).
+
+    returns: simulated returns (null). The anchor inputs are then rebuilt from
+    them (see module docstring); rng drives the within-bar VWAP noise.
+    log_price: EWMA anchor only; defaults to log futures_index_price.
     """
+    if anchor not in ANCHORS:
+        raise ValueError(f"anchor must be one of {ANCHORS}")
     asset = str(g["underlying"].iloc[0]) if "underlying" in g else "asset"
     times = pd.to_datetime(g["state_time"], utc=True).reset_index(drop=True)
     contiguous = np.r_[False, (times.diff().iloc[1:] == BAR).to_numpy()]
@@ -136,7 +197,7 @@ def build_design(g: pd.DataFrame, f_clock: np.ndarray, returns: np.ndarray | Non
     f = np.asarray(f_clock, float)
     f = np.where(np.isfinite(f) & (f > 0), f, 1.0)
 
-    if log_price is None:
+    if anchor == "ewma" and log_price is None:
         if returns is None and "futures_index_price" in g:
             px = pd.to_numeric(g["futures_index_price"], errors="coerce").to_numpy(float)
             log_price = np.where(np.isfinite(r) & (px > 0), np.log(np.where(px > 0, px, 1.0)), np.nan)
@@ -154,10 +215,16 @@ def build_design(g: pd.DataFrame, f_clock: np.ndarray, returns: np.ndarray | Non
     sig_prev = np.r_[np.nan, sigma_c[:-1]]
     sig_prev[~contiguous] = np.nan
     z = r / sig_prev
-    restart = ~contiguous
-    anchor, age = ewma_anchor(log_price, restart, anchor_half_life)
-    D = (log_price - anchor) / (sigma_c * math.sqrt(ewma_h_eff(anchor_half_life)))
-    D[age < anchor_half_life] = np.nan
+    session = ((times - pd.Timedelta(hours=8)).dt.floor("D") + pd.Timedelta(days=1)).dt.strftime("%Y-%m-%d").to_numpy()
+    new_session = np.r_[True, session[1:] != session[:-1]]
+    coverage = None
+    if anchor == "session_vwap":
+        D, h, coverage = _session_vwap_D(g, r, sigma_c, new_session, returns is not None, rng)
+    else:
+        a, age = ewma_anchor(log_price, ~contiguous, anchor_half_life)
+        D = (log_price - a) / (sigma_c * math.sqrt(ewma_h_eff(anchor_half_life)))
+        D[age < anchor_half_life] = np.nan
+        h = np.full(len(D), ewma_h_eff(anchor_half_life))
 
     gap_ok = {k: (times - times.shift(k) == k * BAR).to_numpy() for k in range(1, N_LAGS + 1)}
 
@@ -169,6 +236,7 @@ def build_design(g: pd.DataFrame, f_clock: np.ndarray, returns: np.ndarray | Non
         return np.where(ok, out, np.nan)
 
     D1 = lag(D, 1)
+    h1 = lag(h, 1)
     z1, z2, z3 = lag(z, 1), lag(z, 2), lag(z, 3)
     cols = np.column_stack([np.ones(len(r)), D1, z1, z2, z3])
     valid = np.isfinite(z) & np.all(np.isfinite(cols), axis=1) & gap_ok[N_LAGS]
@@ -191,8 +259,8 @@ def build_design(g: pd.DataFrame, f_clock: np.ndarray, returns: np.ndarray | Non
 
     frame = pd.DataFrame({
         "state_time": times.to_numpy()[src],
-        "session_date": ((times - pd.Timedelta(hours=8)).dt.floor("D") + pd.Timedelta(days=1)).dt.strftime("%Y-%m-%d").to_numpy()[src],
-        "y": z[src], "D": D1[src], "z1": z1[src], "z2": z2[src], "z3": z3[src],
+        "session_date": session[src],
+        "y": z[src], "D": D1[src], "z1": z1[src], "z2": z2[src], "z3": z3[src], "h_prev": h1[src],
         "vr_q6_prev": vr[src], "sigma_c_prev": sig_prev[src], "r": r[src], "source_row": src,
     })
     B = Bm = None
@@ -202,4 +270,6 @@ def build_design(g: pd.DataFrame, f_clock: np.ndarray, returns: np.ndarray | Non
         B = block.to_numpy(float)[src]
         Bm = (block_mask.to_numpy(bool) if block_mask is not None else np.isfinite(B))[src] & np.isfinite(B)
         B = np.where(Bm, B, 0.0)
-    return Design(asset, frame, cols[src], starts, ends, names, B, Bm)
+    if coverage is not None:
+        coverage["model_rows"] = float(len(src) / max(len(r), 1))
+    return Design(asset, frame, cols[src], starts, ends, names, B, Bm, anchor, coverage)

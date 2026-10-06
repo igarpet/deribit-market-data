@@ -1,6 +1,6 @@
 """
 Regime inputs: anchors, displacement and persistence statistics
-(framework v2.1 Step 3, sections 5.1-5.2).
+(framework v2.2 Step 3, sections 5.1-5.2).
 
 All quantities are causal (state t uses information up to t only) and
 computed per asset on the exact 5-minute grid. A gap in the grid, an
@@ -8,45 +8,70 @@ ineligible index or a session boundary (for session-scoped anchors)
 restarts the affected recursion; the number of bars since the restart is
 stored so consumers can require a warm-up.
 
-Anchors A_t and their gaps G_t = log P_t - log A_t:
+Primary anchor (framework v2.2): SESSION VWAP of the perpetual.
 
-  * index EWMA, half-life H bars (H = 6, 12, 24), restarted at 08:00 UTC:
-        log A_t = lam log A_{t-1} + (1 - lam) log I_t,   lam = 0.5^(1/H)
-    P_t = Deribit index I_t.
-  * session VWAP of the perpetual since 08:00 UTC, from integrity-gated
-    bars with volume only:  A_t = sum v_i VWAP_i / sum v_i.
-    P_t = perpetual mid (same instrument, so the basis cancels).
-  * rolling VWAP of the perpetual over the trailing W bars (W = 12, 48),
-    gated bars only, requiring at least ROLLING_MIN_COVERAGE of the window.
-    P_t = perpetual mid.
+  The collector aggregates every perpetual trade into 5-minute bars with
+      volume_base_i = sum of trade amounts in base currency
+      vwap_i        = sum(price * amount_base) / volume_base_i
+  and volume_usd_i = sum of USD notionals. For both contract types
+  (inverse: amount in USD, base = USD / price; linear: amount in base,
+  USD = amount * price) the identity volume_base_i = volume_usd_i / vwap_i
+  holds exactly, so the session VWAP of all gated trades since 08:00 UTC is
+  reconstructed exactly from the bar aggregates:
 
-Displacement in units of expected movement over the anchor's horizon:
+      A_t = sum_{i<=t, s(i)=s(t)} w_i vwap_i / sum w_i,   w_i = volume_usd_i / vwap_i
 
-    D_t = G_t / (sigma_t sqrt(h)),
+  (base-currency weights; v0.2 weighted by USD notional, which is not the
+  traded VWAP of an inverse contract).
 
-    sigma_t: trailing per-bar volatility (1h realized volatility of index
-             returns, de-annualized). This is the RAW scale; the regime
-             layer rescales with the clock-adjusted scale
-             (modeling.clock_baseline), so G_t is stored as well.
-    h:       h_eff(H) = lam / (1 - lam^2) for EWMA anchors (v0.2), so that
-             Var(G_t) = sigma^2 h for a random walk; bars since 08:00 for
-             session VWAP;
-             W / 2 for rolling VWAP (centre of mass of the window).
+  Trade gate: a bar's trades enter the VWAP unless the bar has a known
+  exchange event or trades printed outside the book BBO (the trade-quality
+  flags of the futures integrity gate). Book-quality flags (stale or wide
+  book) do not remove genuine trades. Without the flag columns the full
+  integrity gate perp_integrity_ok is used.
+
+  Price: P_t = perpetual mid at the bar close (same instrument as the
+  VWAP, so the perpetual-index basis cancels), required to pass the full
+  integrity gate.
+
+  Exact standardization. Under a random walk with per-bar volatility
+  sigma_j and trades spread evenly within each bar, an increment at
+  fraction u of bar j enters G_t = log P_t - log A_t with coefficient
+  (C_{j-1} + u w_j) / C_t, C_j being the cumulative weight through bar j of
+  the session. Integrating over u:
+
+      Var(G_t) = sum_j sigma_j^2 (C_{j-1}^2 + C_{j-1} w_j + w_j^2 / 3) / C_t^2.
+
+  So
+
+      D_t = G_t / sqrt(Var(G_t))
+
+  has unit variance at every point of the session (Var about sigma^2 n / 3
+  with constant volume after n bars, sigma^2 / 3 in the first bar), and the
+  shrinking sensitivity of a cumulative VWAP late in the session is
+  accounted for. h_t = Var(G_t) / sigma_t^2 is stored as the effective
+  horizon in bars.
+
+Secondary anchors (diagnostics only):
+
+  * index EWMA, half-life H bars (H = 6, 12, 24), restarted at 08:00 UTC,
+    h_eff(H) = lam / (1 - lam^2);
+  * rolling VWAP of the perpetual over W bars (W = 12, 48), base weights,
+    h = W / 2.
 
 Persistence statistics on index returns over the trailing N bars (all N
 returns must exist and be eligible; they may cross the 08:00 boundary
 because the index is continuous):
 
-    VR_t(q) = mean_j (sum_{i=0}^{q-1} r_{j-i})^2 / (q * mean r^2)
-              (overlapping q-bar sums, zero-mean; > 1 persistence,
-               < 1 anti-persistence),  q = 3, 6; N = 48
-    ER_t(N) = |sum r_i| / sum |r_i|,  N = 12, 48  (0 noise .. 1 straight line)
+    VR_t(q) = mean_j (sum_{i=0}^{q-1} r_{j-i})^2 / (q * mean r^2),  q = 3, 6; N = 48
+    ER_t(N) = |sum r_i| / sum |r_i|,  N = 12, 48
 
 Version history
   0.1  first version (6 Oct 2026).
-  0.2  EWMA displacement in standard units: h = h_eff(H) = lam / (1 - lam^2),
-       the stationary variance of the EWMA gap of a random walk in units of
-       the per-bar variance (was h = H, which gave SD ~0.7).
+  0.2  EWMA displacement in standard units, h = h_eff(H).
+  0.3  session VWAP is the primary anchor: base-currency weights (exact
+       trade VWAP), trade-quality gate, exact variance standardization;
+       helpers shared with the HSMM design and its null.
 """
 
 from __future__ import annotations
@@ -57,7 +82,7 @@ import numpy as np
 import pandas as pd
 
 
-REGIME_INPUT_VERSION = "0.2"
+REGIME_INPUT_VERSION = "0.3"
 
 PERIODS_PER_YEAR = 365.0 * 24.0 * 12.0
 BAR = pd.Timedelta(minutes=5)
@@ -65,7 +90,7 @@ BAR = pd.Timedelta(minutes=5)
 EWMA_HALF_LIVES = (6, 12, 24)
 ROLLING_VWAP_WINDOWS = (12, 48)
 ROLLING_MIN_COVERAGE = 0.75
-SESSION_VWAP_MIN_BARS = 12
+SESSION_VWAP_MIN_TRADE_BARS = 1
 
 VR_HORIZONS = (3, 6)
 VR_WINDOW = 48
@@ -75,6 +100,9 @@ REQUIRED_COLUMNS = (
     "state_id", "state_time", "underlying", "session_id",
     "futures_index_price", "return_5m", "realized_vol_1h_annualized",
 )
+
+TRADE_FLAG_COLUMNS = ("known_exchange_event", "integrity_flag_trades_outside_bbo")
+VWAP_SOURCE_COLUMNS = ("vwap", "volume_usd", "futures_tradable_mid_price", "perp_integrity_ok")
 
 
 def _as_bool(series: pd.Series) -> pd.Series:
@@ -89,8 +117,127 @@ def _contiguous(times: pd.Series) -> np.ndarray:
     return (times.diff() == BAR).to_numpy()
 
 
+def session_key(times: pd.Series) -> np.ndarray:
+    """Session (expiry date) of each state: sessions run 08:00 -> 08:00 UTC."""
+    t = pd.to_datetime(times, utc=True)
+    return ((t - pd.Timedelta(hours=8)).dt.floor("D") + pd.Timedelta(days=1)).dt.strftime("%Y-%m-%d").to_numpy()
+
+
 # --------------------------------------------------
-# Anchors
+# Session VWAP inputs (shared with the HSMM design and its null)
+# --------------------------------------------------
+
+def base_volume(volume_usd: np.ndarray, vwap: np.ndarray) -> np.ndarray:
+    """Base-currency volume of a bar, exact for inverse and linear perpetuals."""
+    v = np.asarray(volume_usd, float)
+    p = np.asarray(vwap, float)
+    ok = np.isfinite(v) & np.isfinite(p) & (v > 0) & (p > 0)
+    return np.where(ok, v / np.where(ok, p, 1.0), 0.0)
+
+
+def vwap_trade_gate(g: pd.DataFrame) -> np.ndarray:
+    """Bars whose trades enter the VWAP: trades present, positive VWAP and
+    volume, and no trade-quality flag (known event, prints outside the BBO)."""
+    vwap = pd.to_numeric(g["vwap"], errors="coerce").to_numpy(float)
+    vol = pd.to_numeric(g["volume_usd"], errors="coerce").to_numpy(float)
+    ok = np.isfinite(vwap) & (vwap > 0) & np.isfinite(vol) & (vol > 0)
+    if "trade_count" in g:
+        ok &= pd.to_numeric(g["trade_count"], errors="coerce").fillna(0).to_numpy() > 0
+    flags = [c for c in TRADE_FLAG_COLUMNS if c in g]
+    if flags:
+        for c in flags:
+            ok &= ~_as_bool(g[c]).to_numpy()
+    elif "perp_integrity_ok" in g:
+        ok &= _as_bool(g["perp_integrity_ok"]).to_numpy()
+    return ok
+
+
+def perp_log_mid(g: pd.DataFrame) -> np.ndarray:
+    """log perpetual mid at the bar close where the full integrity gate passes."""
+    mid = pd.to_numeric(g["futures_tradable_mid_price"], errors="coerce").to_numpy(float)
+    ok = np.isfinite(mid) & (mid > 0)
+    if "perp_integrity_ok" in g:
+        ok &= _as_bool(g["perp_integrity_ok"]).to_numpy()
+    return np.where(ok, np.log(np.where(ok, mid, 1.0)), np.nan)
+
+
+def session_vwap_displacement(log_price: np.ndarray, bar_vwap: np.ndarray, weight: np.ndarray,
+                              trade_ok: np.ndarray, new_session: np.ndarray,
+                              sigma: np.ndarray) -> dict[str, np.ndarray]:
+    """
+    Session VWAP anchor and exactly standardized displacement.
+
+    log_price: log P_t (NaN where unusable); bar_vwap: bar VWAP level;
+    weight: base-currency volume; trade_ok: bars whose trades enter;
+    new_session: True at the first row of each session; sigma: per-bar
+    volatility at each row (NaN allowed: such bars use the current sigma).
+
+    Returns arrays: log_anchor, gap, var (Var(G_t)), h (Var / sigma_t^2,
+    effective horizon in bars), D, weight_cum (base units), trade_bars.
+    """
+    n = len(log_price)
+    out = {k: np.full(n, np.nan) for k in ("log_anchor", "gap", "var", "h", "D", "weight_cum")}
+    out["trade_bars"] = np.zeros(n, dtype=int)
+    w = np.where(np.asarray(trade_ok, bool), np.asarray(weight, float), 0.0)
+    w = np.where(np.isfinite(w) & (w > 0), w, 0.0)
+    v = np.asarray(bar_vwap, float)
+    s = np.asarray(sigma, float)
+    C = num = Qk = Qu = 0.0
+    nb = 0
+    last_sigma = np.nan
+    for i in range(n):
+        if new_session[i]:
+            C = num = Qk = Qu = 0.0
+            nb = 0
+        c2 = C * C + C * w[i] + w[i] * w[i] / 3.0
+        if np.isfinite(s[i]) and s[i] > 0:
+            Qk += s[i] * s[i] * c2
+            last_sigma = s[i]
+        else:
+            Qu += c2
+        if w[i] > 0:
+            C += w[i]
+            num += w[i] * v[i]
+            nb += 1
+        out["trade_bars"][i] = nb
+        if C <= 0:
+            continue
+        out["weight_cum"][i] = C
+        la = math.log(num / C)
+        out["log_anchor"][i] = la
+        cur = s[i] if np.isfinite(s[i]) and s[i] > 0 else last_sigma
+        if not np.isfinite(cur):
+            continue
+        var = (Qk + Qu * cur * cur) / (C * C)
+        out["var"][i] = var
+        out["h"][i] = var / (cur * cur)
+        if np.isfinite(log_price[i]) and var > 0:
+            out["gap"][i] = log_price[i] - la
+            out["D"][i] = out["gap"][i] / math.sqrt(var)
+    return out
+
+
+def synthetic_perp_path(log_index_star: np.ndarray, basis: np.ndarray, sigma: np.ndarray,
+                        rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
+    """Null construction: simulated perpetual log mid = simulated log index +
+    real basis. Each bar's VWAP is the time average of a Brownian path between
+    the bar's start and end prices with trades spread evenly:
+
+        log VWAP*_i = (log P*_{i-1} + log P*_i) / 2 + eta_i,  eta_i ~ N(0, sigma_i^2 / 12)
+
+    (the Brownian-bridge average), which is the assumption of the exact
+    standardization. Returns (log mid*, bar VWAP* level)."""
+    lp = np.asarray(log_index_star, float) + np.asarray(basis, float)
+    prev = np.r_[np.nan, lp[:-1]]
+    s = np.asarray(sigma, float)
+    s = np.where(np.isfinite(s) & (s > 0), s, np.nanmedian(s[np.isfinite(s) & (s > 0)]) if np.any(np.isfinite(s) & (s > 0)) else 0.0)
+    eta = rng.standard_normal(len(lp)) * s / math.sqrt(12.0)
+    centre = np.where(np.isfinite(prev), 0.5 * (prev + lp), lp)
+    return lp, np.exp(centre + eta)
+
+
+# --------------------------------------------------
+# Secondary anchors
 # --------------------------------------------------
 
 def ewma_h_eff(half_life: int) -> float:
@@ -120,39 +267,16 @@ def ewma_anchor(log_price: np.ndarray, restart: np.ndarray, half_life: int) -> t
     return out, age
 
 
-def session_vwap(vwap: np.ndarray, volume: np.ndarray, usable: np.ndarray,
-                 restart: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Volume-weighted VWAP since the last restart, from usable bars.
-    Returns (anchor, usable bars accumulated)."""
-
-    out = np.full(len(vwap), np.nan)
-    bars = np.zeros(len(vwap), dtype=int)
-    num = den = 0.0
-    n = 0
-    for i in range(len(vwap)):
-        if restart[i]:
-            num = den = 0.0
-            n = 0
-        if usable[i]:
-            num += vwap[i] * volume[i]
-            den += volume[i]
-            n += 1
-        if den > 0:
-            out[i] = num / den
-        bars[i] = n
-    return out, bars
-
-
-def rolling_vwap(vwap: np.ndarray, volume: np.ndarray, usable: np.ndarray,
+def rolling_vwap(vwap: np.ndarray, weight: np.ndarray, usable: np.ndarray,
                  present: np.ndarray, window: int) -> tuple[np.ndarray, np.ndarray]:
-    """Trailing W-bar VWAP over usable bars. `present` marks rows that are
-    contiguous with the previous one; a gap resets the window. Returns
-    (anchor, coverage = usable bars / W)."""
+    """Trailing W-bar VWAP over usable bars (base-currency weights). `present`
+    marks rows contiguous with the previous one; a gap resets the window.
+    Returns (anchor, coverage = usable bars / W)."""
 
     out = np.full(len(vwap), np.nan)
     cov = np.zeros(len(vwap))
-    pv = np.where(usable, vwap * volume, 0.0)
-    v = np.where(usable, volume, 0.0)
+    pv = np.where(usable, vwap * weight, 0.0)
+    v = np.where(usable, weight, 0.0)
     u = usable.astype(float)
     run_start = 0
     for i in range(len(vwap)):
@@ -242,6 +366,30 @@ def compute_asset(g: pd.DataFrame) -> pd.DataFrame:
         "sigma_bar_raw": sigma,
     })
 
+    # primary anchor: session VWAP
+    if set(VWAP_SOURCE_COLUMNS[:3]) <= set(g.columns):
+        vwap = pd.to_numeric(g["vwap"], errors="coerce").to_numpy(float)
+        w = base_volume(pd.to_numeric(g["volume_usd"], errors="coerce").to_numpy(float), vwap)
+        trade_ok = vwap_trade_gate(g)
+        log_mid = perp_log_mid(g)
+        sv = session_vwap_displacement(log_mid, vwap, w, trade_ok, new_session, sigma)
+        out["vwap_trade_ok"] = trade_ok
+        out["session_vwap"] = np.exp(sv["log_anchor"])
+        out["session_vwap_gap"] = sv["gap"]
+        out["session_vwap_h"] = sv["h"]
+        out["session_vwap_trade_bars"] = sv["trade_bars"]
+        out["session_vwap_weight_base"] = sv["weight_cum"]
+        out["D_session_vwap"] = sv["D"]
+        out["D_session_vwap_ready"] = np.isfinite(sv["D"]) & (sv["trade_bars"] >= SESSION_VWAP_MIN_TRADE_BARS)
+
+        for W in ROLLING_VWAP_WINDOWS:
+            rv, cov = rolling_vwap(np.nan_to_num(vwap), w, trade_ok, present, W)
+            gap = log_mid - np.log(rv)
+            out[f"rvwap_{W}_gap"] = gap
+            out[f"rvwap_{W}_coverage"] = cov
+            out[f"D_rvwap_{W}"] = gap / (sigma * math.sqrt(W / 2.0))
+            out[f"D_rvwap_{W}_ready"] = np.isfinite(out[f"D_rvwap_{W}"])
+
     restart = new_session | ~present
     for H in EWMA_HALF_LIVES:
         a, age = ewma_anchor(log_index, restart, H)
@@ -250,29 +398,6 @@ def compute_asset(g: pd.DataFrame) -> pd.DataFrame:
         out[f"ewma_hl{H}_age"] = age
         out[f"D_ewma_hl{H}"] = gap / (sigma * math.sqrt(ewma_h_eff(H)))
         out[f"D_ewma_hl{H}_ready"] = np.isfinite(out[f"D_ewma_hl{H}"]) & (age >= H)
-
-    perp_ok = _as_bool(g["perp_integrity_ok"]).to_numpy() if "perp_integrity_ok" in g else np.zeros(len(g), bool)
-    if {"vwap", "volume_usd", "futures_tradable_mid_price"} <= set(g.columns):
-        vwap = pd.to_numeric(g["vwap"], errors="coerce").to_numpy(float)
-        vol = pd.to_numeric(g["volume_usd"], errors="coerce").to_numpy(float)
-        mid = pd.to_numeric(g["futures_tradable_mid_price"], errors="coerce").to_numpy(float)
-        usable = perp_ok & np.isfinite(vwap) & (vwap > 0) & np.isfinite(vol) & (vol > 0)
-        log_mid = np.where(perp_ok & (mid > 0), np.log(np.where(mid > 0, mid, 1.0)), np.nan)
-
-        sv, bars = session_vwap(np.nan_to_num(vwap), np.nan_to_num(vol), usable, new_session)
-        gap = log_mid - np.log(sv)
-        out["session_vwap_gap"] = gap
-        out["session_vwap_bars"] = bars
-        out["D_session_vwap"] = gap / (sigma * np.sqrt(np.maximum(bars, 1)))
-        out["D_session_vwap_ready"] = np.isfinite(out["D_session_vwap"]) & (bars >= SESSION_VWAP_MIN_BARS)
-
-        for W in ROLLING_VWAP_WINDOWS:
-            rv, cov = rolling_vwap(np.nan_to_num(vwap), np.nan_to_num(vol), usable, present, W)
-            gap = log_mid - np.log(rv)
-            out[f"rvwap_{W}_gap"] = gap
-            out[f"rvwap_{W}_coverage"] = cov
-            out[f"D_rvwap_{W}"] = gap / (sigma * math.sqrt(W / 2.0))
-            out[f"D_rvwap_{W}_ready"] = np.isfinite(out[f"D_rvwap_{W}"])
 
     windows = sorted(set(ER_WINDOWS) | {VR_WINDOW})
     complete = {N: trailing_complete(r, present, N) for N in windows}
