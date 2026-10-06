@@ -69,7 +69,8 @@ BASE_COLUMNS = [
     "perp_integrity_ok", "fit_ok", "in_settlement_window",
 ]
 
-V03_ROLLOUT = pd.Timestamp("2026-10-01 10:05", tz="UTC")
+MIGRATION_START = pd.Timestamp("2026-10-01 09:00", tz="UTC")
+MIGRATION_END = pd.Timestamp("2026-10-01 10:05", tz="UTC")
 
 
 # --------------------------------------------------
@@ -314,8 +315,8 @@ def print_book_update_diagnostic(connection, frame: pd.DataFrame) -> None:
         g = g.merge(cv, on="state_id", how="left")
         key = "collector_version"
     else:
-        g["period"] = np.where(g["state_time"] >= V03_ROLLOUT, "after 2026-10-01 10:05", "before")
-        key = "period"
+        g["collector_version"] = "unknown"
+        key = "collector_version"
     g["log_updates"] = np.log1p(pd.to_numeric(g["book_update_count"], errors="coerce"))
     t = g.groupby(["underlying", key]).agg(
         states=("log_updates", "size"),
@@ -328,6 +329,19 @@ def print_book_update_diagnostic(connection, frame: pd.DataFrame) -> None:
     print("=" * 110)
     with pd.option_context("display.width", 200):
         print(t.round({"median_book_updates": 1, "median_log_updates": 3}).to_string())
+
+    # The 1 Oct Deribit migration (Coinbase International consolidation) is
+    # the other candidate for a level or shape change.
+    g["migration"] = np.where(g["state_time"] < MIGRATION_START, "1 before migration",
+                              np.where(g["state_time"] >= MIGRATION_END, "2 after migration", "during"))
+    g["day_type"] = np.where(g["is_weekend"].astype(bool), "weekend", "weekday")
+    p = (g[g["migration"] != "during"]
+         .groupby(["underlying", "migration", "day_type"])["book_update_count"]
+         .median().unstack(["migration", "day_type"]))
+    print("\nMEDIAN BOOK UPDATES PER BAR, BEFORE / AFTER THE 1 OCT MIGRATION (integrity-gated states)")
+    print("=" * 110)
+    with pd.option_context("display.width", 200):
+        print(p.round(1).to_string())
 
 
 # --------------------------------------------------

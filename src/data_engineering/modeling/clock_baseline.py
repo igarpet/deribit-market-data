@@ -16,7 +16,8 @@ Regressors (Notebook 06, 6 Oct 2026):
 
     location m_x:  1, cos/sin(2 pi k u / 1440) for k = 1..K   (K = 4)
                    weekend, weekend * cos/sin(2 pi k u / 1440), k = 1..2
-    scale    s_x:  1, cos/sin(2 pi k u / 1440) for k = 1..2, weekend
+    scale    s_x:  constant (default), or with scale="clock":
+                   1, cos/sin(2 pi k u / 1440) for k = 1..2, weekend
 
 u is the minute of day on the feature's clock:
 
@@ -66,7 +67,15 @@ import numpy as np
 import pandas as pd
 
 
-CLOCK_BASELINE_VERSION = "0.1"
+CLOCK_BASELINE_VERSION = "0.2"
+
+# v0.2 (first real run, 6 Oct 2026): the scale s_x is a CONSTANT by
+# default. A clock-varying scale was never tested in Notebook 06, and on a
+# 7-session training window it inflated out-of-sample adjusted values
+# (mean x~^2 up to 10 for AVAX IV) by shrinking s at some hours.
+# scale="clock" remains available. Degenerate-feature guard now accepts
+# discrete shares (>= 3 distinct values, positive variance); skip reasons
+# state the cause.
 
 MINUTES_PER_DAY = 1440.0
 NEW_YORK = "America/New_York"
@@ -93,7 +102,7 @@ class FeatureSpec:
     transform: str = "identity"     # identity | log | log1p | log_abs
     clock: str = "new_york"         # new_york | expiry_utc
     scope: str | None = None        # None | perp | fit | option
-    fit_scale: bool = True
+    scale: str = "constant"         # constant | clock | none
     harmonics: int = DEFAULT_HARMONICS
     weekend_harmonics: int = DEFAULT_WEEKEND_HARMONICS
     scale_harmonics: int = DEFAULT_SCALE_HARMONICS
@@ -103,7 +112,7 @@ class FeatureSpec:
 # Not included (no gain or worse than a constant out of sample): spread,
 # volume, skew; curvature was mixed.
 DEFAULT_FEATURE_SPECS: tuple[FeatureSpec, ...] = (
-    FeatureSpec("return_5m", "return_5m", transform="log_abs", fit_scale=False),
+    FeatureSpec("return_5m", "return_5m", transform="log_abs", scale="none"),
     FeatureSpec("log_rv_30m", "realized_vol_30m_annualized", transform="log"),
     FeatureSpec("log_rv_1h", "realized_vol_1h_annualized", transform="log"),
     FeatureSpec("log_book_updates", "book_update_count", transform="log1p", scope="perp"),
@@ -287,10 +296,9 @@ class FittedFeatureBaseline:
 
     def _scale(self, frame: pd.DataFrame) -> np.ndarray:
         s = self.feature_spec
-        if not s.fit_scale:
+        if s.scale == "none":
             return np.ones(len(frame))
-        X, names = design_matrix(frame, s.clock, s.scale_harmonics,
-                                 self.weekend_terms_used, 0)
+        X, names = _scale_design(frame, s, self.weekend_terms_used)
         if names != self.scale_terms:
             raise RuntimeError("Scale design does not match the fitted terms.")
         return np.exp(0.5 * (X @ np.asarray(self.scale_coef)) + self.scale_const)
@@ -333,6 +341,29 @@ def _ols(y: np.ndarray, X: np.ndarray, label: str) -> np.ndarray:
     return beta
 
 
+def _scale_design(frame: pd.DataFrame, spec: FeatureSpec, use_weekend: bool) -> tuple[np.ndarray, list[str]]:
+    if spec.scale == "constant":
+        return design_matrix(frame, spec.clock, 0, False, 0)
+    if spec.scale == "clock":
+        return design_matrix(frame, spec.clock, spec.scale_harmonics, use_weekend, 0)
+    raise ValueError(f"Unknown scale mode: {spec.scale}")
+
+
+def training_shortfall(train: pd.DataFrame, spec: FeatureSpec) -> str | None:
+    """Why a feature cannot be fitted on these training rows (None if it can)."""
+
+    if spec.column not in train:
+        return "column missing"
+    y = transformed_values(train, spec).dropna()
+    if len(y) < MIN_TRAIN_ROWS:
+        raw = pd.to_numeric(train[spec.column], errors="coerce").notna().sum()
+        return (f"{len(y)} usable training rows < {MIN_TRAIN_ROWS} "
+                f"({int(raw)} non-null before scope/transform)")
+    if np.unique(np.round(y.to_numpy(float), 12)).size < 3 or float(y.std()) <= 0:
+        return "feature is (nearly) constant in the training window"
+    return None
+
+
 def weekend_identified(train: pd.DataFrame) -> bool:
     w = train["clock_weekend"] > 0
     days = pd.to_datetime(train.loc[w, "state_time"], utc=True).dt.floor("D").nunique()
@@ -347,11 +378,12 @@ def fit_feature_baseline(
     """Fit one feature for one asset on training rows (with clock
     coordinates). Returns None when the training data are insufficient."""
 
+    if training_shortfall(train, spec) is not None:
+        return None
+
     y_all = transformed_values(train, spec)
     rows = train[y_all.notna()]
     y = y_all.dropna().to_numpy(float)
-    if len(y) < MIN_TRAIN_ROWS or np.unique(np.round(y, 12)).size <= 10:
-        return None
 
     use_weekend = weekend_identified(rows)
     label = f"{underlying}/{spec.name}"
@@ -382,10 +414,10 @@ def fit_feature_baseline(
         fitted.vol_factor_const = float(0.5 * np.log(np.mean(np.exp(2.0 * (Xd @ beta)))))
         return fitted
 
-    if spec.fit_scale:
+    if spec.scale != "none":
         resid2 = (y - m) ** 2
         floor = max(1e-12, 1e-6 * float(resid2.mean()))
-        Xs, snames = design_matrix(rows, spec.clock, spec.scale_harmonics, use_weekend, 0)
+        Xs, snames = _scale_design(rows, spec, use_weekend)
         gamma = _ols(np.log(resid2 + floor), Xs, label + " (scale)")
         base = np.exp(0.5 * (Xs @ gamma))
         fitted.scale_terms = snames
@@ -430,14 +462,11 @@ class ClockBaselineSet:
         fitted, skipped = [], []
         for asset, g in train.groupby("underlying"):
             for spec in specs:
-                if spec.column not in g:
-                    skipped.append({"underlying": asset, "feature": spec.name, "reason": "column missing"})
+                reason = training_shortfall(g, spec)
+                if reason is not None:
+                    skipped.append({"underlying": asset, "feature": spec.name, "reason": reason})
                     continue
-                fb = fit_feature_baseline(g, spec, str(asset))
-                if fb is None:
-                    skipped.append({"underlying": asset, "feature": spec.name, "reason": "insufficient training data"})
-                else:
-                    fitted.append(fb)
+                fitted.append(fit_feature_baseline(g, spec, str(asset)))
 
         spec_hash = hashlib.sha256(
             json.dumps([asdict(s) for s in specs], sort_keys=True).encode()
