@@ -80,6 +80,14 @@ OPTION_GRID_ROOT = (
     / "option_grid"
 )
 
+# Next daily expiry (1DTE), collected from 6 Oct 2026 by
+# option_1dte_collector.py. Optional: absent before that date.
+OPTION_GRID_1DTE_ROOT = (
+    DATA_ROOT
+    / "daily"
+    / "option_grid_1dte"
+)
+
 
 # --------------------------------------------------
 # Database connection
@@ -208,9 +216,42 @@ def refresh_raw_views(
         """
     )
 
+    option_1dte_files = list(
+        OPTION_GRID_1DTE_ROOT.glob(
+            "expiry=*/option_grid.parquet"
+        )
+    )
+
+    if option_1dte_files:
+
+        options_1dte_glob = (
+            OPTION_GRID_1DTE_ROOT
+            / "expiry=*"
+            / "option_grid.parquet"
+        ).as_posix()
+
+        connection.execute(
+            f"""
+            CREATE OR REPLACE VIEW
+            raw_option_grid_1dte AS
+
+            SELECT *
+            FROM read_parquet(
+                '{options_1dte_glob}',
+                hive_partitioning = true,
+                union_by_name = true
+            )
+            """
+        )
+
     print(
         f"Futures files found: "
         f"{len(futures_files)}"
+    )
+
+    print(
+        f"1DTE option window files found: "
+        f"{len(option_1dte_files)}"
     )
 
     print(

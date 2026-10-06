@@ -474,6 +474,29 @@ def list_daily_options(
     )
 
 
+def list_daily_options_1dte(
+    project: str,
+    zone: str,
+    remote_home: str
+) -> list[dict]:
+    """Compacted 1DTE (next daily expiry) grids written by
+    option_1dte_collector.py. Only finished windows are synced."""
+
+    root = (
+        f"{remote_home}/"
+        f"deribit-data/"
+        f"daily/"
+        f"option_grid_1dte"
+    )
+
+    return list_files_under(
+        project,
+        zone,
+        root,
+        "option_grid.parquet"
+    )
+
+
 def list_futures(
     project: str,
     zone: str,
@@ -1143,6 +1166,22 @@ def main() -> None:
     sync_collection(
         name="Raw options",
         files=raw_options,
+        project=project,
+        zone=zone,
+        manifest=manifest
+    )
+
+    # --------------------------------------------------
+    # 2b. Completed 1DTE option windows
+    # --------------------------------------------------
+
+    sync_collection(
+        name="Daily options 1DTE",
+        files=list_daily_options_1dte(
+            project,
+            zone,
+            remote_home
+        ),
         project=project,
         zone=zone,
         manifest=manifest
