@@ -20,8 +20,24 @@ from data_engineering.alignment.state_index import (
     relation_columns,
 )
 
+from data_engineering.quality_checks.futures_integrity import (
+    create_futures_integrity_state,
+    create_known_exchange_events_table,
+    validate_futures_integrity,
+)
 
-MARKET_FEATURE_VERSION = "0.3.0"
+
+MARKET_FEATURE_VERSION = "0.4.0"
+
+# v0.4.0:
+#   - perpetual integrity gate (quality_checks/futures_integrity.py):
+#     perp_integrity_ok and per-test flags; microstructure and L2
+#     instability readiness now also require perp_integrity_ok.
+#     Index-based returns and RV are unaffected.
+#   - known_exchange_event flag (table known_exchange_events).
+#   - clock conditioning variables for the deterministic baseline
+#     (framework v2.1, Step 2): UTC hour/minute of day, day of week,
+#     weekend, expiry type, US and EU daylight-saving indicators.
 
 # v0.2.0: structural returns and realized volatility are computed from the
 # Deribit index (the option settlement reference), not the perpetual mid.
@@ -218,6 +234,10 @@ def materialize_market_feature_inputs(
         """
     )
 
+    create_known_exchange_events_table(
+        connection
+    )
+
     _timed_execute(
         connection,
         "Materialize futures reference states",
@@ -228,6 +248,55 @@ def materialize_market_feature_inputs(
         SELECT *
         FROM futures_reference_state
         """
+    )
+
+
+def create_futures_integrity_inputs(
+    connection
+) -> None:
+    """
+    Build the perpetual integrity gate from the frozen market inputs,
+    persist it as futures_integrity_state (for notebooks) and keep a
+    compact temp copy for the market feature join.
+    """
+
+    started = time.perf_counter()
+
+    create_futures_integrity_state(
+        connection,
+        source_relation="_feature_market_state_input",
+        target_table="futures_integrity_state",
+        temporary=False,
+    )
+
+    connection.execute(
+        """
+        CREATE OR REPLACE TEMP TABLE
+        _feature_futures_integrity AS
+
+        SELECT
+            state_id,
+            perp_integrity_ok,
+            integrity_flag_count,
+            flag_known_event,
+            flag_no_two_sided,
+            flag_wide_spread,
+            flag_mid_off_index,
+            flag_frozen_with_trades,
+            flag_no_l2_updates,
+            flag_rest_stale,
+            flag_trades_outside_bbo
+        FROM futures_integrity_state
+        """
+    )
+
+    print(
+        "[FEATURE BUILD] Build futures integrity gate: "
+        f"{time.perf_counter() - started:,.2f}s"
+    )
+
+    validate_futures_integrity(
+        connection
     )
 
 
@@ -391,6 +460,79 @@ def create_market_time_series_state(
                 m.minutes_to_expiry,
                 m.is_opening_state,
 
+                -- Clock conditioning (framework v2.1, Step 2). Every field is
+                -- computed in UTC explicitly, independent of the session time zone.
+                EXTRACT('hour' FROM (m.state_time AT TIME ZONE 'UTC'))
+                    AS utc_hour,
+
+                EXTRACT('hour' FROM (m.state_time AT TIME ZONE 'UTC')) * 60
+                + EXTRACT('minute' FROM (m.state_time AT TIME ZONE 'UTC'))
+                    AS utc_minute_of_day,
+
+                -- ISO day of week of the state: 1 = Monday ... 7 = Sunday.
+                ISODOW(m.state_time AT TIME ZONE 'UTC')
+                    AS utc_day_of_week,
+
+                (ISODOW(m.state_time AT TIME ZONE 'UTC') >= 6)
+                    AS is_weekend,
+
+                -- Deribit expiries are 08:00 UTC. Friday expiries are also
+                -- the weekly; the last Friday of a month is the monthly;
+                -- a monthly in Mar/Jun/Sep/Dec is the quarterly.
+                CASE
+                    WHEN
+                        ISODOW(CAST(m.expiry_date AS DATE)) = 5
+                        AND MONTH(CAST(m.expiry_date AS DATE) + 7)
+                            <> MONTH(CAST(m.expiry_date AS DATE))
+                        AND MONTH(CAST(m.expiry_date AS DATE))
+                            IN (3, 6, 9, 12)
+                    THEN 'quarterly'
+                    WHEN
+                        ISODOW(CAST(m.expiry_date AS DATE)) = 5
+                        AND MONTH(CAST(m.expiry_date AS DATE) + 7)
+                            <> MONTH(CAST(m.expiry_date AS DATE))
+                    THEN 'monthly'
+                    WHEN
+                        ISODOW(CAST(m.expiry_date AS DATE)) = 5
+                    THEN 'weekly'
+                    ELSE 'daily'
+                END
+                    AS expiry_type,
+
+                (
+                    date_diff(
+                        'minute',
+                        (m.state_time AT TIME ZONE 'UTC'),
+                        (m.state_time AT TIME ZONE 'America/New_York')
+                    ) = -240
+                )
+                    AS us_dst,
+
+                (
+                    date_diff(
+                        'minute',
+                        (m.state_time AT TIME ZONE 'UTC'),
+                        (m.state_time AT TIME ZONE 'Europe/London')
+                    ) = 60
+                )
+                    AS eu_dst,
+
+                COALESCE(gi.perp_integrity_ok, FALSE)
+                    AS perp_integrity_ok,
+
+                gi.integrity_flag_count,
+
+                COALESCE(gi.flag_known_event, FALSE)
+                    AS known_exchange_event,
+
+                gi.flag_no_two_sided AS integrity_flag_no_two_sided,
+                gi.flag_wide_spread AS integrity_flag_wide_spread,
+                gi.flag_mid_off_index AS integrity_flag_mid_off_index,
+                gi.flag_frozen_with_trades AS integrity_flag_frozen_with_trades,
+                gi.flag_no_l2_updates AS integrity_flag_no_l2_updates,
+                gi.flag_rest_stale AS integrity_flag_rest_stale,
+                gi.flag_trades_outside_bbo AS integrity_flag_trades_outside_bbo,
+
                 (
                     m.minutes_to_expiry
                         <= {SETTLEMENT_WINDOW_MINUTES}
@@ -482,6 +624,9 @@ def create_market_time_series_state(
 
             LEFT JOIN _feature_futures_reference_input r
                 ON m.state_id = r.state_id
+
+            LEFT JOIN _feature_futures_integrity gi
+                ON m.state_id = gi.state_id
         ),
 
         index_checked AS (
@@ -1101,6 +1246,8 @@ def create_market_time_series_state(
             (
                 l2_intrawindow_ready
                 AND
+                perp_integrity_ok
+                AND
                 book_twa_obi_20 IS NOT NULL
                 AND
                 book_twa_spread IS NOT NULL
@@ -1111,6 +1258,8 @@ def create_market_time_series_state(
 
             (
                 l2_intrawindow_ready
+                AND
+                perp_integrity_ok
                 AND
                 l2_instability_scalar_available
             )
@@ -1446,6 +1595,10 @@ def main() -> None:
     try:
 
         materialize_market_feature_inputs(
+            connection
+        )
+
+        create_futures_integrity_inputs(
             connection
         )
 

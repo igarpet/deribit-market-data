@@ -25,6 +25,7 @@ from data_engineering.surfaces.build_surface_features import (
 from data_engineering.features.market_time_series import (
     MARKET_FEATURE_VERSION,
     create_l2_instability_distribution_state,
+    create_futures_integrity_inputs,
     create_market_time_series_state,
     drop_persistent_relation,
     materialize_market_feature_inputs,
@@ -46,7 +47,11 @@ from data_engineering.features.option_time_series import (
 # v0.2.0: return_5m/15m/30m/1h and realized volatility come from the
 # Deribit index (market feature v0.2.0); adds perp_mid_return_5m,
 # return_source and index_return_input_eligible.
-TIME_SERIES_FEATURE_SCHEMA_VERSION = "0.4.0"
+TIME_SERIES_FEATURE_SCHEMA_VERSION = "0.5.0"
+
+# v0.5.0: perpetual integrity gate (perp_integrity_ok, integrity flags,
+# known_exchange_event) and clock conditioning variables (market features
+# v0.4.0). Microstructure and L2 instability readiness require the gate.
 
 # v0.4.0: quote-only fitted smile, exit-liquidity counts, 30m/1h option
 # changes and option quote flags (option features v0.3.0).
@@ -811,6 +816,10 @@ def build_features(
     )
 
     materialize_market_feature_inputs(
+        connection
+    )
+
+    create_futures_integrity_inputs(
         connection
     )
 
