@@ -32,6 +32,23 @@ filtered state through the HMM transition matrix and recursively updating the
 HAR history with expected future bar variance. Forecasts are scored against
 the same strict 30m/60m index-RV targets used by Module 12.
 
+Interpretation caveat (discussion 013): the emission is log(r^2 + eps), whose
+noise is log-chi-square-like (left-skewed) and is NOT Student-t. Scale-only
+switching (S1) therefore changes the dispersion / shape of log r^2, not the
+volatility level, and can be driven by flat or stale index bars (a Q-like
+observation effect). Only intercept switching (S2/S3) is a volatility-level
+regime; state_emission_diagnostics reports the floor share per state.
+
+Block emission (0.2.0, discussion 013): with block = b > 1 the emission is
+the non-overlapping b-bar realized variance y_t = log(sum_{i<b} r_{t-i}^2 + eps)
+with HAR windows ending at t - b. Each origin phase (minute of session mod b)
+forms its own chain of non-overlapping blocks; the phases are pooled for
+estimation (pseudo-likelihood) and every bar origin is filtered on its own
+phase chain. b = 6 gives a 30m emission whose noise (log chi^2 with ~6 df) is
+far less skewed than a single log r^2, so states cannot be built from the noise
+of one squared return. block = 1 reproduces 0.1.x except that HAR lags across a grid gap are now
+missing instead of silently spanning the gap.
+
 This file is development-only. It does not implement the binding HAR-GARCH-t
 simulation null yet; any switching result must pass that null before states are
 interpreted economically.
@@ -52,7 +69,7 @@ from data_engineering.modeling.clock_baseline import ClockBaselineSet
 from data_engineering.modeling.hsmm.engine import HSMMData
 
 
-VOL_HMM_VERSION = "0.1.1"
+VOL_HMM_VERSION = "0.2.0"
 
 FEATURE_NAMES = ["const", "l5m", "l30m", "l1h", "l4h", "clock", "weekend"]
 SWITCH_FEATURES = {
@@ -64,6 +81,13 @@ SWITCH_FEATURES = {
 BACK_WINDOWS = dict(vt.BACK_WINDOWS)
 BACK_MIN_COVERAGE = 0.90
 EPS_QUANTILE = 0.01
+# 0.1.3: degenerate-state guards. log(r^2 + eps) piles up at log(eps) on flat or
+# stale index bars; without a floor a state can collapse onto those identical
+# values (sigma -> 0, unbounded likelihood). The floor is a fraction of the
+# training emission sd; fits with a state below MIN_OCCUPANCY or at the floor
+# are flagged degenerate and cannot pass the switching gate.
+SIGMA_FLOOR_FRAC = 0.25
+MIN_OCCUPANCY = 0.02
 
 
 def _positive_quantile(x: np.ndarray, q: float = EPS_QUANTILE) -> float:
@@ -110,20 +134,35 @@ def _backward_sum_coverage(
     return out
 
 
-def _segments(raw_index: np.ndarray, sessions: np.ndarray, times: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Segment selected rows at session changes, missing rows, or grid gaps."""
+def _phase_order(raw_index: np.ndarray, times: np.ndarray, block: int) -> np.ndarray:
+    """Reorder rows so each phase chain (minute-of-day / 5 mod block) is contiguous
+    and time-ordered. block = 1 leaves the order unchanged."""
+    raw_index = np.asarray(raw_index, int)
+    if block == 1 or len(raw_index) == 0:
+        return raw_index
+    t_ns = pd.DatetimeIndex(pd.to_datetime(times[raw_index], utc=True)).as_unit("ns").asi8
+    phase = (t_ns // int(pd.Timedelta(vt.BAR).as_unit("ns").value)) % block
+    return raw_index[np.lexsort((t_ns, phase))]
+
+
+def _segments(raw_index: np.ndarray, sessions: np.ndarray, times: np.ndarray, block: int = 1) -> tuple[np.ndarray, np.ndarray]:
+    """Segment selected rows at session changes, missing rows, or grid gaps.
+    Consecutive rows of one chain must be exactly `block` bars apart."""
     raw_index = np.asarray(raw_index, int)
     if len(raw_index) == 0:
         return np.array([], int), np.array([], int)
 
     r = raw_index
-    t_ns = pd.DatetimeIndex(times).asi8
-    bar_ns = int(vt.BAR.value)
+    # 0.1.3: force nanoseconds. With object Timestamps pandas 3 returns
+    # microsecond asi8, which never equals BAR.value (ns): every row became its
+    # own segment and the HMM lost all time dependence.
+    t_ns = pd.DatetimeIndex(pd.to_datetime(times, utc=True)).as_unit("ns").asi8
+    bar_ns = int(pd.Timedelta(vt.BAR).as_unit("ns").value)
     breaks = np.r_[
         True,
-        (np.diff(r) != 1)
+        (np.diff(r) != block)
         | (sessions[r[1:]] != sessions[r[:-1]])
-        | ((t_ns[r[1:]] - t_ns[r[:-1]]) != bar_ns),
+        | ((t_ns[r[1:]] - t_ns[r[:-1]]) != block * bar_ns),
     ]
     starts = np.flatnonzero(breaks)
     ends = np.r_[starts[1:], len(r)]
@@ -148,6 +187,7 @@ class BarVolPanel:
     train_sessions: list[str]
     clock: dict
     min_back_coverage: float = BACK_MIN_COVERAGE
+    block: int = 1
 
     def rows_for_sessions(self, sessions: Iterable[str]) -> np.ndarray:
         return np.isin(self.sessions, sorted(set(sessions)))
@@ -179,6 +219,7 @@ def build_panel(
     *,
     score_eps: dict | None = None,
     min_back_coverage: float = BACK_MIN_COVERAGE,
+    block: int = 1,
 ) -> BarVolPanel:
     """Build a causal bar-frequency volatility panel.
 
@@ -190,12 +231,20 @@ def build_panel(
     sessions = vt.expiry_time(times).sub(pd.Timedelta(hours=8)).dt.strftime("%Y-%m-%d").to_numpy()
     train = np.isin(sessions, sorted(train_sessions))
 
+    block = int(block)
+    if block < 1:
+        raise ValueError("block must be >= 1")
     r = pd.to_numeric(g["return_5m"], errors="coerce").to_numpy(float)
     r2 = r ** 2
-    eps_bar = _positive_quantile(r2[train])
+    # Emission: b-bar realized variance ending at t (strict: all b returns, contiguous grid).
+    obs = r2 if block == 1 else _backward_sum_coverage(r2, times, block, 1.0)
+    eps_bar = _positive_quantile(obs[train])
 
-    # HAR information available before y_t: windows end at t-1.
-    lag_r2 = np.r_[np.nan, r2[:-1]]
+    # HAR information available before y_t: windows end at t-block.
+    lag_r2 = np.r_[np.full(block, np.nan), r2[:-block]]
+    lag_ok = np.r_[np.zeros(block, bool), (times.iloc[block:].to_numpy() - times.iloc[:-block].to_numpy())
+                   == block * vt.BAR.to_timedelta64()] if len(times) > block else np.zeros(len(times), bool)
+    lag_r2 = np.where(lag_ok, lag_r2, np.nan)
     back = {
         w: _backward_sum_coverage(lag_r2, times, k, min_back_coverage)
         for w, k in BACK_WINDOWS.items()
@@ -209,7 +258,12 @@ def build_panel(
     tr = cbs.transform(frame)
     cf = pd.to_numeric(tr["return_5m__clock_vol_factor"], errors="coerce").to_numpy(float)
     with np.errstate(divide="ignore", invalid="ignore"):
-        clock_log = np.log(cf)
+        if block == 1:
+            clock_log = np.log(cf)
+        else:
+            # log f scale of the block: 0.5 * log mean f^2 over the block's bars (deterministic)
+            f2 = pd.Series(cf ** 2).rolling(block, min_periods=block).mean().to_numpy()
+            clock_log = 0.5 * np.log(f2)
 
     weekend = g["is_weekend"].fillna(False).astype(bool).to_numpy()
     with np.errstate(divide="ignore", invalid="ignore"):
@@ -222,7 +276,7 @@ def build_panel(
             "clock": clock_log,
             "weekend": weekend.astype(float),
         })
-        y = np.log(r2 + eps_bar)
+        y = np.log(obs + eps_bar)
 
     base = vt.build_panel(g)
     if score_eps is None:
@@ -248,6 +302,7 @@ def build_panel(
         train_sessions=sorted(train_sessions),
         clock=cbs.to_dict(),
         min_back_coverage=float(min_back_coverage),
+        block=block,
     )
 
 
@@ -264,12 +319,15 @@ def make_model_data(panel: BarVolPanel, sessions: set[str], structure: str) -> M
     if all_names:
         ok &= np.isfinite(panel.features[all_names].to_numpy(float)).all(axis=1)
 
-    raw = np.flatnonzero(ok)
+    raw = _phase_order(np.flatnonzero(ok), panel.times.to_numpy(), panel.block)
     if len(raw) < 40:
         raise ValueError(f"{panel.asset} {structure}: only {len(raw)} complete bar rows.")
 
     times_np = panel.times.to_numpy()
-    starts, ends = _segments(raw, panel.sessions, times_np)
+    starts, ends = _segments(raw, panel.sessions, times_np, panel.block)
+    if len(raw) > 100 and np.median(ends - starts) < 3:
+        raise RuntimeError(f"{panel.asset} {structure}: segments have median length {np.median(ends - starts)}; "
+                           "time-gap detection is broken.")
     Xs = panel.features.loc[raw, switch].to_numpy(float) if switch else np.empty((len(raw), 0))
     Xc = panel.features.loc[raw, shared].to_numpy(float) if shared else np.empty((len(raw), 0))
     price = HSMMData(
@@ -301,6 +359,155 @@ def _state_smear(result: sdf_hmm.SDFHMMResult, data: ModelData) -> np.ndarray:
     return np.maximum(num / den, 1e-8)
 
 
+# --------------------------------------------------
+# Fast forward-backward (same algorithm and outputs as sdf_hmm._fb)
+# --------------------------------------------------
+# sdf_hmm._fb calls scipy.special.logsumexp at every time step; on bar-frequency
+# data that makes one EM fit take minutes. _fb_fast implements the identical
+# recursions with an inlined log-sum-exp (numba-compiled when available). It is
+# swapped in only for the duration of vol_hmm's own fits; fb_selftest checks
+# that both give the same output.
+
+try:
+    from numba import njit as _njit
+    _HAVE_NUMBA = True
+except Exception:  # pragma: no cover
+    _HAVE_NUMBA = False
+
+    def _njit(*a, **k):
+        def deco(f):
+            return f
+        return deco if not (a and callable(a[0])) else a[0]
+
+
+@_njit(cache=True)
+def _lse(v):
+    m = v.max()
+    if not np.isfinite(m):
+        return m
+    return m + np.log(np.exp(v - m).sum())
+
+
+@_njit(cache=True)
+def _fb_kernel(ly, lfw, logP, logpi, pi, P, starts, ends):
+    T, K = ly.shape
+    lb = ly + lfw
+    la = np.empty((T, K))
+    filt = np.empty((T, K))
+    scores = np.empty(T)
+    lbe = np.zeros((T, K))
+    xi = np.zeros((K, K))
+    ll = 0.0
+    tmp = np.empty(K)
+    tmp2 = np.empty(K)
+    for s in range(len(starts)):
+        aa, zz = starts[s], ends[s]
+        # forward (filtered on the price emission, factor term as prior tilt)
+        for t in range(aa, zz):
+            if t == aa:
+                prior = pi.copy()
+            else:
+                prior = filt[t - 1] @ P
+            for k in range(K):
+                tmp[k] = np.log(max(prior[k], 1e-300)) + lfw[t, k]
+            c = _lse(tmp)
+            for k in range(K):
+                tmp[k] -= c
+                tmp2[k] = tmp[k] + ly[t, k]
+            scores[t] = _lse(tmp2)
+            c2 = _lse(tmp2)
+            for k in range(K):
+                la[t, k] = tmp2[k] - c2
+                filt[t, k] = np.exp(la[t, k])
+        # backward
+        lbe[zz - 1, :] = 0.0
+        for t in range(zz - 2, aa - 1, -1):
+            for i in range(K):
+                for j in range(K):
+                    tmp[j] = logP[i, j] + lb[t + 1, j] + lbe[t + 1, j]
+                lbe[t, i] = _lse(tmp)
+            c = _lse(lbe[t])
+            for i in range(K):
+                lbe[t, i] -= c
+        # xi
+        lx = np.empty((K, K))
+        for t in range(aa, zz - 1):
+            for i in range(K):
+                for j in range(K):
+                    lx[i, j] = la[t, i] + logP[i, j] + lb[t + 1, j] + lbe[t + 1, j]
+            c = _lse(lx.ravel())
+            for i in range(K):
+                for j in range(K):
+                    xi[i, j] += np.exp(lx[i, j] - c)
+        # likelihood
+        prev = pi.copy()
+        for t in range(aa, zz):
+            if t == aa:
+                prior = pi.copy()
+            else:
+                prior = prev @ P
+            for k in range(K):
+                tmp[k] = np.log(max(prior[k], 1e-300)) + lb[t, k]
+            sc = _lse(tmp)
+            ll += sc
+            for k in range(K):
+                prev[k] = np.exp(tmp[k] - sc)
+    lg = la + lbe
+    gamma = np.empty((T, K))
+    for t in range(T):
+        c = _lse(lg[t])
+        for k in range(K):
+            gamma[t, k] = np.exp(lg[t, k] - c)
+    return gamma, filt, xi, ll, scores
+
+
+def _fb_fast(p, d, spec):
+    ly = sdf_hmm.price_logdens(p, d)
+    if spec.omega_f != 0.0 and d.m:
+        lfw = spec.omega_f * sdf_hmm.factor_logdens(p, d, spec.factor_nu)
+    else:
+        lfw = np.zeros_like(ly)
+    P = np.ascontiguousarray(p.P, dtype=float)
+    pi = np.ascontiguousarray(p.pi, dtype=float)
+    gamma, filt, xi, ll, scores = _fb_kernel(
+        np.ascontiguousarray(ly, dtype=float), np.ascontiguousarray(lfw, dtype=float),
+        np.log(np.maximum(P, 1e-300)), np.log(np.maximum(pi, 1e-300)), pi, P,
+        np.asarray(d.price.starts, np.int64), np.asarray(d.price.ends, np.int64),
+    )
+    return gamma, filt, xi, float(ll), scores
+
+
+def fb_selftest(seed: int = 0) -> float:
+    """Max abs difference between _fb_fast and sdf_hmm._fb on random data."""
+    rng = np.random.default_rng(seed)
+    T, K = 300, 2
+    y = rng.standard_normal(T)
+    Xs = np.ones((T, 1))
+    Xc = rng.standard_normal((T, 2))
+    price = HSMMData(y, Xs, Xc, np.array([0, 120]), np.array([120, T]), ["const"], ["a", "b"])
+    F = np.empty((T, 0))
+    d = sdf_hmm.SDFHMMData(price, F, F.copy(), np.empty((T, 0), bool), [])
+    spec = sdf_hmm.SDFHMMSpec(K=K, omega_f=0.0, max_iter=3, n_init=1, seed=seed)
+    p = sdf_hmm.fit(d, spec).params
+    a = sdf_hmm._fb(p, d, spec)
+    b = _fb_fast(p, d, spec)
+    diffs = [np.max(np.abs(np.asarray(x) - np.asarray(z))) for x, z in zip(a[:3] + (a[4],), b[:3] + (b[4],))]
+    return float(max(diffs + [abs(a[3] - b[3])]))
+
+
+class _FastFB:
+    """Context manager: use _fb_fast inside sdf_hmm.fit."""
+
+    def __enter__(self):
+        self._orig = sdf_hmm._fb
+        sdf_hmm._fb = _fb_fast
+        return self
+
+    def __exit__(self, *exc):
+        sdf_hmm._fb = self._orig
+        return False
+
+
 def fit_model(
     panel: BarVolPanel,
     train_sessions: set[str],
@@ -317,6 +524,7 @@ def fit_model(
         raise ValueError("K1 structure must use K=1.")
 
     md = make_model_data(panel, train_sessions, structure)
+    min_sigma = float(SIGMA_FLOOR_FRAC * np.std(md.sdf.price.y))
     spec = sdf_hmm.SDFHMMSpec(
         K=int(K),
         omega_f=0.0,
@@ -324,19 +532,21 @@ def fit_model(
         n_init=int(n_init),
         seed=int(seed),
         ridge=1e-5,
+        min_sigma=min_sigma,
         trans_prior=1e-4,
         sticky_prior=0.0,
         init_block_mean=12,
         nu_grid=(3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 30.0),
     )
-    res = sdf_hmm.fit(md.sdf, spec)
+    with _FastFB():
+        res = sdf_hmm.fit(md.sdf, spec)
     smear = _state_smear(res, md)
     return VolHMMFit(structure, int(K), spec, res, smear, md.names_s, md.names_c), md
 
 
 def filter_model(fit: VolHMMFit, panel: BarVolPanel, sessions: set[str]) -> tuple[ModelData, np.ndarray]:
     md = make_model_data(panel, sessions, fit.structure)
-    _, filt, _, _, _ = sdf_hmm._fb(fit.result.params, md.sdf, fit.spec)
+    _, filt, _, _, _ = _fb_fast(fit.result.params, md.sdf, fit.spec)
     return md, filt
 
 
@@ -379,45 +589,72 @@ def forecast_integrated_variance(
 
     Future latent probabilities are propagated through P without conditioning
     on unobserved future emissions. HAR windows are recursively updated with
-    expected future bar variance.
+    expected future bar variance. (0.1.3: same recursion as 0.1.2, vectorized
+    over a fixed 48-bar history buffer instead of copying the full history.)
     """
     p = fit.result.params
     out = np.full(len(eval_data.raw_index), np.nan)
     times = panel.times.to_numpy()
+    bar = vt.BAR.to_timedelta64()
+    b = int(panel.block)
+    if horizon_bars % b:
+        raise ValueError(f"horizon {horizon_bars} bars is not a multiple of block {b}")
+    steps = horizon_bars // b
+    max_k = max(BACK_WINDOWS.values())
+    win = [(n, k, int(np.ceil(panel.min_back_coverage * k))) for n, k in BACK_WINDOWS.items()]
+    col = {"5m": "l5m", "30m": "l30m", "1h": "l1h", "4h": "l4h"}
+    names_s, names_c = list(fit.names_s), list(fit.names_c)
+    beta_s = np.asarray(p.beta_s, float)
+    beta_c = np.asarray(p.beta_c, float)
+    Pm = np.asarray(p.P, float)
+    smear = np.asarray(fit.smear, float)
+    eps_back = {n: panel.eps_back[n] for n, _ in BACK_WINDOWS.items()}
 
     for q, raw_idx in enumerate(eval_data.raw_index):
-        if raw_idx < 47 or raw_idx + horizon_bars >= len(panel.r2):
+        if raw_idx < max_k - 1 or raw_idx + horizon_bars >= len(panel.r2):
             continue
-
-        # The forecast must remain inside one expiry session on a contiguous grid.
         fut = np.arange(raw_idx + 1, raw_idx + horizon_bars + 1)
         if np.any(panel.sessions[fut] != panel.sessions[raw_idx]):
             continue
-        if np.any(np.diff(times[np.r_[raw_idx, fut]]) != vt.BAR.to_timedelta64()):
+        if np.any(np.diff(times[np.r_[raw_idx, fut]]) != bar):
             continue
 
-        history = panel.r2[: raw_idx + 1].tolist()
+        hist = np.empty(max_k + horizon_bars)
+        hist[:max_k] = panel.r2[raw_idx - max_k + 1: raw_idx + 1]
+        n_hist = max_k
         prob = filtered[q].copy()
         total = 0.0
         good = True
 
-        for j in range(1, horizon_bars + 1):
-            rr = raw_idx + j
-            feat = _feature_vector(panel, rr, history)
-            if feat is None or not np.isfinite(list(feat.values())).all():
+        for j in range(1, steps + 1):
+            rr = raw_idx + j * b
+            feat = {"const": 1.0, "clock": float(panel.clock_log[rr]), "weekend": float(panel.weekend[rr])}
+            for name, k, need in win:
+                w = hist[n_hist - k: n_hist]
+                fin = np.isfinite(w)
+                cnt = int(fin.sum())
+                if cnt < need:
+                    good = False
+                    break
+                feat[col[name]] = float(np.log(w[fin].sum() * k / cnt + eps_back[name]))
+            if not good or not np.all(np.isfinite(list(feat.values()))):
                 good = False
                 break
 
-            prob = prob @ p.P
-            mu = _state_means(fit, feat)
-            state_level = np.exp(np.clip(mu, -50.0, 20.0)) * fit.smear - panel.eps_bar
-            state_level = np.maximum(state_level, 0.0)
-            v = float(prob @ state_level)
+            prob = prob @ Pm
+            shared = float(np.asarray([feat[n] for n in names_c]) @ beta_c) if names_c else 0.0
+            if names_s:
+                mu = shared + beta_s @ np.asarray([feat[n] for n in names_s], float)
+            else:
+                mu = np.full(Pm.shape[0], shared)
+            level = np.maximum(np.exp(np.clip(mu, -50.0, 20.0)) * smear - panel.eps_bar, 0.0)
+            v = float(prob @ level)
             if not np.isfinite(v):
                 good = False
                 break
             total += v
-            history.append(v)
+            hist[n_hist: n_hist + b] = v / b
+            n_hist += b
 
         if good:
             out[q] = total
@@ -462,6 +699,7 @@ def parameter_table(fit: VolHMMFit) -> pd.DataFrame:
     p = fit.result.params
     rows = []
     occ = fit.result.gamma.mean(axis=0)
+    degenerate = bool(fit.K > 1 and (np.any(occ < MIN_OCCUPANCY) or np.any(p.sigma <= 1.01 * fit.spec.min_sigma)))
     for k in range(p.K):
         row = {
             "state": k,
@@ -471,6 +709,8 @@ def parameter_table(fit: VolHMMFit) -> pd.DataFrame:
             "smear": float(fit.smear[k]),
             "p_stay": float(p.P[k, k]),
             "implied_mean_duration": float(1.0 / max(1.0 - p.P[k, k], 1e-12)),
+            "sigma_floor": float(fit.spec.min_sigma),
+            "degenerate_fit": degenerate,
         }
         for j, n in enumerate(fit.names_s):
             row[f"b_{n}"] = float(p.beta_s[k, j])
@@ -500,3 +740,30 @@ def episode_table(fit: VolHMMFit, data: ModelData) -> pd.DataFrame:
             })
             t = e
     return pd.DataFrame(out)
+
+
+def state_emission_diagnostics(fit: VolHMMFit, data: ModelData, panel: BarVolPanel) -> pd.DataFrame:
+    """Per posterior-mode state: occupancy, emission moments and the share of
+    bars at the epsilon floor (r^2 <= eps_bar). A state dominated by floor bars
+    is describing flat / stale index prints, not a volatility regime."""
+    lab = fit.result.gamma.argmax(axis=1)
+    raw = data.raw_index
+    y = data.sdf.price.y
+    r2 = np.exp(y) - panel.eps_bar          # emission level (bar r^2, or block RV when block > 1)
+    rows = []
+    for k in range(fit.K):
+        m = lab == k
+        if not m.any():
+            rows.append({"state": k, "bars": 0})
+            continue
+        rows.append({
+            "state": k,
+            "bars": int(m.sum()),
+            "share": float(m.mean()),
+            "mean_y": float(np.mean(y[m])),
+            "sd_y": float(np.std(y[m])),
+            "skew_y": float(pd.Series(y[m]).skew()),
+            "floor_share": float(np.mean(r2[m] <= panel.eps_bar)),
+            "median_r2_over_eps": float(np.median(r2[m]) / panel.eps_bar),
+        })
+    return pd.DataFrame(rows)
