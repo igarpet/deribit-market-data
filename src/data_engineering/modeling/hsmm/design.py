@@ -29,7 +29,8 @@ the null passes through exactly the same pipeline.
 
 Exogenous regressors (`extra`, e.g. factor scores from modeling.factors) are
 taken as given at state t, lagged one bar like D (known at t-1 for row t),
-and appended to the columns after z3; they are not rebuilt under the null. For simulated returns the
+and appended to the columns after z3; unavailable values are masked terms.
+They are not rebuilt under the null. For simulated returns the
 perpetual path is rebuilt as simulated index + real basis, the bar VWAPs as
 Brownian-bridge averages within each bar, with the real volume weights and
 the real trade and price gates (regime_inputs.synthetic_perp_path).
@@ -198,8 +199,11 @@ def build_design(g: pd.DataFrame, f_clock: np.ndarray, returns: np.ndarray | Non
     returns: simulated returns (null). The anchor inputs are then rebuilt from
     them (see module docstring); rng drives the within-bar VWAP noise.
     log_price: EWMA anchor only; defaults to log futures_index_price.
-    extra: exogenous regressors aligned with the rows of g (NaN is treated as 0,
-    i.e. "no information" for standardized inputs); lagged one bar.
+    extra: exogenous regressors aligned with the rows of g; lagged one bar. NaN
+    marks an unavailable factor (framework v3.2 §6.7): its term is masked out
+    of the mean for that row (numerically a zero regressor value, so the
+    slope is estimated only from rows where the factor is available); the
+    factor score itself is never set to a neutral value.
     """
     if anchor not in ANCHORS:
         raise ValueError(f"anchor must be one of {ANCHORS}")

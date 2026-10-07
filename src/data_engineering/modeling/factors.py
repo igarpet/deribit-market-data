@@ -1,34 +1,37 @@
 """
-Factor inputs for the factor-augmented switching regression (framework v3.1,
-structural layer step A: static factors, training-only).
+Factor inputs for the joint Switching Dynamic Factor HSMM (framework v3.2,
+§6.2, §6.7, §6.8): static factors, training-only, masked scoring.
 
 Market measurements are grouped into feature FAMILIES. Each feature is
 clock-adjusted (modeling.clock_baseline, fitted on the training rows only),
-standardized with training moments and winsorized; each family is
-compressed to its first principal component on the training rows:
+standardized with training moments and winsorized at +-5:
 
-    x~_{j,t} = clip((clock_adj_{j,t} - m_j) / s_j, -5, 5)      (training m_j, s_j)
-    f_{g,t}  = sum_{j in g} w_{g,j} x~_{j,t} / sqrt(n_obs_{g,t} / n_g)
+    x~_{j,t} = clip((clock_adj_{j,t} - m_j) / s_j, -5, 5)        (training m_j, s_j)
 
-w_g is the leading eigenvector of the training correlation matrix of family
-g (missing entries set to 0 = the training mean, i.e. "no information"),
-signed so that the family's anchor feature has a positive loading. The
-partial-row rescaling keeps the factor variance comparable when some of
-the family's features are missing. A factor is missing when every feature
-of its family is missing.
+Loadings (v3.2 §6.7: estimated on valid training observations). Each family
+is compressed to the leading eigenvector w_g of the pairwise-complete
+training correlation matrix of its features (no missing value is filled),
+signed so that the family's anchor feature loads positively.
 
-Two channels (they answer different questions):
+Masked / observed-coordinate scoring (v3.2 §6.7). With O_t the features of
+family g observed at t,
 
-  directional families (flow, book, basis, skew): signed pressure that can
-      predict the SIGN of the next index return. They enter the price
-      equation as state-specific regressors, gamma_k' F_{t-1}.
-  state families (activity, volatility, liquidity, option level): symmetric
-      measurements that cannot predict the sign but may help identify the
-      regime. They enter as the masked emission block, with a tempered
-      weight so that they cannot take over the states.
+    f_{g,t} = sum_{j in O_t} w_{g,j} x~_{j,t} / sum_{j in O_t} w_{g,j}^2
 
-Nothing here uses future information: clock baselines, moments, loadings
-and signs come from the training rows; rolling features are trailing.
+(the least-squares factor score from the observed coordinates; equal to
+w_g' x~_t when all are observed), rescaled to unit training variance. When
+no feature of the family is observed the factor is UNAVAILABLE (NaN):
+missing measurements are never converted into a neutral factor value.
+Availability is never used as a predictor.
+
+Eligibility (v3.2 §6.8): a family whose loadings are unstable between the two
+halves of the training window (|cos| < MIN_STABILITY) or whose coverage is
+below MIN_COVERAGE is reported and excluded from the switching model.
+
+Channels (v3.2 §5): directional families (flow, book, basis, skew) may enter
+the next-return mean; state families (activity, volatility, liquidity,
+option level) enter the latent factor dynamics, not as standalone signed
+price slopes.
 """
 
 from __future__ import annotations
@@ -41,7 +44,9 @@ import pandas as pd
 from data_engineering.modeling.clock_baseline import ClockBaselineSet, FeatureSpec, transformed_values
 
 
-FACTOR_VERSION = "0.1"
+FACTOR_VERSION = "0.2"
+MIN_STABILITY = 0.8          # |cos| of loadings between training halves (framework v3.2 §6.8)
+MIN_COVERAGE = 0.5           # share of states with the factor available
 WINSOR = 5.0
 BAR = pd.Timedelta(minutes=5)
 
@@ -165,9 +170,13 @@ class FactorSet:
         return self.factors.loc[rows if rows is not None else self.factors.index, cols]
 
 
-def _first_pc(X: np.ndarray, anchor_idx: int) -> tuple[np.ndarray, float]:
-    C = np.corrcoef(X, rowvar=False) if X.shape[1] > 1 else np.ones((1, 1))
-    C = np.nan_to_num(C, nan=0.0)
+def _loadings(X: pd.DataFrame, anchor_idx: int, min_periods: int = 50) -> tuple[np.ndarray, float] | None:
+    """Leading eigenvector of the pairwise-complete correlation matrix."""
+    if X.shape[1] == 1:
+        return (np.ones(1), 1.0) if X.iloc[:, 0].notna().sum() >= min_periods else None
+    C = X.corr(min_periods=min_periods).to_numpy()
+    if not np.isfinite(C).all():
+        return None
     vals, vecs = np.linalg.eigh(C)
     w = vecs[:, -1]
     if w[anchor_idx] < 0:
@@ -175,7 +184,17 @@ def _first_pc(X: np.ndarray, anchor_idx: int) -> tuple[np.ndarray, float]:
     return w, float(vals[-1] / max(vals.sum(), 1e-12))
 
 
-def build_factors(df: pd.DataFrame, train_mask: pd.Series, families: tuple[Family, ...] = FAMILIES) -> FactorSet:
+def masked_scores(X: pd.DataFrame, w: np.ndarray) -> np.ndarray:
+    """Observed-coordinate least-squares factor score; NaN where nothing is observed."""
+    V = X.to_numpy(float)
+    obs = np.isfinite(V)
+    num = np.where(obs, V * w[None, :], 0.0).sum(axis=1)
+    den = np.where(obs, (w * w)[None, :], 0.0).sum(axis=1)
+    return np.where(den > 0, num / np.where(den > 0, den, 1.0), np.nan)
+
+
+def build_factors(df: pd.DataFrame, train_mask: pd.Series, families: tuple[Family, ...] = FAMILIES,
+                  min_stability: float = MIN_STABILITY, min_coverage: float = MIN_COVERAGE) -> FactorSet:
     """
     df: state rows with state_id, state_time, underlying, is_weekend and the
     raw columns (missing columns are reported and skipped). train_mask: rows
@@ -206,7 +225,7 @@ def build_factors(df: pd.DataFrame, train_mask: pd.Series, families: tuple[Famil
         if col in adj:
             x = adj[col]
         else:      # no clock fit (too little training data): unadjusted transform
-            spec = next(sp for sp in specs if sp.name == fd.name) if any(sp.name == fd.name for sp in specs) else None
+            spec = next((sp for sp in specs if sp.name == fd.name), None)
             x = transformed_values(frame, spec) if spec is not None else pd.Series(np.nan, index=df.index)
         z = pd.Series(np.nan, index=df.index)
         for asset, idx in df.groupby("underlying").groups.items():
@@ -226,47 +245,35 @@ def build_factors(df: pd.DataFrame, train_mask: pd.Series, families: tuple[Famil
         fac[col] = np.nan
         if not names:
             continue
-        anchor_idx = names.index(fam.anchor) if fam.anchor in names else 0
         for asset, idx in df.groupby("underlying").groups.items():
             Xa = Z.loc[idx, names]
-            obs = Xa.notna()
-            if obs.to_numpy().sum() == 0:
-                continue
             tr = train_mask.loc[idx].to_numpy()
-            keep = [j for j, n in enumerate(names) if obs.loc[tr, n].mean() > 0.2]
-            if not keep:
+            kn = [n for n in names if Xa.loc[tr, n].notna().mean() > 0.2]
+            if not kn:
                 continue
-            kn = [names[j] for j in keep]
-            a_idx = kn.index(names[anchor_idx]) if names[anchor_idx] in kn else 0
-            Xtr = Xa.loc[tr, kn]
-            Xtr = Xtr[Xtr.notna().any(axis=1)].fillna(0.0).to_numpy()
-            if len(Xtr) < 50:
+            a_idx = kn.index(fam.anchor) if fam.anchor in kn else 0
+            fit_ = _loadings(Xa.loc[tr, kn], a_idx)
+            if fit_ is None:
                 continue
-            w, expl = _first_pc(Xtr, a_idx)
-            Xall = Xa[kn].fillna(0.0).to_numpy()
-            n_obs = Xa[kn].notna().sum(axis=1).to_numpy()
-            score = (Xall @ w) / np.sqrt(np.maximum(n_obs, 1) / len(kn))
-            score = np.where(n_obs > 0, score, np.nan)
+            w, expl = fit_
+            score = masked_scores(Xa[kn], w)
             sd = np.nanstd(score[tr]) if np.isfinite(score[tr]).sum() > 10 else 1.0
             fac.loc[idx, col] = score / (sd if sd > 0 else 1.0)
             # loading stability: first vs second half of the training rows
             tri = np.flatnonzero(tr)
             stab = np.nan
-            if len(tri) >= 200 and len(kn) > 1:
+            if len(kn) > 1 and len(tri) >= 200:
                 h = len(tri) // 2
-                parts = []
-                for sel in (tri[:h], tri[h:]):
-                    Xh = Xa.iloc[sel][kn]
-                    Xh = Xh[Xh.notna().any(axis=1)].fillna(0.0).to_numpy()
-                    parts.append(_first_pc(Xh, a_idx)[0] if len(Xh) >= 50 else None)
+                parts = [_loadings(Xa.iloc[sel][kn], a_idx) for sel in (tri[:h], tri[h:])]
                 if all(p is not None for p in parts):
-                    stab = float(abs(parts[0] @ parts[1]))
+                    stab = float(abs(parts[0][0] @ parts[1][0]))
+            coverage = float(np.isfinite(fac.loc[idx, col]).mean())
+            eligible = coverage >= min_coverage and (len(kn) == 1 or (np.isfinite(stab) and stab >= min_stability))
             for n, lw in zip(kn, w):
                 load_rows.append({"underlying": asset, "family": fam.name, "channel": fam.channel,
                                   "feature": n, "loading": float(lw)})
             sum_rows.append({"underlying": asset, "family": fam.name, "channel": fam.channel,
-                             "n_features": len(kn), "explained_pc1": expl,
-                             "coverage": float(np.isfinite(fac.loc[idx, col]).mean()),
-                             "loading_stability": stab})
+                             "n_features": len(kn), "explained_pc1": expl, "coverage": coverage,
+                             "loading_stability": stab, "eligible": bool(eligible)})
     return FactorSet(fac, pd.DataFrame(load_rows), pd.DataFrame(sum_rows),
                      [fd.column for fd in missing], list(clock.skipped))
