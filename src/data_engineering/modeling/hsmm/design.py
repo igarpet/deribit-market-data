@@ -25,7 +25,11 @@ Model row t:  y_t = z_t;  state-specific [1, D_{t-1}];  shared [z_{t-1}, z_{t-2}
 contiguous from t-3 to t; contiguous runs of valid rows form segments.
 
 The same builder is used for real returns and for simulated (null) returns, so
-the null passes through exactly the same pipeline. For simulated returns the
+the null passes through exactly the same pipeline.
+
+Exogenous regressors (`extra`, e.g. factor scores from modeling.factors) are
+taken as given at state t, lagged one bar like D (known at t-1 for row t),
+and appended to the columns after z3; they are not rebuilt under the null. For simulated returns the
 perpetual path is rebuilt as simulated index + real basis, the bar VWAPs as
 Brownian-bridge averages within each bar, with the real volume weights and
 the real trade and price gates (regime_inputs.synthetic_perp_path).
@@ -34,7 +38,7 @@ the real trade and price gates (regime_inputs.synthetic_perp_path).
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
@@ -102,13 +106,19 @@ class Design:
     block_mask: np.ndarray | None
     anchor: str = DEFAULT_ANCHOR
     coverage: dict | None = None
+    col_names: list = field(default_factory=lambda: list(ALL_COLUMNS))
+
+    @property
+    def extra_names(self) -> list:
+        return [c for c in self.col_names if c not in ALL_COLUMNS]
 
     def data(self, xs=STRUCTURAL[0], xc=STRUCTURAL[1], rows: np.ndarray | None = None,
-             with_block: bool = False) -> HSMMData:
+             with_block: bool = False, block_weight: float = 1.0) -> HSMMData:
         """HSMMData for a column choice, optionally restricted to a boolean row mask
-        (segments are cut where the mask is False)."""
-        idx_s = [ALL_COLUMNS.index(c) for c in xs]
-        idx_c = [ALL_COLUMNS.index(c) for c in xc]
+        (segments are cut where the mask is False). block_weight tempers the
+        block log density (engine HSMMData.block_weight)."""
+        idx_s = [self.col_names.index(c) for c in xs]
+        idx_c = [self.col_names.index(c) for c in xc]
         keep = np.ones(len(self.frame), bool) if rows is None else np.asarray(rows, bool)
         seg = np.zeros(len(self.frame), int)
         for i, (a, b) in enumerate(zip(self.starts, self.ends)):
@@ -131,7 +141,7 @@ class Design:
             O, M, names_o = self.block[rows_], self.block_mask[rows_], self.block_names
         return HSMMData(self.frame["y"].to_numpy()[rows_], self.columns[rows_][:, idx_s],
                         self.columns[rows_][:, idx_c], new_st.astype(int), new_en.astype(int),
-                        list(xs), list(xc), O, M, names_o)
+                        list(xs), list(xc), O, M, names_o, block_weight=float(block_weight))
 
     def rows_of(self, rows: np.ndarray | None = None) -> np.ndarray:
         """Row positions (into frame) that data(rows=...) keeps, in order."""
@@ -176,7 +186,8 @@ def _session_vwap_D(g: pd.DataFrame, r: np.ndarray, sigma_c: np.ndarray, new_ses
 def build_design(g: pd.DataFrame, f_clock: np.ndarray, returns: np.ndarray | None = None,
                  log_price: np.ndarray | None = None, block: pd.DataFrame | None = None,
                  block_mask: pd.DataFrame | None = None, anchor: str = DEFAULT_ANCHOR,
-                 anchor_half_life: int = ANCHOR_HALF_LIFE, rng: np.random.Generator | None = None) -> Design:
+                 anchor_half_life: int = ANCHOR_HALF_LIFE, rng: np.random.Generator | None = None,
+                 extra: pd.DataFrame | None = None) -> Design:
     """
     g: one asset, sorted by state_time, with state_time and (unless `returns`
     is given) r; for the session VWAP anchor also vwap, volume_usd,
@@ -187,6 +198,8 @@ def build_design(g: pd.DataFrame, f_clock: np.ndarray, returns: np.ndarray | Non
     returns: simulated returns (null). The anchor inputs are then rebuilt from
     them (see module docstring); rng drives the within-bar VWAP noise.
     log_price: EWMA anchor only; defaults to log futures_index_price.
+    extra: exogenous regressors aligned with the rows of g (NaN is treated as 0,
+    i.e. "no information" for standardized inputs); lagged one bar.
     """
     if anchor not in ANCHORS:
         raise ValueError(f"anchor must be one of {ANCHORS}")
@@ -240,6 +253,14 @@ def build_design(g: pd.DataFrame, f_clock: np.ndarray, returns: np.ndarray | Non
     z1, z2, z3 = lag(z, 1), lag(z, 2), lag(z, 3)
     cols = np.column_stack([np.ones(len(r)), D1, z1, z2, z3])
     valid = np.isfinite(z) & np.all(np.isfinite(cols), axis=1) & gap_ok[N_LAGS]
+    col_names = list(ALL_COLUMNS)
+    if extra is not None and len(extra.columns):
+        if len(extra) != len(r):
+            raise ValueError("extra must be aligned with the rows of g")
+        ex = np.nan_to_num(extra.to_numpy(float), nan=0.0, posinf=0.0, neginf=0.0)
+        ex1 = np.column_stack([np.nan_to_num(lag(ex[:, j], 1), nan=0.0) for j in range(ex.shape[1])])
+        cols = np.column_stack([cols, ex1])
+        col_names += [str(c) for c in extra.columns]
 
     # VR(6) on clock-adjusted returns over the 48 bars up to t-1 (rule baseline)
     rt = r / f
@@ -272,4 +293,4 @@ def build_design(g: pd.DataFrame, f_clock: np.ndarray, returns: np.ndarray | Non
         B = np.where(Bm, B, 0.0)
     if coverage is not None:
         coverage["model_rows"] = float(len(src) / max(len(r), 1))
-    return Design(asset, frame, cols[src], starts, ends, names, B, Bm, anchor, coverage)
+    return Design(asset, frame, cols[src], starts, ends, names, B, Bm, anchor, coverage, col_names)

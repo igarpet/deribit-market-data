@@ -52,7 +52,7 @@ from scipy.special import gammaln
 from scipy.stats import nbinom
 
 
-ENGINE_VERSION = "0.1.1"
+ENGINE_VERSION = "0.1.2"
 
 # Compiled kernels (numba) when available; HSMM_NO_NUMBA=1 forces the numpy path.
 try:
@@ -82,6 +82,7 @@ class HSMMData:
     O: np.ndarray | None = None         # (T, q) masked block
     M: np.ndarray | None = None         # (T, q) True where observed
     names_o: list[str] = field(default_factory=list)
+    block_weight: float = 1.0           # tempering of the block log density (1 = full weight)
 
     def __post_init__(self):
         T = len(self.y)
@@ -237,7 +238,7 @@ def emission_logdens(params: HSMMParams, data: HSMMData) -> tuple[np.ndarray, np
         for k in range(params.K):
             z = (data.O - params.m[k]) / params.s[k]
             lp = -0.5 * (z * z + LOG_2PI) - np.log(params.s[k])
-            lb[:, k] += np.where(data.M, lp, 0.0).sum(axis=1)
+            lb[:, k] += data.block_weight * np.where(data.M, lp, 0.0).sum(axis=1)
     return ly, lb
 
 

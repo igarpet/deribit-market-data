@@ -54,8 +54,11 @@ def blocked_folds(session_dates: list[str], n_folds: int = 3, min_train_share: f
 
 
 def select_K(design: Design, K_values=(1, 2, 3, 4, 5, 6), n_folds: int = 3, spec_kw: dict | None = None,
-             seed: int = 0, verbose: bool = True) -> tuple[int, pd.DataFrame, dict]:
+             seed: int = 0, verbose: bool = True, data_kw: dict | None = None) -> tuple[int, pd.DataFrame, dict]:
+    """data_kw: passed to Design.data (xs, xc, with_block, block_weight), so
+    factor-augmented and block models are selected with the same rule."""
     spec_kw = dict(spec_kw or {})
+    data_kw = dict(data_kw or {})
     fr = design.frame
     dates = sorted(fr["session_date"].unique())
     folds = blocked_folds(dates, n_folds)
@@ -67,7 +70,7 @@ def select_K(design: Design, K_values=(1, 2, 3, 4, 5, 6), n_folds: int = 3, spec
         rows_te = design.rows_of(te)
         if len(rows_te) == 0 or len(design.rows_of(tr)) == 0:
             continue
-        tr_data, te_data = design.data(rows=tr), design.data(rows=te)
+        tr_data, te_data = design.data(rows=tr, **data_kw), design.data(rows=te, **data_kw)
         sess = fr["session_date"].to_numpy()[rows_te]
         for K in K_values:
             t0 = time.perf_counter()
@@ -94,7 +97,7 @@ def select_K(design: Design, K_values=(1, 2, 3, 4, 5, 6), n_folds: int = 3, spec
 
     # support: every state needs MIN_EPISODES posterior-mode episodes in a full-sample fit
     support = {1: {"episodes_per_state": None, "ok": True}}
-    full = design.data()
+    full = design.data(**data_kw)
     for K in [k for k in K_values if k >= 2]:
         res = fit(full, HSMMSpec(K=K, seed=seed, **spec_kw))
         ep = pd.DataFrame(episodes(res.gamma, full))
