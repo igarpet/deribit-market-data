@@ -52,7 +52,7 @@ from data_engineering.modeling.clock_baseline import ClockBaselineSet
 from data_engineering.modeling.hsmm.engine import HSMMData
 
 
-VOL_HMM_VERSION = "0.1.0"
+VOL_HMM_VERSION = "0.1.1"
 
 FEATURE_NAMES = ["const", "l5m", "l30m", "l1h", "l4h", "clock", "weekend"]
 SWITCH_FEATURES = {
@@ -117,11 +117,13 @@ def _segments(raw_index: np.ndarray, sessions: np.ndarray, times: np.ndarray) ->
         return np.array([], int), np.array([], int)
 
     r = raw_index
+    t_ns = pd.DatetimeIndex(times).asi8
+    bar_ns = int(vt.BAR.value)
     breaks = np.r_[
         True,
         (np.diff(r) != 1)
         | (sessions[r[1:]] != sessions[r[:-1]])
-        | ((times[r[1:]] - times[r[:-1]]) != vt.BAR.to_timedelta64()),
+        | ((t_ns[r[1:]] - t_ns[r[:-1]]) != bar_ns),
     ]
     starts = np.flatnonzero(breaks)
     ends = np.r_[starts[1:], len(r)]
