@@ -34,7 +34,7 @@ from scipy.special import logsumexp
 from data_engineering.modeling.hsmm.engine import HSMMData, t_logpdf
 
 
-SDF_HMM_VERSION = "0.1"
+SDF_HMM_VERSION = "0.1.1"
 
 
 @dataclass
@@ -429,7 +429,11 @@ def fit(d: SDFHMMData, spec: SDFHMMSpec) -> SDFHMMResult:
         converged = False
         for it in range(1, spec.max_iter + 1):
             gamma, filt, xi, ll, score = _fb(p, d, spec)
-            obj = ll - _penalty(p, spec)
+            # The factor block is tempered by omega_f, so its regularization
+            # must be tempered by the same weight. In particular omega_f=0
+            # must be a pure price-only benchmark: diagnostic factor fits may
+            # still be updated, but they cannot affect convergence or init choice.
+            obj = ll - spec.omega_f * _penalty(p, spec)
             hist.append(obj)
             if np.isfinite(prev) and abs(obj - prev) <= spec.tol * max(abs(prev), 1.0):
                 converged = True
@@ -437,7 +441,7 @@ def fit(d: SDFHMMData, spec: SDFHMMSpec) -> SDFHMMResult:
             prev = obj
             p = _m_step(p, d, spec, gamma, xi)
         gamma, filt, xi, ll, score = _fb(p, d, spec)
-        obj = ll - _penalty(p, spec)
+        obj = ll - spec.omega_f * _penalty(p, spec)
         init_ll.append(float(obj))
         if best is None or obj > best[0]:
             best = (obj, p, ll, gamma, filt, score, it, converged, hist)
