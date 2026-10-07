@@ -54,13 +54,26 @@ def blocked_folds(session_dates: list[str], n_folds: int = 3, min_train_share: f
 
 
 def select_K(design: Design, K_values=(1, 2, 3, 4, 5, 6), n_folds: int = 3, spec_kw: dict | None = None,
-             seed: int = 0, verbose: bool = True, data_kw: dict | None = None) -> tuple[int, pd.DataFrame, dict]:
-    """data_kw: passed to Design.data (xs, xc, with_block, block_weight), so
-    factor-augmented and block models are selected with the same rule."""
+             seed: int = 0, verbose: bool = True, data_kw: dict | None = None,
+             allowed_sessions: set[str] | None = None) -> tuple[int, pd.DataFrame, dict]:
+    """Choose K using only the allowed session universe.
+
+    data_kw is passed to Design.data (xs, xc, with_block, block_weight), so
+    factor-augmented and block models are selected with the same rule.
+    allowed_sessions is a prospective-selection guard: when supplied, both
+    expanding-window CV and the episode-support fit are restricted to those
+    sessions, leaving any later holdout untouched.
+    """
     spec_kw = dict(spec_kw or {})
     data_kw = dict(data_kw or {})
     fr = design.frame
-    dates = sorted(fr["session_date"].unique())
+    if allowed_sessions is None:
+        dates = sorted(fr["session_date"].unique())
+    else:
+        allowed = set(allowed_sessions)
+        dates = sorted(d for d in fr["session_date"].unique() if d in allowed)
+        if len(dates) < 3:
+            raise ValueError("select_K needs at least 3 allowed sessions.")
     folds = blocked_folds(dates, n_folds)
     sess_scores = {K: {} for K in K_values}
     fold_rows = []
@@ -95,9 +108,11 @@ def select_K(design: Design, K_values=(1, 2, 3, 4, 5, 6), n_folds: int = 3, spec
                      "se_diff": se, "within_1se": bool(K == best or total[K] >= total[best] - (se if np.isfinite(se) else 0.0))})
     table = pd.DataFrame(rows).set_index("K")
 
-    # support: every state needs MIN_EPISODES posterior-mode episodes in a full-sample fit
+    # support: every state needs MIN_EPISODES posterior-mode episodes, using
+    # the same prospective session universe as model selection.
     support = {1: {"episodes_per_state": None, "ok": True}}
-    full = design.data(**data_kw)
+    allowed_rows = fr["session_date"].isin(dates).to_numpy()
+    full = design.data(rows=allowed_rows, **data_kw)
     for K in [k for k in K_values if k >= 2]:
         res = fit(full, HSMMSpec(K=K, seed=seed, **spec_kw))
         ep = pd.DataFrame(episodes(res.gamma, full))
