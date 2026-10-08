@@ -6,13 +6,14 @@ Discussion: [../../discussions/Volatility_Regression](../../discussions/Volatili
 
 | Notebook | Purpose | Status |
 |---|---|---|
-| `01_full_feature_5m_ols.ipynb` | v0.1.1: next-bar volatility, two targets (trade-range Parkinson, index \|r\|) on the same rows; target-quality audit; full and backward-reduced OLS vs parameter-free references (train mean, persistence); OOS R² vs train mean; clock-hour coverage | Built; **not executed on the local research DB** |
+| `01_full_feature_5m_ols.ipynb` | v0.1.2: next-bar volatility, two targets (trade-range Parkinson, index \|r\|) on the same rows; target-quality audit; full and backward-reduced OLS vs parameter-free references (train mean, persistence); OOS R² vs train mean; clock-hour coverage | Built; **not executed on the local research DB**; v0.1.2 tests must be rerun |
 
 Reusable code: `src/data_engineering/modeling/vol_ols_5m.py` (`VOL_OLS_5M_VERSION`). Synthetic checks: `tests/test_vol_ols_5m.py`.
 
 ## Scientific boundaries
 
-- **Y is volatility**, not returns or squared returns: next-bar trade-range Parkinson volatility and, as a measurement check, next-bar index \|r\|/√(2/π); `log(σ + train-only ε)` is the response.
+- **Y is volatility**, not directional returns or squared returns: next-bar trade-range Parkinson volatility and, as a measurement check, next-bar index |r|/√(2/π); `log(σ + train-only ε)` is the response.
+- **Paired current/next eligibility (v0.1.2):** comparison rows require both estimators at t and t+5; notebook fails if complete-case/scored masks or retained candidate features differ across targets. Exclusions are tracked, not silently ignored.
 - **Pure OLS.** No HAR study in this branch (Ivan, 2026-10-08); models are compared with parameter-free references only.
 - The target window is exactly one subsequent five-minute bar, not 30/60 minutes. Do not bridge missing futures bars or 08:00 UTC option-session changes.
 - Trade-range bid/ask bounce and incomplete OHLC coverage may degrade the proxy. This must be audited before making trading claims.
