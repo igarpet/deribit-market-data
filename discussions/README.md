@@ -20,6 +20,7 @@ Each research line is a **branch**: one folder here and one under `notebooks/`, 
 | Initial research (foundational, shared by all branches) | — | `notebooks/initial_research/` |
 | HSMM (latent regime / volatility state) | `HSMM/` | `notebooks/HSMM/` |
 | Volatility Risk Premium | `Volatility_Risk_Premium/` | `notebooks/Volatility_Risk_Premium/` |
+| Volatility Regression | `Volatility_Regression/` | `notebooks/Volatility_Regression/` |
 
 A new branch gets both folders, each with a `README.md` that states its question, sequence and current status. Branches can run in parallel.
 
