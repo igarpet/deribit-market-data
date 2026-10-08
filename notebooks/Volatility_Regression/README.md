@@ -7,7 +7,7 @@ Discussion: [../../discussions/Volatility_Regression](../../discussions/Volatili
 | Notebook | Purpose | Status |
 |---|---|---|
 | `01_full_feature_5m_ols.ipynb` | v0.1.2: next-bar volatility, two targets (trade-range Parkinson, index \|r\|) on the same rows; target-quality audit; full and backward-reduced OLS vs parameter-free references (train mean, persistence); OOS R² vs train mean; clock-hour coverage | Executed on local research DB; outputs committed in 8e52de1 |
-| `02_feature_provenance_audit.ipynb` | Read-only futures-collector/schema, raw-to-feature, quality-flag and regression-coverage diagnostics | Awaiting local data run |
+| `02_feature_provenance_audit.ipynb` | Read-only futures-collector/schema, raw-to-feature, quality-flag and regression-coverage diagnostics | Executed on local research data; outputs in commit `73767f5`; results reviewed in discussion 006 |
 
 Reusable code: `src/data_engineering/modeling/vol_ols_5m.py` (`VOL_OLS_5M_VERSION`). Synthetic checks: `tests/test_vol_ols_5m.py`.
 
