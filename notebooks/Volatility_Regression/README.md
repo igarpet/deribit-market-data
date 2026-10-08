@@ -7,6 +7,7 @@ Discussion: [../../discussions/Volatility_Regression](../../discussions/Volatili
 | Notebook | Purpose | Status |
 |---|---|---|
 | `01_full_feature_5m_ols.ipynb` | v0.1.2: next-bar volatility, two targets (trade-range Parkinson, index \|r\|) on the same rows; target-quality audit; full and backward-reduced OLS vs parameter-free references (train mean, persistence); OOS R² vs train mean; clock-hour coverage | Built; **not executed on the local research DB**; v0.1.2 tests must be rerun |
+| `02_feature_provenance_audit.ipynb` | Read-only futures-collector/schema, raw-to-feature, quality-flag and regression-coverage diagnostics | Awaiting local data run |
 
 Reusable code: `src/data_engineering/modeling/vol_ols_5m.py` (`VOL_OLS_5M_VERSION`). Synthetic checks: `tests/test_vol_ols_5m.py`.
 
@@ -32,3 +33,16 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/Volatility_Regress
 ```
 
 This runs against `DERIBIT_DATA_ROOT/database/research.duckdb` **read-only**. It writes `01_*.csv` and `01_run_metadata.json` beside the notebook; commit those and the executed notebook for review. Close JupyterLab's open copy before pulling remote notebook changes.
+
+## Volatility Regression 02 — feature provenance
+
+Uses `src/data_engineering/modeling/feature_provenance_audit.py` and `tests/test_feature_provenance_audit.py`. Reads futures five-minute Parquet and research DuckDB without modification; stops at expiry 2026-10-07, preserving the HSMM prospective confirmation period. Reports `02_*.csv` outputs on collector field vintages, readiness flags, loss along data-engineering stages, and full-OLS complete-case exclusion.
+
+Run from repository root with the `deribit-data` environment:
+
+```bat
+python -m unittest discover -s tests -p "test_feature_provenance_audit.py" -v
+jupyter nbconvert --to notebook --execute --inplace notebooks/Volatility_Regression/02_feature_provenance_audit.ipynb
+```
+
+Commit executed notebook, `02_*.csv` and `02_run_metadata.json` for interpretation.
