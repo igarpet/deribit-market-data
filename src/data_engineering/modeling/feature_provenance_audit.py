@@ -1,6 +1,11 @@
 """Read-only lineage diagnostics for Volatility Regression 02.
 
-All stages are aligned to development-period (underlying, state_time) keys.
+v0.2.0 (VR 007, approved by Ivan 2026-10-09): no development cutoff for this
+branch; adds unmatched-state attribution, simultaneity of NULL index returns
+across assets, data-derived collector vintages, and feature distribution
+shifts across vintage boundaries.
+
+All stages are aligned to (underlying, state_time) keys.
 Absent upstream columns, null values and readiness-gate exclusions are distinct.
 No database mutations, no interpolation, no model fitting or target changes.
 """
@@ -9,7 +14,7 @@ from collections.abc import Mapping
 import numpy as np
 import pandas as pd
 
-FEATURE_PROVENANCE_VERSION = "0.1.0"
+FEATURE_PROVENANCE_VERSION = "0.2.0"
 KEYS = ("underlying", "state_time")
 L2_COLUMNS = (
     "book_twa_abs_obi_20", "book_obi_20_std",
@@ -22,7 +27,8 @@ EXTRA_RAW_COLUMNS = (
     "book_obi_20_raw_zero_cross_count", "book_stats_complete",
     "book_stats_coverage_ms", "collector_version", "collector_code_sha256",
     "mid_path_realized_variance", "mid_path_increment_count",
-    "mid_path_valid_points",
+    "mid_path_valid_points", "book_out_of_order_update_count",
+    "book_event_time_monotonic",
 )
 GATES = (
     "perp_integrity_ok", "l2_intrawindow_ready",
@@ -218,3 +224,136 @@ def model_coverage(g: pd.DataFrame, end: str = "2026-10-07"
                             "n_eligible": int(eligible.sum()),
                             "n_nonnull": int((eligible & observed).sum())})
     return pd.DataFrame(summary), pd.DataFrame(missing)
+
+
+# --------------------------------------------------------------------------
+# v0.2.0 additions
+# --------------------------------------------------------------------------
+
+VINTAGES = ("pre_l2_instability", "l2_instability_pre_eventtime_fix",
+            "eventtime_fix_unstamped", "futures_5m_l2_v0.3.0",
+            "futures_5m_l2_v0.3.1")
+
+
+def unmatched_states(final: pd.DataFrame, raw: pd.DataFrame) -> pd.DataFrame:
+    """Model states with no raw futures row, by underlying, expiry and UTC hour.
+
+    `raw` must already be normalized (state_time = raw bar_end).
+    """
+    f = normalize_stage(final)
+    r = normalize_stage(raw)[list(KEYS)].drop_duplicates()
+    j = f[[*KEYS, "expiry_date"]].merge(r, on=list(KEYS), how="left", indicator=True)
+    j["matched"] = j["_merge"].eq("both")
+    j["utc_hour"] = j["state_time"].dt.hour
+    out = (j.groupby(["underlying", "expiry_date", "utc_hour"], dropna=False)
+             .agg(states=("matched", "size"), matched=("matched", "sum"))
+             .reset_index())
+    out["unmatched"] = out["states"] - out["matched"]
+    first_raw = r.groupby("underlying")["state_time"].min().rename("first_raw_bar_end")
+    return out.merge(first_raw, on="underlying", how="left")
+
+
+def null_return_simultaneity(final: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Are NULL 5m index returns asset-specific or common across assets?
+
+    Returns (per-timestamp table, per-asset summary). A NULL that coincides
+    with NULLs in every other asset points to a collector-wide gap, not to
+    asset-specific index staleness.
+    """
+    f = normalize_stage(final)
+    if "return_5m" not in f:
+        raise ValueError("return_5m missing")
+    f["ret_null"] = pd.to_numeric(f["return_5m"], errors="coerce").isna()
+    f["own_bar_ineligible"] = ~bool_mask(f, "index_return_input_eligible") \
+        if "index_return_input_eligible" in f else np.nan
+    per_t = (f.groupby("state_time")
+               .agg(assets=("underlying", "nunique"), null_assets=("ret_null", "sum"))
+               .reset_index())
+    per_t["all_assets_null"] = per_t["null_assets"].eq(per_t["assets"])
+    per_t["share_assets_null"] = per_t["null_assets"] / per_t["assets"]
+    f = f.merge(per_t[["state_time", "assets", "null_assets"]], on="state_time")
+    rows = []
+    for asset, g in f.groupby("underlying"):
+        nulls = g[g["ret_null"]]
+        n = len(nulls)
+        rec = {"underlying": asset, "states": len(g), "null_returns": n,
+               "null_share": n / len(g) if len(g) else np.nan,
+               "null_isolated_share": float((nulls["null_assets"] == 1).mean()) if n else np.nan,
+               "null_majority_share": float((nulls["null_assets"] > nulls["assets"] / 2).mean()) if n else np.nan,
+               "null_all_assets_share": float((nulls["null_assets"] == nulls["assets"]).mean()) if n else np.nan}
+        if "index_return_input_eligible" in g:
+            rec["null_with_own_bar_ineligible_share"] = (
+                float(nulls["own_bar_ineligible"].astype(bool).mean()) if n else np.nan)
+        rows.append(rec)
+    keep = per_t[per_t["null_assets"] > 0].copy()
+    keep["expiry_hint_date"] = keep["state_time"].dt.strftime("%Y-%m-%d")
+    return keep, pd.DataFrame(rows)
+
+
+def collector_vintage(raw_aligned: pd.DataFrame) -> pd.Series:
+    """Label each aligned raw row with a collector vintage derived from the data.
+
+    Order of evidence: explicit `collector_version` stamp; else presence of the
+    event-time audit field (`book_out_of_order_update_count`, added by the
+    monotonic L2 event-time fix); else presence of L2 instability statistics;
+    else the earliest vintage. Rows without a raw match are `<no_raw>`.
+    """
+    r = raw_aligned
+    out = pd.Series("pre_l2_instability", index=r.index, dtype=object)
+    if "book_obi_20_std" in r:
+        out[r["book_obi_20_std"].notna()] = "l2_instability_pre_eventtime_fix"
+    if "book_out_of_order_update_count" in r:
+        out[r["book_out_of_order_update_count"].notna()] = "eventtime_fix_unstamped"
+    if "collector_version" in r:
+        v = r["collector_version"]
+        out[v.notna()] = v[v.notna()].astype(str)
+    present = [c for c in r.columns if c not in KEYS]
+    if present:
+        out[r[present].isna().all(axis=1)] = "<no_raw>"
+    return out
+
+
+def vintage_boundaries(vintage: pd.Series, state_time: pd.Series,
+                       underlying: pd.Series) -> pd.DataFrame:
+    """First and last state_time per (underlying, vintage)."""
+    d = pd.DataFrame({"underlying": underlying.to_numpy(), "vintage": vintage.to_numpy(),
+                      "state_time": pd.to_datetime(state_time, utc=True).to_numpy()})
+    return (d.groupby(["underlying", "vintage"])["state_time"]
+              .agg(first="min", last="max", states="size").reset_index()
+              .sort_values(["underlying", "first"]))
+
+
+def boundary_shift(X: pd.DataFrame, vintage: pd.Series, state_time: pd.Series,
+                   window: pd.Timedelta = pd.Timedelta(hours=24),
+                   families: Mapping[str, str] | None = None) -> pd.DataFrame:
+    """Standardized mean shift of each feature across each vintage boundary.
+
+    Uses only `window` before and after each boundary so slow market changes
+    contribute less. Compare L2 features with index/trade features: a shift
+    confined to collector-derived features suggests a definitional break.
+    shift = (mean_after - mean_before) / sd_before.
+    """
+    t = pd.to_datetime(state_time, utc=True).reset_index(drop=True)
+    v = vintage.reset_index(drop=True)
+    X = X.reset_index(drop=True)
+    order = [x for x in VINTAGES if (v == x).any()]
+    rows = []
+    for before, after in zip(order[:-1], order[1:]):
+        boundary = t[v == after].min()
+        pre = (v == before) & (t > boundary - window) & (t <= boundary)
+        post = (v == after) & (t > boundary) & (t <= boundary + window)
+        for col in X.columns:
+            a = pd.to_numeric(X.loc[pre, col], errors="coerce").dropna()
+            b = pd.to_numeric(X.loc[post, col], errors="coerce").dropna()
+            sd = a.std()
+            rows.append({"boundary": f"{before} -> {after}", "boundary_time": boundary,
+                         "feature": col,
+                         "family": (families or {}).get(col, "clock_or_extra"),
+                         "n_before": len(a), "n_after": len(b),
+                         "mean_before": a.mean() if len(a) else np.nan,
+                         "mean_after": b.mean() if len(b) else np.nan,
+                         "sd_before": sd,
+                         "sd_ratio": b.std() / sd if len(b) > 1 and sd > 0 else np.nan,
+                         "std_mean_shift": (b.mean() - a.mean()) / sd
+                         if len(a) > 1 and len(b) and sd > 0 else np.nan})
+    return pd.DataFrame(rows)
