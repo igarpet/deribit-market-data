@@ -15,6 +15,11 @@ Pure OLS. No HAR baseline: models are compared with two parameter-free
 references, the training mean and persistence (current-bar value of the same
 estimator).
 
+v0.1.2 (Volatility Regression 004):
+  - ensure BOTH current- and next-bar volatility estimators are observed
+    on the paired comparison population; enforce identical final sample
+    masks and eligible predictors across targets.
+
 v0.1.1 (Volatility Regression 002, approved by Ivan 2026-10-08):
   - removed the index-RV/clock "baseline" regression;
   - out-of-sample R^2 uses the TRAINING mean as benchmark;
@@ -34,7 +39,7 @@ from data_engineering.modeling.full_information import (
     FEATURE_SPECS, raw_feature_frame, clock_core,
 )
 
-VOL_OLS_5M_VERSION = "0.1.1"
+VOL_OLS_5M_VERSION = "0.1.2"
 BAR = pd.Timedelta(minutes=5)
 DEFAULT_DEVELOPMENT_END = "2026-10-07"
 PARKINSON_C = float(np.sqrt(4.0 * np.log(2.0)))
@@ -292,9 +297,10 @@ def prepare_asset(g: pd.DataFrame, target: str = "parkinson",
                   require_both_targets: bool = True):
     """Build the all-eligible complete-case regression for one target.
 
-    require_both_targets=True keeps only rows where BOTH targets are valid,
-    so coefficients under `parkinson` and `index_abs` come from the same
-    observations. Coverage/alias exclusions are recorded, never read as
+    require_both_targets=True requires BOTH target volatilities at t+1
+    and BOTH current-bar volatilities at t, so the persistence reference
+    and fitted models can be compared on identical observations.
+    Coverage/alias exclusions are recorded, never read as
     "no predictive value". Nothing is imputed.
     """
     if target not in TARGETS:
@@ -305,6 +311,10 @@ def prepare_asset(g: pd.DataFrame, target: str = "parkinson",
     if require_both_targets:
         for t in TARGETS:
             valid &= np.isfinite(meta[TARGET_COLUMNS[t]].to_numpy(float))
+            # The reference forecast for each target is its CURRENT-bar
+            # volatility. Requiring only future labels allowed mismatched
+            # comparison populations when current trade-OHLC was invalid.
+            valid &= np.isfinite(meta[CURRENT_COLUMNS[t]].to_numpy(float))
     train, select, test, sessions = session_split(meta, valid, development_end)
     train &= valid
     select &= valid
@@ -352,6 +362,28 @@ def prepare_asset(g: pd.DataFrame, target: str = "parkinson",
             "excluded_coverage": dropped_coverage,
             "excluded_joint_coverage": dropped_joint,
             "excluded_aliases": dropped_alias, "coverage": cov}
+
+
+def assert_paired_samples(a: dict, b: dict) -> None:
+    """Fail if a two-target experiment is not a truly paired comparison.
+
+    Must be called only when prepare_asset(..., require_both_targets=True)
+    was requested. Uses the *final* complete-case and persistence masks,
+    rather than checking session partitions alone.
+    """
+    for key in ("valid", "train", "selection", "test", "common"):
+        if not np.array_equal(a[key], b[key]):
+            raise ValueError(
+                f"Paired targets have different {key} masks; "
+                "cross-target coefficient comparisons are not valid.")
+    if a["features"] != b["features"]:
+        raise ValueError(
+            "Paired targets have different OLS feature sets; "
+            "cross-target coefficient comparisons are not valid.")
+    for split in ("train", "selection", "test"):
+        if not np.array_equal(a[split] & a["common"],
+                              b[split] & b["common"]):
+            raise ValueError(f"Paired targets have different scored {split} rows.")
 
 
 def target_audit(meta: pd.DataFrame, rows: np.ndarray) -> dict:
