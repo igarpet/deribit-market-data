@@ -1,0 +1,4 @@
+stage,source_rows,duplicate_key_rows,matched_model_states,model_states
+raw,32025,0,32025,36288
+canonical,36288,0,36288,36288
+market,36288,0,36288,36288

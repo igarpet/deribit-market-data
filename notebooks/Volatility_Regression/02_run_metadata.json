@@ -1,0 +1,29 @@
+{
+  "version": "0.1.0",
+  "audit_type": "read_only_raw_canonical_market_final_model",
+  "development_expiry_cutoff": "2026-10-07",
+  "features_checked": [
+    "book_twa_abs_obi_20",
+    "book_obi_20_std",
+    "book_obi_20_path_roughness_per_min",
+    "book_obi_20_range",
+    "book_obi_20_coherence_noise",
+    "book_obi_20_transition_count",
+    "book_obi_20_raw_zero_cross_rate",
+    "book_obi_20_reversal_strength_mean",
+    "book_obi_20_reversal_strength_max"
+  ],
+  "futures_files_inspected": 17,
+  "model_state_rows": 36288,
+  "raw_state_rows": 32025,
+  "no_database_writes": true,
+  "no_post_cutoff_analysis": true,
+  "model_fits_changed": false,
+  "notes": [
+    "Collector file schema and raw value NULLs are different diagnoses",
+    "Readiness flags overlap; do not add missing counts as disjoint causes",
+    "Complete-case removal is a model availability diagnostic, not predictive evidence",
+    "Results require manual review before proposing pipeline changes"
+  ],
+  "model_coverage_errors": []
+}
