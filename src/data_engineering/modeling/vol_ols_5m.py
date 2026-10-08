@@ -92,7 +92,9 @@ def make_panel(g: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
 def session_split(meta: pd.DataFrame, development_end: str = DEFAULT_DEVELOPMENT_END
                   ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Chronological sessions; do not touch HSMM 06 post-freeze confirmation."""
-    t = pd.to_datetime(meta["state_time"], utc=True)
+    # Split by option expiry SESSION, not civil-midnight dates.
+    session_source = meta["expiry_date"] if "expiry_date" in meta else meta["state_time"]
+    t = pd.to_datetime(session_source, utc=True)
     date = t.dt.strftime("%Y-%m-%d").to_numpy()
     sessions = np.array(sorted(set(date[(date <= development_end)
                                         & meta["target_valid"].to_numpy()])))
@@ -252,7 +254,30 @@ def prepare_asset(g: pd.DataFrame, coverage: float = 0.50,
     dropped_coverage = cov.index[cov < coverage].tolist()
     if not names:
         raise ValueError("No features meet train coverage gate")
-    # Fixed complete-case panel for full OLS and all model comparisons.
+    # A broad set of individually available features can have vanishing
+    # INTERSECTION coverage. Remove fields only for training support, and
+    # report them separately from subsequent predictive-value elimination.
+    # Never use untouched test performance to determine the feature set.
+    dropped_joint_coverage = []
+    while names:
+        complete = np.isfinite(X[names].to_numpy(float)).all(axis=1)
+        ntr = int((train & np.isfinite(y) & complete).sum())
+        nsel = int((select & np.isfinite(y) & complete).sum())
+        if ntr > max(100, 3 * (len(names) + 1)) and nsel >= 25:
+            break
+        if len(names) <= 2:
+            raise ValueError(f"Insufficient joint support: train={ntr}, selection={nsel}")
+        # Prioritize the feature whose removal restores the most TRAIN
+        # complete rows. Selection rows are only a feasibility gate.
+        candidates = []
+        for col in names:
+            remaining = [n for n in names if n != col]
+            common_minus = np.isfinite(X[remaining].to_numpy(float)).all(axis=1)
+            gain = int((train & np.isfinite(y) & common_minus).sum()) - ntr
+            candidates.append((gain, -float(cov[col]), col))
+        removed = max(candidates)[2]
+        names.remove(removed)
+        dropped_joint_coverage.append(removed)
     common = np.isfinite(X[names].to_numpy(float)).all(axis=1)
     tr_common = train & np.isfinite(y) & common
     names, dropped_alias = remove_aliases(X, tr_common, names)
@@ -260,5 +285,6 @@ def prepare_asset(g: pd.DataFrame, coverage: float = 0.50,
             "train": train, "selection": select, "test": test, "sessions": sessions,
             "y": y, "epsilon": epsilon, "features": names,
             "excluded_coverage": dropped_coverage,
+            "excluded_joint_coverage": dropped_joint_coverage,
             "excluded_aliases": dropped_alias, "coverage": cov,
             "original_feature_count": len(initial)}
