@@ -8,6 +8,7 @@ Independent branch for five-minute volatility OLS research (not the HSMM duratio
 - **004**: `004_chatgpt_paired_samples_v012.md` — fix current-bar volatility eligibility, assert identical scored populations, add regression test; future target and selection ideas remain separate.
 - **005**: `005_chatgpt_feature_provenance_audit.md` — read-only raw-to-model provenance audit, collector vintage, option/L2 masking, and complete-case coverage.
 - **006**: `006_chatgpt_feature_provenance_results.md` — reviewed executed audit results, historical L2 vintages, option-driven complete-case loss and further Claude checks.
-- **Next turn:** `007`, unless a newer numbered file is committed first.
+- **007**: `007_claude_review_01_results_and_02_audit.md` — 01 not interpretable (n/p≈8, capped deletion, no 05–09 UTC rows); option shape structurally absent before expiry; test split straddles collector changes; rv_4h 48/48 rule; unmatched states = calendar warm-up.
+- **Next turn:** `008`, unless a newer numbered file is committed first.
 
 Follow `../README.md`: new file per discussion turn, no edits to past turns, evidence before opinions, Claude and ChatGPT may propose, Ivan decides.
