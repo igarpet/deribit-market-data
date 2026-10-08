@@ -1,0 +1,8 @@
+underlying,sessions,dev_first,dev_last,test_first,test_last,folds,paired_valid_rows,test_vintages
+AVAX,17,2026-09-22,2026-10-04,2026-10-05,2026-10-08,7,4026,"eventtime_fix_unstamped,futures_5m_l2_v0.3.0,futures_5m_l2_v0.3.1"
+BTC,17,2026-09-22,2026-10-04,2026-10-05,2026-10-08,7,4607,"eventtime_fix_unstamped,futures_5m_l2_v0.3.0,futures_5m_l2_v0.3.1"
+ETH,17,2026-09-22,2026-10-04,2026-10-05,2026-10-08,7,4606,"eventtime_fix_unstamped,futures_5m_l2_v0.3.0,futures_5m_l2_v0.3.1"
+HYPE,17,2026-09-22,2026-10-04,2026-10-05,2026-10-08,7,3355,"eventtime_fix_unstamped,futures_5m_l2_v0.3.0,futures_5m_l2_v0.3.1"
+SOL,17,2026-09-22,2026-10-04,2026-10-05,2026-10-08,7,4608,"eventtime_fix_unstamped,futures_5m_l2_v0.3.0,futures_5m_l2_v0.3.1"
+TRX,17,2026-09-22,2026-10-04,2026-10-05,2026-10-08,7,784,"futures_5m_l2_v0.3.0,futures_5m_l2_v0.3.1"
+XRP,17,2026-09-22,2026-10-04,2026-10-05,2026-10-08,7,4100,"eventtime_fix_unstamped,futures_5m_l2_v0.3.0,futures_5m_l2_v0.3.1"

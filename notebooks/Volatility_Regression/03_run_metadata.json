@@ -1,0 +1,125 @@
+{
+  "version": "0.1.0",
+  "base_version": "0.1.2",
+  "targets": [
+    "parkinson",
+    "index_abs"
+  ],
+  "blocks": {
+    "B0_returns_vol_clock": [
+      "return_5m",
+      "ret_15m",
+      "ret_30m",
+      "ret_1h",
+      "log_rv_30m",
+      "log_rv_1h",
+      "log_rv_4h_tol",
+      "log_range_bps",
+      "session_progress",
+      "weekend",
+      "clock_sin1",
+      "clock_cos1",
+      "clock_sin2",
+      "clock_cos2",
+      "log1p_tte_min"
+    ],
+    "B1_flow_basis": [
+      "log_volume_usd",
+      "log_trade_count",
+      "tfi",
+      "buy_share",
+      "signed_volume",
+      "log_avg_trade",
+      "close_vs_vwap_bps",
+      "perp_ret_5m",
+      "perp_mid_basis_bps",
+      "perp_mark_basis_bps",
+      "microprice_mid_bps",
+      "oi_change",
+      "oi_return"
+    ],
+    "B2_l2_book": [
+      "log_book_updates",
+      "log_spread_bps",
+      "obi_5",
+      "obi_10",
+      "obi_20",
+      "obi_20_change",
+      "log_bid_depth20",
+      "log_ask_depth20",
+      "microprice_ref_bps",
+      "obi_20_min",
+      "obi_20_max"
+    ],
+    "B3_atm_options": [
+      "log_atm_iv",
+      "atm_iv_d5",
+      "atm_iv_d15",
+      "atm_iv_d30"
+    ]
+  },
+  "excluded_by_design": [
+    "skew_025",
+    "skew_050",
+    "curvature_025",
+    "curvature_050",
+    "local_skew_025",
+    "local_skew_050",
+    "rr_25d",
+    "bf_25d",
+    "rr_10d",
+    "bf_10d",
+    "skew025_d5",
+    "skew025_d15",
+    "skew025_d30",
+    "skew025_d60",
+    "curv025_d5",
+    "curv025_d15",
+    "curv025_d30",
+    "curv025_d60",
+    "rr25_d5",
+    "bf25_d5",
+    "log_fit_atm_iv",
+    "fit_skew_rel",
+    "fit_curvature_rel",
+    "log_fit_wrmse",
+    "log_fit_quotes",
+    "log_option_spread_med",
+    "log_option_spread_p90",
+    "otm_bid_share_z2",
+    "atm_iv_d60",
+    "log_rv_4h",
+    "abs_obi_20",
+    "obi_20_std",
+    "obi_roughness",
+    "obi_range",
+    "obi_coherence_noise",
+    "log_obi_transitions",
+    "obi_zero_cross_rate",
+    "obi_reversal_mean",
+    "obi_reversal_max"
+  ],
+  "feature_min_coverage_dev": 0.8,
+  "min_rows_per_param": 20,
+  "test_fraction": 0.25,
+  "min_train_sessions": 6,
+  "delete_block": "B2_l2_book",
+  "max_drops": 15,
+  "data_span": [
+    "2026-09-19 08:00:00+00:00",
+    "2026-10-08 07:55:00+00:00"
+  ],
+  "vintage_boundaries_file": "02_vintage_boundaries.csv",
+  "failed": [
+    {
+      "underlying": "TRX",
+      "target": "parkinson",
+      "reason": "ValueError: Fewer than 3 usable folds for deletion"
+    },
+    {
+      "underlying": "TRX",
+      "target": "index_abs",
+      "reason": "ValueError: Fewer than 3 usable folds for deletion"
+    }
+  ]
+}

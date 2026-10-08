@@ -16,6 +16,8 @@ raw,collector_code_sha256,True
 raw,mid_path_realized_variance,True
 raw,mid_path_increment_count,True
 raw,mid_path_valid_points,True
+raw,book_out_of_order_update_count,True
+raw,book_event_time_monotonic,True
 canonical,book_twa_abs_obi_20,True
 canonical,book_obi_20_std,True
 canonical,book_obi_20_path_roughness_per_min,True
@@ -33,6 +35,8 @@ canonical,collector_code_sha256,True
 canonical,mid_path_realized_variance,True
 canonical,mid_path_increment_count,True
 canonical,mid_path_valid_points,True
+canonical,book_out_of_order_update_count,True
+canonical,book_event_time_monotonic,True
 market,book_twa_abs_obi_20,True
 market,book_obi_20_std,True
 market,book_obi_20_path_roughness_per_min,True
@@ -50,3 +54,5 @@ market,collector_code_sha256,False
 market,mid_path_realized_variance,False
 market,mid_path_increment_count,False
 market,mid_path_valid_points,False
+market,book_out_of_order_update_count,False
+market,book_event_time_monotonic,False
