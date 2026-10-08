@@ -1,4 +1,4 @@
-"""Synthetic tests for vol_ols_5m v0.1.1; no research DuckDB required.
+"""Synthetic tests for vol_ols_5m v0.1.2; no research DuckDB required.
 
 Run from repo root: python -m unittest discover -s tests -p "test_vol_ols_5m.py" -v
 """
