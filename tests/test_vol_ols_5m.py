@@ -160,8 +160,14 @@ class VolOLS5MTests(unittest.TestCase):
         g = synthetic_sessions(16)
         dp = m.prepare_asset(g, "parkinson", development_end="2026-12-31")
         di = m.prepare_asset(g, "index_abs", development_end="2026-12-31")
+        # Eligibility AND actual final scored population must be paired.
+        m.assert_paired_samples(dp, di)
+        np.testing.assert_array_equal(dp["common"], di["common"])
+        self.assertEqual(dp["features"], di["features"])
         for split in ("train", "selection", "test"):
             np.testing.assert_array_equal(dp[split], di[split])
+            np.testing.assert_array_equal(dp[split] & dp["common"],
+                                          di[split] & di["common"])
         self.assertIn("tfi", dp["features"])
         tr = dp["train"] & dp["common"]
         te = dp["test"] & dp["common"]
@@ -171,6 +177,37 @@ class VolOLS5MTests(unittest.TestCase):
         cc = m.clock_coverage(dp)
         self.assertEqual(set(cc["split"]), {"train", "selection", "test"})
         self.assertTrue((cc["n_scored"] <= cc["n_target_valid"]).all())
+
+    def test_current_bar_parkinson_failure_cannot_change_paired_rows(self):
+        # At this origin, NEXT-bar labels exist for both targets, while
+        # CURRENT-bar Parkinson is missing and index-abs is available.
+        # Prior to v0.1.2 only the Parkinson persistence reference removed
+        # the row, so the two regressions used different common masks.
+        g = synthetic_sessions(16)
+        i = 20
+        g.loc[i, "perp_integrity_ok"] = False
+        meta, _, _ = m.make_panel(g)
+        self.assertTrue(np.isfinite(meta.loc[i, "sigma_next_5m"]))
+        self.assertTrue(np.isfinite(meta.loc[i, "index_sigma_next_5m"]))
+        self.assertTrue(np.isnan(meta.loc[i, "sigma_curr_5m"]))
+        self.assertTrue(np.isfinite(meta.loc[i, "index_sigma_curr_5m"]))
+
+        dp = m.prepare_asset(g, "parkinson", development_end="2026-12-31")
+        di = m.prepare_asset(g, "index_abs", development_end="2026-12-31")
+        self.assertFalse(dp["valid"][i])
+        self.assertFalse(di["valid"][i])
+        m.assert_paired_samples(dp, di)
+        self.assertFalse(dp["common"][i])
+        self.assertFalse(di["common"][i])
+        self.assertEqual(dp["features"], di["features"])
+
+        # The pairing assertion must actually reject a regressed mismatch.
+        changed = dict(di)
+        changed["common"] = di["common"].copy()
+        j = np.flatnonzero(changed["common"])[0]
+        changed["common"][j] = False
+        with self.assertRaisesRegex(ValueError, "common masks"):
+            m.assert_paired_samples(dp, changed)
 
     def test_target_audit(self):
         meta, _, _ = m.make_panel(toy())
