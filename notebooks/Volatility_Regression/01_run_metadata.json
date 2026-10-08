@@ -1,0 +1,44 @@
+{
+  "version": "0.1.2",
+  "targets": {
+    "parkinson": "next 5m perpetual trade-range Parkinson volatility",
+    "index_abs": "|next 5m index log return| / sqrt(2/pi)"
+  },
+  "transformed_target": "log(sigma_next_5m + train_only_epsilon)",
+  "require_both_targets": true,
+  "references": [
+    "train_mean",
+    "persistence"
+  ],
+  "r2_benchmark": "training mean",
+  "development_last_expiry": "2026-10-07",
+  "coverage_threshold": 0.5,
+  "max_backward_drops": 15,
+  "fitted": [
+    "AVAX/parkinson",
+    "AVAX/index_abs",
+    "BTC/parkinson",
+    "BTC/index_abs",
+    "ETH/parkinson",
+    "ETH/index_abs",
+    "HYPE/parkinson",
+    "HYPE/index_abs",
+    "SOL/parkinson",
+    "SOL/index_abs",
+    "XRP/parkinson",
+    "XRP/index_abs"
+  ],
+  "failed": [
+    {
+      "underlying": "TRX",
+      "target": "parkinson",
+      "reason": "ValueError: Insufficient common rows: train=175, selection=33, test=13, p=48"
+    },
+    {
+      "underlying": "TRX",
+      "target": "index_abs",
+      "reason": "ValueError: Insufficient common rows: train=175, selection=33, test=13, p=48"
+    }
+  ],
+  "claim": "development experiment only; no held-out confirmation"
+}

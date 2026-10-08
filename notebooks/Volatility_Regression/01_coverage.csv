@@ -1,0 +1,13 @@
+underlying,target,target_valid_train,scored_train,scored_selection,scored_test,n_sessions,catalog_columns,full_p,reduced_p,max_drops_reached,removed_for_coverage,removed_for_joint_coverage,removed_for_alias
+AVAX,parkinson,2298,765,145,207,16,82,69,54,True,9,0,4
+AVAX,index_abs,2298,765,145,207,16,82,69,54,True,9,0,4
+BTC,parkinson,2461,529,90,165,16,82,63,48,True,15,0,4
+BTC,index_abs,2461,529,90,165,16,82,63,48,True,15,0,4
+ETH,parkinson,2461,506,63,111,16,82,68,53,True,9,0,5
+ETH,index_abs,2461,506,63,111,16,82,68,53,True,9,0,5
+HYPE,parkinson,1520,371,84,151,16,82,69,54,True,9,0,4
+HYPE,index_abs,1520,371,84,151,16,82,69,54,True,9,0,4
+SOL,parkinson,2459,441,29,33,16,82,67,52,True,11,0,4
+SOL,index_abs,2459,441,29,33,16,82,67,52,True,11,0,4
+XRP,parkinson,2135,521,53,20,16,82,69,54,True,9,0,4
+XRP,index_abs,2135,521,53,20,16,82,69,54,True,9,0,4
