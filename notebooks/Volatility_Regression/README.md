@@ -6,13 +6,14 @@ Discussion: [../../discussions/Volatility_Regression](../../discussions/Volatili
 
 | Notebook | Purpose | Status |
 |---|---|---|
-| `01_full_feature_5m_ols.ipynb` | Next-bar Parkinson volatility; full causal feature-catalog OLS, missingness/rank inventory, chronological train/selection/test, greedy backward elimination, comparison to HAR/clock baseline | Built; **not executed on the local research DB** |
+| `01_full_feature_5m_ols.ipynb` | v0.1.1: next-bar volatility, two targets (trade-range Parkinson, index \|r\|) on the same rows; target-quality audit; full and backward-reduced OLS vs parameter-free references (train mean, persistence); OOS R² vs train mean; clock-hour coverage | Built; **not executed on the local research DB** |
 
 Reusable code: `src/data_engineering/modeling/vol_ols_5m.py` (`VOL_OLS_5M_VERSION`). Synthetic checks: `tests/test_vol_ols_5m.py`.
 
 ## Scientific boundaries
 
-- **Y is volatility**, not returns or squared returns. The preliminary observable 5m proxy is next-bar **trade-high/low Parkinson volatility**; `log(Y + train-only epsilon)` is the estimated response.
+- **Y is volatility**, not returns or squared returns: next-bar trade-range Parkinson volatility and, as a measurement check, next-bar index \|r\|/√(2/π); `log(σ + train-only ε)` is the response.
+- **Pure OLS.** No HAR study in this branch (Ivan, 2026-10-08); models are compared with parameter-free references only.
 - The target window is exactly one subsequent five-minute bar, not 30/60 minutes. Do not bridge missing futures bars or 08:00 UTC option-session changes.
 - Trade-range bid/ask bounce and incomplete OHLC coverage may degrade the proxy. This must be audited before making trading claims.
 - Start with the full established causal feature catalog and transparently distinguish low-coverage/exact-alias exclusion from predictive-value elimination.
