@@ -27,7 +27,8 @@ import pandas as pd
 from data_engineering.modeling import vol_targets as vt
 
 
-VRP_AUDIT_VERSION = "0.1"
+VRP_AUDIT_VERSION = "0.1.1"
+MINUTES_PER_YEAR = vt.MINUTES_PER_YEAR
 BAR_YEARS = vt.BAR_MIN / vt.MINUTES_PER_YEAR
 TTE_EDGES_H = [0.5, 2.0, 4.0, 8.0, 16.0, 24.01]
 TTE_LABELS = ["0.5-2h", "2-4h", "4-8h", "8-16h", "16-24h"]
@@ -173,23 +174,36 @@ def sampling_ratio(panel: vt.Panel, step: int = 6) -> pd.DataFrame:
 # Exchange IV time basis
 # --------------------------------------------------
 
-def time_basis_offset(log_iv_ratio: np.ndarray, T_years: np.ndarray, weights: np.ndarray | None = None) -> dict:
+def time_basis_offset(log_iv_ratio: np.ndarray, T_years: np.ndarray, weights: np.ndarray | None = None,
+                      min_minutes: float = 30.0, max_abs_log_ratio: float = 0.5, iters: int = 30) -> dict:
     """If the exchange computes IV with T_ex = T + delta while we use T, the
     same price gives sigma_ours^2 T = sigma_ex^2 (T + delta), i.e.
 
         log(sigma_ours / sigma_ex) = 0.5 log(1 + delta / T) ~ 0.5 delta / T.
 
-    Fit delta (in minutes) by weighted least squares of log ratio on 0.5/T."""
+    Robust fit (0.1.1): rows with T below min_minutes or |log ratio| above
+    max_abs_log_ratio (failed inversions near intrinsic) are dropped, and
+    delta is estimated by Huber IRLS. The 0.1 weighted least squares was
+    dominated by a few failed inversions and reported offsets of 50-160
+    minutes that the repricing errors (Part A) rule out."""
     y = np.asarray(log_iv_ratio, float)
-    x = 0.5 / np.asarray(T_years, float)
-    w = np.ones_like(y) if weights is None else np.asarray(weights, float)
-    ok = np.isfinite(y) & np.isfinite(x) & np.isfinite(w) & (w > 0)
+    T = np.asarray(T_years, float)
+    w0 = np.ones_like(y) if weights is None else np.asarray(weights, float)
+    ok = (np.isfinite(y) & np.isfinite(T) & (T * MINUTES_PER_YEAR >= min_minutes)
+          & (np.abs(y) <= max_abs_log_ratio) & np.isfinite(w0) & (w0 > 0))
     if ok.sum() < 20:
         return {"n": int(ok.sum())}
-    X = np.column_stack([np.ones(ok.sum()), x[ok]])
-    W = w[ok]
-    beta = np.linalg.solve(X.T @ (X * W[:, None]), X.T @ (W * y[ok]))
-    resid = y[ok] - X @ beta
+    yy, x, w0 = y[ok], 0.5 / T[ok], w0[ok]
+    X = np.column_stack([np.ones(len(yy)), x])
+    beta = np.linalg.lstsq(X, yy, rcond=None)[0]
+    for _ in range(iters):
+        r = yy - X @ beta
+        scale = 1.4826 * np.median(np.abs(r - np.median(r))) or 1e-6
+        k = 1.345 * scale
+        hub = np.where(np.abs(r) <= k, 1.0, k / np.maximum(np.abs(r), 1e-12))
+        W = hub * np.minimum(w0 / np.median(w0), 10.0)
+        beta = np.linalg.solve(X.T @ (X * W[:, None]), X.T @ (W * yy))
+    resid = yy - X @ beta
     return {"n": int(ok.sum()), "level_log_ratio": float(beta[0]),
-            "delta_minutes": float(beta[1] * vt.MINUTES_PER_YEAR),
-            "resid_sd": float(np.sqrt(np.average(resid ** 2, weights=W)))}
+            "delta_minutes": float(beta[1] * MINUTES_PER_YEAR),
+            "resid_mad": float(1.4826 * np.median(np.abs(resid - np.median(resid))))}
