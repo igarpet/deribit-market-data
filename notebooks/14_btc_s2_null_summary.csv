@@ -1,0 +1,2 @@
+n_requested,n_valid,failure_rate,real_min_gain,p_min_gain,null_gate_pass_rate,real_intercept_gap,p_intercept_gap,real_max_p_stay,p_max_p_stay,real_train_lr_x2,p_train_lr_x2,joint_min_gain_and_gap_rate
+200,200,0.0,0.09327322632148566,0.029850746268656716,0.03,1.069512373140455,0.35323383084577115,0.982530544445126,0.2885572139303483,67.83998981672266,0.05970149253731343,0.005
