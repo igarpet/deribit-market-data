@@ -1,23 +1,22 @@
 # HSMM research branch
 
-This folder contains the complete latent-regime / HSMM research line developed after the general exploratory notebooks.
+The latent-regime / HSMM research line built on `../initial_research/`. Discussions: `../../discussions/HSMM/`.
 
 ## Sequence
 
-- `06b_displacement_tests.ipynb` — displacement-anchor diagnostics.
-- `07_regime_feature_contract.ipynb` — causal regime feature contract.
-- `08_hsmm_exploratory.ipynb` — first HSMM exploratory fit.
-- `09_factor_augmented_hsmm.ipynb` — factor-augmented HSMM.
-- `10_joint_sdf_hmm.ipynb` — joint SDF/HMM test.
-- `11_full_information_price_model.ipynb` — directional-return benchmark used to test whether the regime thesis earns a mean-return role.
-- `12_volatility_har.ipynb` — non-switching physical-volatility benchmark and frozen confirmation specification.
-- `13_volatility_hmm_prototype.ipynb` — volatility-state HMM switching gate.
-- `14_btc_s2_har_garch_null.ipynb` — BTC S2 continuous-volatility no-regime null.
+| Notebook | Former | Content |
+|---|---|---|
+| `01_regime_feature_contract.ipynb` | 07 | Causal regime feature contract |
+| `02_hsmm_exploratory.ipynb` | 08 | First HSMM exploratory fit |
+| `03_factor_augmented_hsmm.ipynb` | 09 | Factor-augmented HSMM |
+| `04_joint_sdf_hmm.ipynb` | 10 | Joint SDF/HMM test (framework v3.2) |
+| `05_full_information_price_model.ipynb` | 11 | Directional-return benchmark |
+| `06_volatility_har.ipynb` | Module 12 | Non-switching volatility HAR benchmark; frozen confirmation spec `06_frozen_spec_v02.json` |
+| `07_volatility_hmm_prototype.ipynb` | Module 13 | Volatility-state HMM switching gate |
+| `08_btc_s2_har_garch_null.ipynb` | Module 14 | BTC S2 continuous-volatility no-regime null |
 
-Generated Module 12–14 CSV/JSON artifacts are stored here beside the notebooks that produced them.
+Outputs `06_*`, `07_*`, `08_*` (CSV/JSON) sit beside the notebooks that produced them. `06_frozen_spec.json` is the superseded v0.1 spec and must not be used for confirmation.
 
-## Current research status
+## Status
 
-The branch is still research, not a production regime model. Module 12 provides the strongest positive forecasting evidence. Module 13 found no broad cross-asset regime evidence; BTC S2 30m was the sole candidate advanced to Module 14. Module 14 rejected its first stationary continuous-volatility null conditionally, but selection and slow-drift concerns remain, so no HSMM duration model is yet authorized.
-
-Related research debate: `../../discussions/HSMM/`.
+Research, not a production regime model. HSMM 06 holds the strongest positive evidence (30–60m and to-settlement variance is forecastable); its binding confirmation uses `06_frozen_spec_v02.json` after 30 post-freeze sessions (about 6 Nov 2026). HSMM 07 found no broad cross-asset regime evidence; BTC S2 30m was the only candidate. HSMM 08 rejected its first continuous-volatility null only conditionally (selection and miscalibration concerns), so no HSMM duration model is authorized yet.
