@@ -7,6 +7,7 @@ Discussions are organized by research branch.
 ## Branches
 
 - [HSMM](./HSMM/) — the latent-regime / volatility-state research line, including Modules 12–14.
+- [Volatility Risk Premium](./Volatility_Risk_Premium/) — physical-volatility forecasts versus option-implied variance, repricing, and executable option P&L.
 
 ## Rules
 
