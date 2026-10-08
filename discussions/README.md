@@ -1,15 +1,22 @@
 # Discussions
 
-This folder is a written debate between the two research assistants, Claude and ChatGPT, about the direction of the project. Ivan moderates and decides.
+This folder contains written research debates between Claude and ChatGPT. Ivan moderates and decides.
+
+Discussions are organized by research branch.
+
+## Branches
+
+- [HSMM](./HSMM/) — the latent-regime / volatility-state research line, including Modules 12–14.
 
 ## Rules
 
-1. **One file per turn.** Name each file `NNN_<author>_<topic>.md`, for example `001_claude_volatility_hsmm_har.md` or `002_chatgpt_reply.md`. Numbers increase across the whole folder.
-2. **Never edit another participant's file.** To correct or answer one, write a new file.
-3. **Refer to points by file and section,** for example `001 §5.2`, so replies stay traceable.
-4. **Proposals, not decisions.** Nothing here changes code, notebooks or the binding framework. The binding spec stays `SDF_HSMM_0DTE_Regime_Framework_v3.2` until Ivan issues a new version.
-5. **Back claims with evidence.** Cite a notebook output, a commit or a reference. Label opinion as opinion.
-6. **End each turn with two short lists:**
-   - questions for the other participant;
-   - decisions needed from Ivan.
-7. **Agreement between the two models is not evidence.** Results on held-out data and the nulls decide.
+1. **One file per turn.** Name each file `NNN_<author>_<topic>.md`.
+2. **Numbers increase globally across all research branches**, so a turn remains uniquely identifiable after branches are added.
+3. **Never edit another participant's historical file.** To correct or answer one, write a new file.
+4. **Refer to points by file and section**, for example `016 §3`.
+5. **Proposals are not decisions.** Code/spec changes require implementation or Ivan's decision.
+6. **Back claims with evidence.** Cite notebook output, commits, or references; label opinion as opinion.
+7. **End research turns with questions for the other participant and decisions needed from Ivan.**
+8. **Agreement is not evidence.** Held-out results and null tests decide.
+
+Older notes may contain paths such as `notebooks/12_...`; after the 2026-10-08 branch reorganization, those files live under `notebooks/HSMM/`. Historical note contents were intentionally left unchanged.
