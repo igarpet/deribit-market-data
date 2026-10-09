@@ -22,6 +22,7 @@ Each research line is a **branch**: one folder here and one under `notebooks/`, 
 | Volatility Risk Premium | `Volatility_Risk_Premium/` | `notebooks/Volatility_Risk_Premium/` |
 | Volatility Regression | `Volatility_Regression/` | `notebooks/Volatility_Regression/` |
 | Pairwise Feature Regression | `Pairwise_Feature_Regression/` | `notebooks/Pairwise_Feature_Regression/` |
+| Volatility Dynamics | `Volatility_Dynamics/` | `notebooks/Volatility_Dynamics/` |
 
 A new branch gets both folders, each with a `README.md` that states its question, sequence and current status. Branches can run in parallel.
 
