@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 
-VOLATILITY_DYNAMICS_VERSION = "0.2.0"
+VOLATILITY_DYNAMICS_VERSION = "0.2.1"
 
 DEFAULT_WINDOWS: dict[str, int] = {
     "5m": 1,
@@ -43,12 +43,23 @@ def _num(frame: pd.DataFrame, col: str) -> np.ndarray:
     return pd.to_numeric(frame[col], errors="coerce").to_numpy(float)
 
 
+def _ns_values(times: pd.Series | pd.DatetimeIndex) -> np.ndarray:
+    """Return UTC timestamps as int64 nanoseconds, independent of Pandas storage unit.
+
+    Pandas 3 may keep DatetimeIndex values at microsecond resolution. Direct
+    use of .asi8 is therefore unsafe for comparisons against Timedelta.value,
+    which is nanoseconds. Normalize explicitly before any integer arithmetic.
+    """
+    t = pd.DatetimeIndex(pd.to_datetime(times, utc=True))
+    return t.as_unit("ns").asi8
+
+
 def infer_bar_minutes(times: pd.Series | pd.DatetimeIndex) -> float:
     """Infer the modal positive spacing in minutes."""
     t = pd.DatetimeIndex(pd.to_datetime(times, utc=True)).sort_values()
     if len(t) < 2:
         raise ValueError("Need at least two timestamps to infer bar spacing.")
-    d = np.diff(t.asi8).astype(float) / 60e9
+    d = np.diff(_ns_values(t)).astype(float) / 60e9
     d = d[np.isfinite(d) & (d > 0)]
     if not len(d):
         raise ValueError("No positive timestamp differences.")
@@ -70,7 +81,9 @@ def _contiguous_back_sum(
         j = i - bars + 1
         if times[i] - times[j] != delta * (bars - 1):
             continue
-        if bars > 1 and not np.all(np.diff(times[j:i + 1].asi8) == delta.value):
+        if bars > 1 and not np.all(
+            np.diff(_ns_values(times[j:i + 1])) == delta.value
+        ):
             continue
         w = x[j:i + 1]
         if np.isfinite(w).all():
@@ -93,7 +106,9 @@ def _contiguous_forward_sum(
         k = i + bars
         if times[k] - times[i] != delta * bars:
             continue
-        if not np.all(np.diff(times[i:k + 1].asi8) == delta.value):
+        if not np.all(
+            np.diff(_ns_values(times[i:k + 1])) == delta.value
+        ):
             continue
         w = x[j:k + 1]
         if np.isfinite(w).all():
