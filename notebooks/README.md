@@ -2,6 +2,10 @@
 
 One folder per research branch, matching `discussions/`. Notebooks are numbered per folder from `01`; each notebook writes its results (CSV/JSON) into a subfolder named after its number (`06_volatility_har.ipynb` → `06/06_*.csv`), so the branch folder holds only notebooks and the README.
 
+## Research-branch independence
+
+Research branches are independent experiments. They may share the common data-engineering/database layer, but **must not silently reuse another branch's research outputs, fitted models, frozen specs, feature selections, thresholds, state definitions, or empirical conclusions as assumptions**. Any cross-branch import requires Ivan's explicit approval and must be documented. A new branch otherwise starts from the shared base data and establishes its own assumptions internally.
+
 | Folder | Content |
 |---|---|
 | [initial_research](./initial_research/) | Foundational analysis used by all branches: feature inventory, market/surface distributions, microstructure, cross-feature relationships, clock/expiry effects, displacement tests. |
@@ -9,7 +13,7 @@ One folder per research branch, matching `discussions/`. Notebooks are numbered 
 | [Volatility_Risk_Premium](./Volatility_Risk_Premium/) | Option pricing audit, forecast vs implied variance, executable option P&L. |
 | [Volatility_Regression](./Volatility_Regression/) | Native-frequency next-5m volatility OLS with broad market/option features and backward elimination. |
 | [Pairwise_Feature_Regression](./Pairwise_Feature_Regression/) | v1 descriptive directed single-predictor OLS matrices: raw beta, in-sample residual RMSE, pairwise coverage and heatmaps by asset. |
-| [Volatility_Dynamics](./Volatility_Dynamics/) | Causal 30m/60m physical-volatility state panel; expected high volatility vs surprise, buildup/decay event studies, and later volatility-conditioned MOM/MR/Bridge tests. |
+| [Volatility_Dynamics](./Volatility_Dynamics/) | Independent return-only volatility baseline: realized-variance distributions, internally measured clock structure, persistence, high-vol episode duration and buildup/decay. |
 
 ## Output-size policy (from 2026-10-09)
 
