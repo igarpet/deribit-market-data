@@ -47,7 +47,10 @@ from data_engineering.features.option_time_series import (
 # v0.2.0: return_5m/15m/30m/1h and realized volatility come from the
 # Deribit index (market feature v0.2.0); adds perp_mid_return_5m,
 # return_source and index_return_input_eligible.
-TIME_SERIES_FEATURE_SCHEMA_VERSION = "0.5.0"
+TIME_SERIES_FEATURE_SCHEMA_VERSION = "0.6.0"
+
+# v0.6.0: market features v0.5.0 pass-through of collector mid-path
+# aggregates, collector_version and book_out_of_order_update_count.
 
 # v0.5.0: perpetual integrity gate (perp_integrity_ok, integrity flags,
 # known_exchange_event) and clock conditioning variables (market features

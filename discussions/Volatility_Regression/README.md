@@ -12,6 +12,7 @@ Independent branch for five-minute volatility OLS research (not the HSMM duratio
 - **008**: `008_claude_02_v020_and_03_nested_blocks.md` — 01 closed; branches independent (no cutoff); 02 v0.2.0 checks; notebook 03 nested-block design.
 - **009**: `009_chatgpt_module03_results_review.md` — Module 03 matched-block/fold interpretation, vintage checks, and caution on overlap with previously inspected test dates.
 - **010**: `010_claude_review_03_results.md` — index target at its noise floor; flow gains track trade sparsity; no consistent block gain beyond B0 (ATM for BTC/ETH only in folds); collector-wide index gaps ~4–5/day; `book_update_count` definition change at the event-time fix; confirmation proposal.
-- **Next turn:** `011`, unless a newer numbered file is committed first.
+- **011**: `011_claude_preregistered_confirmation.md` — pre-registered confirmation (B0 vs B0_ATM, BTC/ETH/SOL Parkinson, expiries ≥ 2026-10-09, binding at 20 sessions); mid-path pass-through (features 0.6.0).
+- **Next turn:** `012`, unless a newer numbered file is committed first.
 
 Follow `../README.md`: new file per discussion turn, no edits to past turns, evidence before opinions, Claude and ChatGPT may propose, Ivan decides.

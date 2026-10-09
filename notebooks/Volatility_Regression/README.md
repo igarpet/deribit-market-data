@@ -10,7 +10,7 @@ Discussion: [../../discussions/Volatility_Regression](../../discussions/Volatili
 | `02_feature_provenance_audit.ipynb` | Read-only futures-collector/schema, raw-to-feature, quality-flag and regression-coverage diagnostics | v0.1.0 executed (`73767f5`, VR 006). **v0.2.0 built, not yet executed:** all expiries; unmatched states by expiry/hour; NULL index returns across assets; data-derived collector vintages and feature shift at each boundary |
 | `03_nested_block_5m_ols.ipynb` | Nested blocks B0 returns/vol/clock → B1 flow/basis → B2 L2 book → B3 ATM options; shape/fit/wing features excluded by design; ≥80% dev coverage admission; n ≥ 20p; forward-chained folds + one final test; fold-majority deletion in B2; residuals by collector vintage | **Executed**, commit `352e1f4`; results reviewed in discussion 009 |
 
-Reusable code: `src/data_engineering/modeling/vol_ols_5m.py` (01), `feature_provenance_audit.py` (02), `vol_ols_5m_blocks.py` (03). Synthetic checks: `tests/test_vol_ols_5m.py`, `tests/test_feature_provenance_audit.py`, `tests/test_vol_ols_5m_blocks.py`.
+Reusable code: `src/data_engineering/modeling/vol_ols_5m.py` (01), `feature_provenance_audit.py` (02), `vol_ols_5m_blocks.py` (03), `vol_ols_confirm.py` (04/05). Synthetic checks: `tests/test_vol_ols_5m.py`, `tests/test_feature_provenance_audit.py`, `tests/test_vol_ols_5m_blocks.py`, `tests/test_vol_ols_confirm.py`.
 
 ## Scientific boundaries
 
@@ -36,6 +36,18 @@ jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeou
 ```
 
 02 must run before 03.
+
+Confirmation (VR 011). Rebuild features (schema 0.6.0, mid-path pass-through), freeze once, commit the spec, then score:
+
+```bat
+python src\data_engineering\features\build_features.py --refresh-upstream
+python -m unittest discover -s tests -p "test_vol_ols_confirm.py" -v
+jupyter nbconvert --to notebook --execute --inplace notebooks/Volatility_Regression/04_freeze_confirmation_spec.ipynb
+git add notebooks/Volatility_Regression/04_*
+git commit -m "freeze: Volatility Regression confirmation spec"
+git push
+jupyter nbconvert --to notebook --execute --inplace notebooks/Volatility_Regression/05_confirmation_scoring.ipynb
+```
 
 This runs against `DERIBIT_DATA_ROOT/database/research.duckdb` **read-only**. It writes `01_*.csv` and `01_run_metadata.json` beside the notebook; commit those and the executed notebook for review. Close JupyterLab's open copy before pulling remote notebook changes.
 

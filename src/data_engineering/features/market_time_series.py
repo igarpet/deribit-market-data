@@ -27,7 +27,14 @@ from data_engineering.quality_checks.futures_integrity import (
 )
 
 
-MARKET_FEATURE_VERSION = "0.4.0"
+MARKET_FEATURE_VERSION = "0.5.0"
+
+# v0.5.0 (Volatility Regression 010, approved by Ivan 2026-10-09):
+#   - pass through the collector's 10-second-grid mid-path aggregates
+#     (mid_path_*), the collector version stamp and the L2 event-time
+#     audit count. Raw pass-through only: NULL where the collector did not
+#     write them (before futures_5m_l2_v0.3.0, 2026-10-04 16:20 UTC).
+#     No existing column changes.
 
 # v0.4.0:
 #   - perpetual integrity gate (quality_checks/futures_integrity.py):
@@ -109,6 +116,37 @@ L2_SCALAR_FIELDS = {
 
     "book_obi_20_reversal_strength_max":
         "DOUBLE",
+}
+
+
+# v0.5.0: raw collector fields carried unchanged into the market table.
+COLLECTOR_PASSTHROUGH_FIELDS = {
+    "mid_path_valid_points":
+        "BIGINT",
+
+    "mid_path_increment_count":
+        "BIGINT",
+
+    "mid_path_realized_variance":
+        "DOUBLE",
+
+    "mid_path_zero_increments":
+        "BIGINT",
+
+    "mid_path_nonzero_increments":
+        "BIGINT",
+
+    "mid_path_return_sign_flips":
+        "BIGINT",
+
+    "mid_path_max_abs_log_return":
+        "DOUBLE",
+
+    "book_out_of_order_update_count":
+        "BIGINT",
+
+    "collector_version":
+        "VARCHAR",
 }
 
 
@@ -414,7 +452,10 @@ def create_market_time_series_state(
     for (
         column_name,
         sql_type
-    ) in L2_SCALAR_FIELDS.items():
+    ) in {
+        **L2_SCALAR_FIELDS,
+        **COLLECTOR_PASSTHROUGH_FIELDS,
+    }.items():
 
         expression = optional_column_expression(
             market_columns,
