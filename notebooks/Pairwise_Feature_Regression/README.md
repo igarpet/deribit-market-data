@@ -4,7 +4,7 @@
 
 | Notebook | Description | Status |
 |---|---|---|
-| `01_pairwise_feature_ols_matrices.ipynb` | v1.0: independent simple OLS for every ordered feature pair, per underlying, beta and residual RMSE matrices, heatmaps and sample/scale diagnostics | Built; awaiting real-data execution |
+| `01_pairwise_feature_ols_matrices.ipynb` | v1.0: independent simple OLS for every ordered feature pair, per underlying, beta and residual RMSE matrices, heatmaps and sample/scale diagnostics | **Executed**, commit `860b86c`; 9/9 in-kernel tests pass; 46,032 fitted directed regressions; results reviewed in discussion 003 |
 
 **Reusable engine:** `src/data_engineering/modeling/pairwise_feature_regression.py` (`PAIRWISE_FEATURE_REGRESSION_VERSION = 1.0.0`).
 
