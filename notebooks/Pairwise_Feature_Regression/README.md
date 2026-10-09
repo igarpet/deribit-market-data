@@ -57,15 +57,15 @@ The first executed `02` (commit `6405d01`) produced **299,445,085 bytes**, of wh
 
 **02 does not merely compare 11:00, or pool observations by hour.** For each asset it independently fits every ordered feature-pair regression at each of the **288** UTC clock positions: 00:00, 00:05, ..., 11:00, 11:05, ..., 23:55. An 11:05 beta uses only 11:05 timestamps from different UTC days and the matching 11:05 source features. All established feature transforms and masks remain intact. The *same time* always means the same 5m UTC slot, **not** the same local Madrid clock time during seasonal offset changes.
 
-Primary outputs under `02/` for each asset:
+Outputs under `02/` (the first historical run also contains optional full archives and separate PNGs):
 
-- `02_{ASSET}_clock_matrices.npz`: full **288 × 82 × 82** arrays `beta_raw`, `error_rmse`, `intercept`, `correlation`, `relative_rmse`, `pair_counts`. Array axes are exact UTC clock slot, response feature (row), predictor feature (column). `features` and `clock_utc` arrays record labels. Compressed because thousands of separate large CSV matrices would be inefficient.
-- `02_{ASSET}_clock_coverage.csv`: exactly 288 rows describing how many UTC calendar dates and usable directed regressions each position has.
+- **Opt-in only:** `02_{ASSET}_clock_matrices.npz`: full **288 × 82 × 82** arrays `beta_raw`, `error_rmse`, `intercept`, `correlation`, `relative_rmse`, `pair_counts`. Array axes are exact UTC clock slot, response feature (row), predictor feature (column). `features` and `clock_utc` arrays record labels. Compressed because thousands of separate large CSV matrices would be inefficient.
+- **Historical run only:** `02_{ASSET}_clock_coverage.csv`: 288-row per-asset duplicate, now consolidated into the combined coverage report.
 - `02_{ASSET}_example_pair_traces.csv`: selected pair trajectories across all 288 positions, without restricting computation of any other pair.
 - `02_all_clock_coverage.csv`, `02_feature_inventory.csv`, `02_run_metadata.json`: cross-asset coverage and reproducibility metadata.
-- Preview PNGs for any chosen asset and clock slot; the preview selection does **not** change the 288 fitted slots.
+- **Opt-in only:** saved preview PNGs; the chosen asset and preview clock never change the 288 fitted slots.
 
-To open a given matrix in Python or a Jupyter cell:
+In compact mode after executing the notebook, view any matrix for the selected display asset through `preview_fitted.view("11:05", "beta_raw")`. When you have explicitly opted into full archives, you may also open a matrix from disk:
 
 ```python
 from data_engineering.modeling.pairwise_feature_clock import load_clock_matrix
@@ -90,7 +90,7 @@ From repository root under your `deribit-data` Jupyter kernel, after pulling Git
 jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=3600 notebooks/Pairwise_Feature_Regression/02_exact_5m_clock_matrices.ipynb
 ```
 
-The notebook runs nine targeted tests within its current Python kernel to avoid the earlier Windows/Conda second-process DLL issue, then reads the research DuckDB in `read_only=True` mode. Commit the executed notebook and the full `02/` output directory for interpretation. Each asset is processed and released separately to limit memory consumption.
+The notebook runs nine targeted tests within its current Python kernel to avoid the earlier Windows/Conda second-process DLL issue, then reads the research DuckDB in `read_only=True` mode. Commit only the newly generated lightweight CSV/JSON results and the executed notebook. Do **not** add NPZ archives or separate PNG files unless the full data are explicitly necessary for review. Each asset is processed and released separately to limit memory consumption.
 
 ### Later research (requires separate approval)
 
