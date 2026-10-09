@@ -7,6 +7,7 @@ Independent exploratory branch for **same-five-minute-bar, one-feature-at-a-time
 - **003**: `003_chatgpt_v1_results_review.md` — executed v1 output review, structural aliases, return/IV/LOB relationships, sample masks and v2 considerations.
 - **004**: `004_chatgpt_exact_five_minute_clock_v2.md` — exact 288 five-minute UTC clock regressions for every asset, matrix archives and small-N safeguards.
 - **005**: `005_chatgpt_mixed_timezone_fixture_fix.md` — change pandas mixed-offset fixture so UTC normalization is tested inside the clock engine rather than in test setup.
-- **Next turn:** `006` unless a newer numbered file is committed first.
+- **006**: `006_chatgpt_exact_clock_results_and_output_budget.md` — 288-slot results review, low-sample limits, TRX return anomaly and compact-output default.
+- **Next turn:** `007` unless a newer numbered file is committed first.
 
 Follow `../README.md`: one immutable discussion file per turn; evidence before interpretation; any proposed change requires explicit approval.
