@@ -2,40 +2,53 @@
 
 Independent research branch for the observable dynamics of physical volatility.
 
+## Independence rule
+
+This branch starts from the shared research database only. It does **not** import research outputs, fitted models, frozen specifications, selected features, thresholds, state definitions, or empirical assumptions from HSMM, Volatility Regression, Volatility Risk Premium, Pairwise Feature Regression, or any other research branch.
+
+Module 01 reads only:
+
+- `state_time`
+- `underlying`
+- `return_5m`
+
+from `time_series_feature_state`.
+
+Any later complexity must be motivated by results produced inside Volatility Dynamics itself.
+
 ## Research sequence
 
-### 01 — Volatility state panel
+### 01 — Volatility baseline from first principles
 
-`01_volatility_state_panel.ipynb`
+`01_volatility_baseline.ipynb`
 
-Builds causal expanding-session HAR+clock forecasts at 30m/60m and separates:
+Starts without a forecasting model or latent-state assumption. It constructs realized variance directly from contiguous five-minute index returns and measures:
 
-- expected high-volatility episodes;
-- positive volatility-surprise / shock candidates;
-- forecast-high misses.
+- distributions at 5m, 15m, 30m, 60m and 4h backward horizons;
+- 30m/60m forward realized variance for descriptive current-vs-future association;
+- UTC clock structure, estimated internally rather than assumed;
+- volatility persistence at several lags;
+- high-volatility episode thresholds and contiguous episode durations;
+- buildup and decay paths around the first threshold crossing.
 
-It then studies exact-clock-normalized flow, liquidity, basis/OI and IV diagnostics around declustered event origins, from 60 minutes before through 120 minutes after.
+No option, flow, order-book, HAR, HMM/HSMM, MOM/MR/VS/Bridge or prior-branch variable enters Module 01.
 
-This module does **not** fit HMM/HSMM states and does not test direction.
+Outputs live in `01/` and are compact.
 
-Outputs live in `01/` and are intentionally compact.
+### Later modules
 
-### Proposed 02 — Absorption / Bridge hypothesis
+The next module is **not precommitted**. Module 01 results decide what comes next.
 
-Only after 01 is reviewed. Test whether unusually large activity with unusually small contemporaneous price response predicts later volatility expansion and/or directional movement.
-
-### Proposed 03 — MOM vs MR conditional on volatility environment
-
-Only after 01–02. Test whether displacement has different forward-return slopes in stable/contracting versus expanding/surprise volatility environments.
+Possible future questions include forecast baselines, volatility surprise, absorption/Bridge, or volatility-conditioned MOM/MR, but none is imported as an assumption.
 
 ## Data window
 
-This branch is exploratory and may use all currently available research data. By default Module 01 runs from `VD_START=2026-09-22` through the latest row in the database. Set `VD_END=YYYY-MM-DD` only when a deliberate historical cutoff is desired.
+The default is the entire available database history. Set `VD_START` or `VD_END` only when a deliberate historical cutoff is desired.
 
 ## Run
 
 Open and run:
 
-`notebooks/Volatility_Dynamics/01_volatility_state_panel.ipynb`
+`notebooks/Volatility_Dynamics/01_volatility_baseline.ipynb`
 
 The notebook reads `DERIBIT_DATA_ROOT/database/research.duckdb` read-only.
