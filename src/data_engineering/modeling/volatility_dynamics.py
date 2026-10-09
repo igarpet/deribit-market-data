@@ -159,6 +159,11 @@ def expanding_m1_state_panel(
 
     raw_X = pd.DataFrame(index=np.arange(len(g)))
     fit_rows = []
+    # Pre-create forecast columns so a failed fit produces NaNs rather than
+    # changing the output schema or breaking downstream diagnostics.
+    for h in vt.HORIZONS:
+        for prefix in ("forecast_level_eps", "forecast_rv", "actual_rv", "eps", "surprise"):
+            out[f"{prefix}_{h}"] = np.nan
 
     for si, session in enumerate(sessions):
         if si < min_train_sessions:
