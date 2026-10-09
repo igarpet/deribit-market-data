@@ -614,6 +614,12 @@ def selftest() -> dict:
 
     p, meta, eps = build_volatility_panel(g)
     assert abs(meta.bar_minutes - 5.0) < 1e-12
+
+    # Simulate Pandas 3-style microsecond-backed timestamps explicitly.
+    times_us = times.as_unit("us")
+    assert abs(infer_bar_minutes(times_us) - 5.0) < 1e-12
+    us_back = _contiguous_back_sum(r ** 2, times_us, 6, 5.0)
+    assert abs(us_back[5] / 6.0 - np.mean(r[:6] ** 2)) < 1e-15
     assert np.isnan(p.loc[0:4, "back_rate_30m"]).all()
     expected_back = np.mean(r[:6] ** 2)
     assert abs(p.loc[5, "back_rate_30m"] - expected_back) < 1e-15
@@ -633,6 +639,7 @@ def selftest() -> dict:
 
     return {
         "bar_inference": True,
+        "timestamp_unit_normalization": True,
         "backward_rv": True,
         "forward_rv": True,
         "gap_guard": True,
