@@ -1,0 +1,27 @@
+{
+  "version": "0.2.1",
+  "independence_contract": "No imports or outputs from any other research branch; only state_time, underlying, return_5m from time_series_feature_state.",
+  "database_relation": "time_series_feature_state",
+  "database_columns_read": [
+    "state_time",
+    "underlying",
+    "return_5m"
+  ],
+  "database_read_only": true,
+  "start": "earliest_available",
+  "end": "latest_available",
+  "assets": [
+    "AVAX",
+    "BTC",
+    "ETH",
+    "HYPE",
+    "SOL",
+    "TRX",
+    "XRP"
+  ],
+  "n_rows": 38304,
+  "high_vol_quantile": 0.9,
+  "episode_definition": "contiguous backward-30m variance-rate exceedance; retrospective descriptive only",
+  "no_predictive_model": true,
+  "no_external_research_assumptions": true
+}
