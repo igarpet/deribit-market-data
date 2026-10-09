@@ -47,6 +47,12 @@ jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeou
 The notebook reads `DERIBIT_DATA_ROOT/database/research.duckdb` read-only. Results go to `notebooks/Pairwise_Feature_Regression/01/`. Commit the executed notebook and all `01/01_*` outputs (CSV, JSON, PNG). Heatmap generation can be disabled by setting `MAKE_HEATMAPS = False` before execution.
 
 
+## Storage update after executed v2 run
+
+The first executed `02` (commit `6405d01`) produced **299,445,085 bytes**, of which **297,707,100 bytes** (99.4%) came from seven full matrix NPZ files (32–48 MB each). This was excessive for routine GitHub review. Following the user's instruction, `02_exact_5m_clock_matrices.ipynb` now defaults to `EXPORT_FULL_CLOCK_ARCHIVES = False` and `EXPORT_PREVIEW_PNG = False`. It still **computes all 288 slots and every feature pair for all seven assets**. The default persists only `02_all_clock_coverage.csv`, `02_feature_inventory.csv`, `02_run_metadata.json`, and small `02_{ASSET}_example_pair_traces.csv` (with limited decimal precision). One selected asset's 288 matrices are retained *in memory* for previewing any exact UTC time via `preview_fitted.view('11:05', 'beta_raw')`. When a full archive is truly needed for outside review, explicitly opt in by setting `EXPORT_FULL_CLOCK_ARCHIVES = True`.
+
+**Existing historical `.npz`/PNG/CSV outputs in commit `6405d01` remain untouched.** Running compact mode does not remove those old files; this is a non-destructive change to future export defaults only. The earlier full-output instructions below describe the opt-in mode. See Pairwise discussion 006 for the results review and rationale.
+
 ## 02 — every five-minute UTC position, separately across dates
 
 **02 does not merely compare 11:00, or pool observations by hour.** For each asset it independently fits every ordered feature-pair regression at each of the **288** UTC clock positions: 00:00, 00:05, ..., 11:00, 11:05, ..., 23:55. An 11:05 beta uses only 11:05 timestamps from different UTC days and the matching 11:05 source features. All established feature transforms and masks remain intact. The *same time* always means the same 5m UTC slot, **not** the same local Madrid clock time during seasonal offset changes.
