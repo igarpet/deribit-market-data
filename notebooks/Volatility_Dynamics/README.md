@@ -28,9 +28,9 @@ Only after 01 is reviewed. Test whether unusually large activity with unusually 
 
 Only after 01–02. Test whether displacement has different forward-return slopes in stable/contracting versus expanding/surprise volatility environments.
 
-## Holdout protection
+## Data window
 
-Volatility Regression has a frozen confirmation sample beginning with expiry sessions on 2026-10-09. Module 01 therefore defaults to `VD_END=2026-10-08` and refuses to inspect later outcomes unless `VD_ALLOW_CONFIRMATION_CONTAMINATION=1` is explicitly set after Ivan releases that holdout.
+This branch is exploratory and may use all currently available research data. By default Module 01 runs from `VD_START=2026-09-22` through the latest row in the database. Set `VD_END=YYYY-MM-DD` only when a deliberate historical cutoff is desired.
 
 ## Run
 
