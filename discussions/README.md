@@ -26,6 +26,8 @@ Each research line is a **branch**: one folder here and one under `notebooks/`, 
 
 A new branch gets both folders, each with a `README.md` that states its question, sequence and current status. Branches can run in parallel.
 
+**Research branches are independent experiments.** They may share the common data-engineering/database layer, but they must not silently inherit another branch's research outputs, fitted models, frozen specifications, feature selections, thresholds, state definitions, or empirical conclusions. Cross-branch reuse requires Ivan's explicit approval and must be documented in that branch.
+
 ## 3. Numbering (per branch)
 
 - **Discussion turns** are numbered per branch, three digits, from `001`: `NNN_<author>_<topic>.md`, e.g. `HSMM/017_chatgpt_....md`, `Volatility_Risk_Premium/007_claude_....md`.
