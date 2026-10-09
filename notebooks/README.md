@@ -8,6 +8,7 @@ One folder per research branch, matching `discussions/`. Notebooks are numbered 
 | [HSMM](./HSMM/) | Regime feature contract, exploratory HSMM/HMM, volatility HAR benchmark and frozen spec, volatility-state HMM, regime null test. |
 | [Volatility_Risk_Premium](./Volatility_Risk_Premium/) | Option pricing audit, forecast vs implied variance, executable option P&L. |
 | [Volatility_Regression](./Volatility_Regression/) | Native-frequency next-5m volatility OLS with broad market/option features and backward elimination. |
+| [Pairwise_Feature_Regression](./Pairwise_Feature_Regression/) | v1 descriptive directed single-predictor OLS matrices: raw beta, in-sample residual RMSE, pairwise coverage and heatmaps by asset. |
 
 ## Mapping from the old global numbers (renumbered 2026-10-08)
 
