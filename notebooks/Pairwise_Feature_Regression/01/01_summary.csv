@@ -1,0 +1,8 @@
+underlying,n_states,n_features,possible_directed_pairs,fitted_directed_pairs,invalid_directed_pairs,max_joint_observations,n_source_present,n_catalog_covered_ge_min
+AVAX,5472,82,6642,6576,66,5472,82,82
+BTC,5472,82,6642,6576,66,5472,82,82
+ETH,5472,82,6642,6576,66,5472,82,82
+HYPE,5472,82,6642,6576,66,5472,82,82
+SOL,5472,82,6642,6576,66,5472,82,82
+TRX,5472,82,6642,6576,66,5472,82,82
+XRP,5472,82,6642,6576,66,5472,82,82
