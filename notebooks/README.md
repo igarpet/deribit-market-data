@@ -10,6 +10,14 @@ One folder per research branch, matching `discussions/`. Notebooks are numbered 
 | [Volatility_Regression](./Volatility_Regression/) | Native-frequency next-5m volatility OLS with broad market/option features and backward elimination. |
 | [Pairwise_Feature_Regression](./Pairwise_Feature_Regression/) | v1 descriptive directed single-predictor OLS matrices: raw beta, in-sample residual RMSE, pairwise coverage and heatmaps by asset. |
 
+## Output-size policy (from 2026-10-09)
+
+Keep research results reproducible **without routinely committing massive exploratory intermediates**. Default notebooks to the smallest reviewable outputs: a short run manifest, essential coverage/quality diagnostics, and compact tables of the comparisons needed for the research question. Avoid repeated per-asset copies of an aggregate table, full n×n×time coefficient stacks, redundant correlation/R²/normalized-error matrices, and separate PNG exports if the notebook can display them inline. Use float precision appropriate to the analysis and compressed binary files only when dense full-resolution data are scientifically indispensable.
+
+**Full matrix arrays, large diagnostic dumps, and high-resolution plots require explicit opt-in.** Generate on demand locally, or export compact selected relationships. Document output-size expectations and retention before future research modules. Do **not** silently delete previously committed evidence, frozen specifications, or historical research results; request approval before repository-history cleanup or deletion.
+
+The first execution of Pairwise Feature Regression 02 saved ~299 MB, including ~298 MB of optional full matrix archives; the notebook has since been switched to compact exports by default. This changes *persistence only*, not the 288-by-asset computation.
+
 ## Mapping from the old global numbers (renumbered 2026-10-08)
 
 | Old | New |
