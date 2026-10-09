@@ -41,6 +41,8 @@ python -m unittest discover -s tests -p "test_pairwise_feature_regression.py" -v
 jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=3600 notebooks/Pairwise_Feature_Regression/01_pairwise_feature_ols_matrices.ipynb
 ```
 
+**Windows/Conda note:** the notebook performs its nine synthetic checks in the existing Jupyter kernel rather than spawning a second `python.exe`. This avoids subprocess DLL-search differences (such as Windows exit `0xC06D007F`) while still failing visibly on any actual unittest assertion. The standalone unittest command above remains optional as an independent environment diagnostic; if it crashes with a native Windows status code rather than a Python traceback, verify Conda/DLL resolution separately.
+
 The notebook reads `DERIBIT_DATA_ROOT/database/research.duckdb` read-only. Results go to `notebooks/Pairwise_Feature_Regression/01/`. Commit the executed notebook and all `01/01_*` outputs (CSV, JSON, PNG). Heatmap generation can be disabled by setting `MAKE_HEATMAPS = False` before execution.
 
 ### Suggested follow-on v2 (not implemented)
