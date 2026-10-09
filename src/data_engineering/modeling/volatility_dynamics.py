@@ -227,12 +227,17 @@ def expanding_m1_state_panel(
         F = pd.to_numeric(out.get(f"forecast_level_eps_{h}"), errors="coerce").to_numpy(float)
         A = pd.to_numeric(out.get(f"actual_rv_{h}"), errors="coerce").to_numpy(float)
         out[f"forecast_rate_eps_{h}"] = F / float(bars)
+        E = pd.to_numeric(out.get(f"eps_{h}"), errors="coerce").to_numpy(float)
         out[f"actual_rate_{h}"] = A / float(bars)
+        out[f"actual_rate_eps_{h}"] = (A + E) / float(bars)
         out[f"log_forecast_rate_eps_{h}"] = np.where(
             F > 0, np.log(F / float(bars)), np.nan
         )
         out[f"log_actual_rate_{h}"] = np.where(
             A > 0, np.log(A / float(bars)), np.nan
+        )
+        out[f"log_actual_rate_eps_{h}"] = np.where(
+            (A + E) > 0, np.log((A + E) / float(bars)), np.nan
         )
 
     f30 = out["log_forecast_rate_eps_30m"].to_numpy(float)
@@ -441,7 +446,7 @@ def forecast_quality(panel: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for asset, g in panel.groupby("underlying"):
         for h in vt.HORIZONS:
-            y = pd.to_numeric(g[f"log_actual_rate_{h}"], errors="coerce").to_numpy(float)
+            y = pd.to_numeric(g[f"log_actual_rate_eps_{h}"], errors="coerce").to_numpy(float)
             p = pd.to_numeric(g[f"log_forecast_rate_eps_{h}"], errors="coerce").to_numpy(float)
             actual = pd.to_numeric(g[f"actual_rv_{h}"], errors="coerce").to_numpy(float)
             eps = pd.to_numeric(g[f"eps_{h}"], errors="coerce").to_numpy(float)
