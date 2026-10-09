@@ -9,6 +9,7 @@ One folder per research branch, matching `discussions/`. Notebooks are numbered 
 | [Volatility_Risk_Premium](./Volatility_Risk_Premium/) | Option pricing audit, forecast vs implied variance, executable option P&L. |
 | [Volatility_Regression](./Volatility_Regression/) | Native-frequency next-5m volatility OLS with broad market/option features and backward elimination. |
 | [Pairwise_Feature_Regression](./Pairwise_Feature_Regression/) | v1 descriptive directed single-predictor OLS matrices: raw beta, in-sample residual RMSE, pairwise coverage and heatmaps by asset. |
+| [Volatility_Dynamics](./Volatility_Dynamics/) | Causal 30m/60m physical-volatility state panel; expected high volatility vs surprise, buildup/decay event studies, and later volatility-conditioned MOM/MR/Bridge tests. |
 
 ## Output-size policy (from 2026-10-09)
 
