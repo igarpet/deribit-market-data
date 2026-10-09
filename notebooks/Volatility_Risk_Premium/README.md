@@ -8,7 +8,7 @@ Physical-volatility forecasts versus option-implied variance, and ultimately exe
 |---|---|---|---|
 | `01_vrp_pricing_audit.ipynb` | 15 | Step 1: Black-76 repricing, exchange IV time basis, ATM IV feature vs straddle IV, terminal/30m wedge decomposition, index RV noise | Run; A pass, B no offset (BTC/SOL narrow fail), C fail, D/E reported (VRP 006) |
 
-Outputs: `01_*.csv` beside the notebook. Code: `src/data_engineering/modeling/option_pricing.py`, `vrp_audit.py`.
+Outputs: `01/01_*.csv`. Code: `src/data_engineering/modeling/option_pricing.py`, `vrp_audit.py`.
 
 Planned: VRP 02, the unconditional hold-to-settlement ATM straddle at executable prices (5m and 30m perp hedges), then the conditional forecast-vs-price wedge.
 

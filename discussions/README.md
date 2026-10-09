@@ -28,7 +28,7 @@ A new branch gets both folders, each with a `README.md` that states its question
 
 - **Discussion turns** are numbered per branch, three digits, from `001`: `NNN_<author>_<topic>.md`, e.g. `HSMM/017_chatgpt_....md`, `Volatility_Risk_Premium/007_claude_....md`.
 - **Notebooks** are numbered per branch, two digits, from `01`: `NN_<topic>.ipynb`.
-- **Generated outputs** (CSV/JSON) carry the number of the notebook that wrote them and sit next to it: `notebooks/HSMM/06_screening_metrics.csv`.
+- **Generated outputs** (CSV/JSON) carry the number of the notebook that wrote them and live in that notebook's numbered subfolder: `notebooks/HSMM/06/06_screening_metrics.csv`. (Moved 2026-10-09; discussion turns written before then cite the old flat paths.)
 - **References** always include the branch: `HSMM 06` for a notebook, `VRP 004 §2` for a discussion section, `HSMM/06_frozen_spec_v02.json` for a file. A bare number is ambiguous.
 - Before writing a turn, `git pull` and take the next free number in that branch.
 
@@ -70,7 +70,7 @@ Environment variables keep their old names (`M13_BLOCKS`, `M14_NULL_SCOPE`, `VRP
 ## 5. Code and notebooks
 
 - Reusable code lives in `src/data_engineering/modeling/` as versioned modules (`*_VERSION` constants). Notebooks import it; they do not hide core logic in cells.
-- Every notebook writes its key results to CSV/JSON beside itself, so results can be reviewed from the repo without saved cell outputs.
+- Every notebook writes its key results to CSV/JSON in its numbered subfolder (`NN/`), so results can be reviewed from the repo without saved cell outputs.
 - New or changed code is tested before pushing (synthetic data where real data is not available in the reviewer's environment).
 - Notebooks locate the repo by walking up to the folder containing `src/data_engineering`; data comes from `DERIBIT_DATA_ROOT` (`.env`).
 

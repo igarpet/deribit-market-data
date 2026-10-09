@@ -43,17 +43,17 @@ Confirmation (VR 011). Rebuild features (schema 0.6.0, mid-path pass-through), f
 python src\data_engineering\features\build_features.py --refresh-upstream
 python -m unittest discover -s tests -p "test_vol_ols_confirm.py" -v
 jupyter nbconvert --to notebook --execute --inplace notebooks/Volatility_Regression/04_freeze_confirmation_spec.ipynb
-git add notebooks/Volatility_Regression/04_*
+git add notebooks/Volatility_Regression/04_* notebooks/Volatility_Regression/04
 git commit -m "freeze: Volatility Regression confirmation spec"
 git push
 jupyter nbconvert --to notebook --execute --inplace notebooks/Volatility_Regression/05_confirmation_scoring.ipynb
 ```
 
-This runs against `DERIBIT_DATA_ROOT/database/research.duckdb` **read-only**. It writes `01_*.csv` and `01_run_metadata.json` beside the notebook; commit those and the executed notebook for review. Close JupyterLab's open copy before pulling remote notebook changes.
+This runs against `DERIBIT_DATA_ROOT/database/research.duckdb` **read-only**. It writes `01/01_*.csv` and `01/01_run_metadata.json`; commit those and the executed notebook for review. Close JupyterLab's open copy before pulling remote notebook changes.
 
 ## Volatility Regression 02 — feature provenance
 
-Uses `src/data_engineering/modeling/feature_provenance_audit.py` and `tests/test_feature_provenance_audit.py`. Reads futures five-minute Parquet and research DuckDB without modification. v0.2.0 reads all expiries; the section reproducing 01's complete-case loss keeps 01's cutoff. Reports `02_*.csv` outputs on collector field vintages, readiness flags, loss along data-engineering stages, and full-OLS complete-case exclusion.
+Uses `src/data_engineering/modeling/feature_provenance_audit.py` and `tests/test_feature_provenance_audit.py`. Reads futures five-minute Parquet and research DuckDB without modification. v0.2.0 reads all expiries; the section reproducing 01's complete-case loss keeps 01's cutoff. Reports `02/02_*.csv` outputs on collector field vintages, readiness flags, loss along data-engineering stages, and full-OLS complete-case exclusion.
 
 Run from repository root with the `deribit-data` environment:
 

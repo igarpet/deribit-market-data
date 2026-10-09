@@ -1,6 +1,6 @@
 # Notebooks
 
-One folder per research branch, matching `discussions/`. Notebooks are numbered per folder from `01`; each notebook writes its results (CSV/JSON) beside itself with the same number prefix.
+One folder per research branch, matching `discussions/`. Notebooks are numbered per folder from `01`; each notebook writes its results (CSV/JSON) into a subfolder named after its number (`06_volatility_har.ipynb` → `06/06_*.csv`), so the branch folder holds only notebooks and the README.
 
 | Folder | Content |
 |---|---|
