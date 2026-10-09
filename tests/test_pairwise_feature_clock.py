@@ -43,9 +43,13 @@ class ExactClockTests(unittest.TestCase):
         self.assertEqual(labels[287], "23:55")
 
     def test_utc_time_conversion_not_local_clock(self):
-        dt = pd.Series(pd.to_datetime(
-            ["2026-10-01T12:00:00+02:00", "2026-10-01T11:05:00+00:00"]
-        ))
+        # Pass mixed-offset timestamps to the function itself: pandas can
+        # reject pd.to_datetime(...) without utc=True before our code runs.
+        # The function must perform UTC conversion, not the test fixture.
+        dt = pd.Series([
+            pd.Timestamp("2026-10-01T12:00:00+02:00"),
+            pd.Timestamp("2026-10-01T11:05:00+00:00"),
+        ])
         self.assertEqual(clock_slot_indices(dt).tolist(), [120, 133])
 
     def test_never_joins_neighboring_five_minute_slots(self):
