@@ -1,0 +1,32 @@
+{
+  "version": "0.1.0",
+  "module": "08_jump_point_process",
+  "primary_c": 4.0,
+  "c_grid": [
+    3.0,
+    3.5,
+    4.0,
+    4.5,
+    5.0
+  ],
+  "local_vol": "two-sided bipower, +/- 12 bars, pairs touching t excluded",
+  "half_life_grid_bars": [
+    1,
+    2,
+    3,
+    4,
+    6,
+    9,
+    12,
+    18,
+    24,
+    36,
+    48
+  ],
+  "decision_primary": "blocked 5-fold CV by day; delta logLik/row (c)-(b) > 0 with day-bootstrap q2.5 > 0, >= 50 jumps",
+  "holdout_first_day": "2026-10-05 00:00:00+00:00",
+  "n_boot": 2000,
+  "first_time": "2026-09-19 08:00:00+00:00",
+  "last_time": "2026-10-10 07:55:00+00:00",
+  "n_rows": 42336
+}

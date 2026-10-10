@@ -1,0 +1,4 @@
+model,test_rows,test_events,test_loglik_per_row
+a_homogeneous,9751,62,-0.03753468216818661
+b_inhomogeneous,9751,62,-0.03752560169099041
+c_hawkes,9751,62,-0.03753391435934989

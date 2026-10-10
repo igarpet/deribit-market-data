@@ -1,0 +1,102 @@
+{
+  "primary_c4": {
+    "event_set": "jumps_c4",
+    "n_events_full_sample": 245,
+    "hawkes_half_life_min_full_sample": 5.0,
+    "eta_self": 0.004312248979488068,
+    "eta_self_approx_se": 0.012322106078275179,
+    "eta_cross": 0.007100544615513132,
+    "eta_cross_approx_se": 0.003787166158740929,
+    "branching_ratio": 0.046915516672566854,
+    "branching_ratio_across_cv_folds": [
+      0.0656,
+      0.0443,
+      0.07,
+      0.0522,
+      0.0
+    ],
+    "gamma_log_localvol_b": -0.5940449890849897,
+    "primary_blocked_cv": {
+      "rule": "logLik/row delta > 0 with day-block bootstrap q2.5 > 0 and >= 50 scored jumps",
+      "n_scored_jumps": 245,
+      "self_excitation_c_vs_b": {
+        "delta_loglik_per_row": -0.00016200806658187434,
+        "boot_q025": -0.0003155112302098163,
+        "boot_q975": -1.4795262065490204e-05,
+        "status": "FAIL"
+      },
+      "inhomogeneity_b_vs_a": {
+        "delta_loglik_per_row": -0.00018977524544013858,
+        "boot_q025": -0.0006617632611558541,
+        "boot_q975": 0.0002766492172061787,
+        "status": "FAIL"
+      }
+    },
+    "secondary_chronological_holdout": {
+      "rule": "logLik/row delta > 0 with day-block bootstrap q2.5 > 0 and >= 20 scored jumps",
+      "n_scored_jumps": 62,
+      "self_excitation_c_vs_b": {
+        "delta_loglik_per_row": -8.312668359479782e-06,
+        "boot_q025": -1.8335915737824904e-05,
+        "boot_q975": 4.4702144609556754e-06,
+        "status": "FAIL"
+      },
+      "inhomogeneity_b_vs_a": {
+        "delta_loglik_per_row": 9.080477196197653e-06,
+        "boot_q025": -0.0010898469850122966,
+        "boot_q975": 0.0008712849795727005,
+        "status": "FAIL"
+      }
+    }
+  },
+  "secondary_raw_q99": {
+    "event_set": "raw_q99_onsets",
+    "n_events_full_sample": 331,
+    "hawkes_half_life_min_full_sample": 5.0,
+    "eta_self": 0.0,
+    "eta_self_approx_se": 0.013679398584123275,
+    "eta_cross": 0.01902580816180976,
+    "eta_cross_approx_se": 0.004910638579325578,
+    "branching_ratio": 0.11415484897085856,
+    "branching_ratio_across_cv_folds": [
+      0.1394,
+      0.087,
+      0.139,
+      0.1191,
+      0.1077
+    ],
+    "gamma_log_localvol_b": 2.3608246220013447,
+    "primary_blocked_cv": {
+      "rule": "logLik/row delta > 0 with day-block bootstrap q2.5 > 0 and >= 50 scored jumps",
+      "n_scored_jumps": 331,
+      "self_excitation_c_vs_b": {
+        "delta_loglik_per_row": 0.0003080783159599512,
+        "boot_q025": -0.00017892103796252724,
+        "boot_q975": 0.0008559801148793723,
+        "status": "FAIL"
+      },
+      "inhomogeneity_b_vs_a": {
+        "delta_loglik_per_row": 0.006712026561035593,
+        "boot_q025": 0.004567674536878379,
+        "boot_q975": 0.008956684472158345,
+        "status": "PASS"
+      }
+    },
+    "secondary_chronological_holdout": {
+      "rule": "logLik/row delta > 0 with day-block bootstrap q2.5 > 0 and >= 20 scored jumps",
+      "n_scored_jumps": 54,
+      "self_excitation_c_vs_b": {
+        "delta_loglik_per_row": 0.0004610310918665661,
+        "boot_q025": 0.00015669048705360013,
+        "boot_q975": 0.0007625339336581123,
+        "status": "PASS"
+      },
+      "inhomogeneity_b_vs_a": {
+        "delta_loglik_per_row": 0.006368500769299381,
+        "boot_q025": 0.0032446332644087738,
+        "boot_q975": 0.009300312861335917,
+        "status": "PASS"
+      }
+    }
+  }
+}

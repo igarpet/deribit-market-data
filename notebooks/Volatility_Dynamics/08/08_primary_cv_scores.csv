@@ -1,0 +1,4 @@
+model,oof_rows,oof_events,oof_loglik_per_row
+a_homogeneous,36055,245,-0.0401814373615893
+b_inhomogeneous,36055,245,-0.040371212607029444
+c_hawkes,36055,245,-0.040533220673611314
