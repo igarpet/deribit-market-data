@@ -1,0 +1,31 @@
+{
+  "version": "0.1.0",
+  "module": "02_native_5m_volatility",
+  "independence_contract": "No outputs or assumptions from Module 01 or any other research branch.",
+  "database_relation": "time_series_feature_state",
+  "database_columns_read": [
+    "state_time",
+    "underlying",
+    "return_5m"
+  ],
+  "primitive_volatility_object": "variance_5m = return_5m ** 2",
+  "rolling_aggregation_used": false,
+  "predictive_model_used": false,
+  "start": "earliest_available",
+  "end": "latest_available",
+  "assets": [
+    "AVAX",
+    "BTC",
+    "ETH",
+    "HYPE",
+    "SOL",
+    "TRX",
+    "XRP"
+  ],
+  "n_rows": 38304,
+  "tail_quantiles": [
+    0.9,
+    0.95,
+    0.99
+  ]
+}
