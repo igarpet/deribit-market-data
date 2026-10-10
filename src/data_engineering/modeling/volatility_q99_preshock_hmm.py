@@ -174,7 +174,10 @@ def event_catalog(grid: vb.Grid) -> tuple[pd.DataFrame, dict[str, float], np.nda
     recs = []
     for eid, r in enumerate(rows, start=1):
         prev = grid.offset_rows(np.asarray([r]), -24)[0]
-        prior_rows = grid.offset_rows(np.repeat(r, 24), np.arange(-24, 0))
+        prior_rows = np.asarray([
+            int(grid.offset_rows(np.asarray([r]), int(b))[0])
+            for b in PRE_BARS
+        ], dtype=np.int64)
         prior_rows = prior_rows[prior_rows >= 0]
         prior_tail_rows = prior_rows[tail[prior_rows]]
         mins_since = np.nan
@@ -216,7 +219,10 @@ def exact_preshock_windows(
     offsets = np.asarray(PRE_BARS, int)
     for ev in events.itertuples():
         r = int(ev.event_row)
-        rr = grid.offset_rows(np.repeat(r, len(offsets)), offsets)
+        rr = np.asarray([
+            int(grid.offset_rows(np.asarray([r]), int(b))[0])
+            for b in offsets
+        ], dtype=np.int64)
         exact = bool(np.all(rr >= 0))
         same_asset = bool(
             exact and np.all(grid.asset_code[rr] == grid.asset_code[r])
