@@ -52,6 +52,23 @@ Module 02 measures:
 
 Any future claim about duration or persistence should start from Module 02, not from the rolling-window duration in Module 01.
 
+
+### 03 — q99 precursor discovery
+
+`03_q99_precursor_discovery.ipynb`
+
+Recomputes native five-minute q99 volatility onsets internally, then asks whether **any numeric/boolean market-state field observable before the event** is systematically unusual.
+
+Predictors are discovered directly from the current `time_series_feature_state` schema at runtime. No feature list or ranking is imported from another research branch or from Module 01/02 outputs.
+
+For each q99 onset, controls are nearby-date non-q99 observations from the same asset and exact five-minute UTC clock slot. Event values are expressed as percentiles versus those controls from -60m through +60m.
+
+Only negative relative times can enter precursor rankings. The event bar and post-event bars are descriptive anatomy only.
+
+The exploratory ranking penalizes candidates whose direction is inconsistent across assets or across the pre-event lags (-60, -30, -15, -10, -5 minutes). Simultaneous multi-asset q99 timestamps are averaged before pooled ranking so one broad market move cannot receive seven times the weight.
+
+If coherent candidates emerge, a later module must freeze and test them chronologically before any predictive claim.
+
 ## Data window
 
 Both modules default to the full available database history unless their module-specific start/end environment variables are deliberately set.
