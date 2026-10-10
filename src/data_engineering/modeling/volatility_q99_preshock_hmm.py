@@ -144,11 +144,16 @@ def source_emissions(grid: vb.Grid) -> pd.DataFrame:
 def family_scores_from_source_z(
     source_z: np.ndarray,
     source_columns: Sequence[str],
+    *,
+    spread_only_liquidity: bool = False,
 ) -> tuple[np.ndarray, list[str]]:
     col = {c: j for j, c in enumerate(source_columns)}
     F = np.full((len(source_z), len(FAMILY_NAMES)), np.nan)
     for fj, fam in enumerate(FAMILY_NAMES):
-        js = [col[c] for c in FAMILY_SOURCES[fam]]
+        sources = FAMILY_SOURCES[fam]
+        if spread_only_liquidity and fam == "liquidity_book_activity":
+            sources = ("log_spread",)
+        js = [col[c] for c in sources]
         x = source_z[:, js]
         count = np.isfinite(x).sum(axis=1)
         s = np.nansum(x, axis=1)
@@ -672,7 +677,7 @@ def composition_tables(assignments: pd.DataFrame) -> tuple[pd.DataFrame, pd.Data
     return asset, date
 
 
-def validation_stability(
+def adjusted_rand_index(labels_a: np.ndarray, labels_b: np.ndarray) -> float:\n    """Label-permutation-invariant agreement for sensitivity taxonomy."""\n    a = np.asarray(labels_a, int)\n    b = np.asarray(labels_b, int)\n    if len(a) != len(b) or len(a) < 2:\n        return np.nan\n    ua, ia = np.unique(a, return_inverse=True)\n    ub, ib = np.unique(b, return_inverse=True)\n    tab = np.zeros((len(ua), len(ub)), int)\n    np.add.at(tab, (ia, ib), 1)\n    def c2(x):\n        x = np.asarray(x, float)\n        return x * (x - 1) / 2\n    sum_nij = float(np.sum(c2(tab)))\n    sum_ai = float(np.sum(c2(tab.sum(axis=1))))\n    sum_bj = float(np.sum(c2(tab.sum(axis=0))))\n    total = float(c2(np.asarray([len(a)]))[0])\n    if total <= 0:\n        return np.nan\n    expected = sum_ai * sum_bj / total\n    max_index = 0.5 * (sum_ai + sum_bj)\n    denom = max_index - expected\n    if abs(denom) < 1e-12:\n        return 1.0\n    return float((sum_nij - expected) / denom)\n\ndef validation_stability(
     discovery_embeddings: np.ndarray,
     validation_embeddings: np.ndarray,
     discovery_labels: np.ndarray,
