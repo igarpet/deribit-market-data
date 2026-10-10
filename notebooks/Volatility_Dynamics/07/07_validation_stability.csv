@@ -1,0 +1,3 @@
+shock_type,discovery_effective_timestamps,validation_effective_timestamps,validation_centroid_rms_drift,validation_mean_distance_to_discovery_centroid
+0,23.48333333333333,14.499999999999998,0.5622211022199401,5.713474425855063
+1,16.516666666666666,3.5,0.5088110175341561,6.1160978443288405

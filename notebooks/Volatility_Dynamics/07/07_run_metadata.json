@@ -1,0 +1,50 @@
+{
+  "version": "0.1.0",
+  "module": "07_q99_preshock_hmm_taxonomy",
+  "question": "Conditional on q99 occurring, are there distinct recurrent 120-minute pre-shock trajectories?",
+  "event_definition": "full-sample per-asset q99 native 5m variance onset, matching Modules 03-05",
+  "hmm_window_minutes": [
+    -120,
+    -5
+  ],
+  "hmm_window_bars": 24,
+  "event_bar_t0_used_in_hmm": false,
+  "post_event_data_used_in_hmm": false,
+  "shock_outcomes_used_for_clustering": false,
+  "family_emissions": [
+    "activity",
+    "iv_level",
+    "liquidity_book_activity",
+    "l2_instability"
+  ],
+  "source_features": [
+    "intrabar_range_bps",
+    "volume_usd",
+    "trade_count",
+    "option_iv_atm_forward",
+    "iv_put_25d",
+    "iv_call_25d",
+    "book_twa_spread_bps",
+    "book_update_count",
+    "book_obi_20_raw_zero_cross_count",
+    "book_obi_20_transition_count",
+    "book_obi_20_raw_zero_cross_rate",
+    "book_obi_20_path_roughness_per_min"
+  ],
+  "normalization": "training/discovery-era asset x UTC hour robust z; source features transformed then averaged within Module05 families",
+  "simultaneous_event_weighting": "each unique q99 timestamp has total HMM/clustering weight 1 across assets",
+  "hmm_selected_K": 5,
+  "selected_n_shock_types": 2,
+  "discovery_validation_split_time": "2026-10-08 04:20:00+00:00",
+  "taxonomy_validation": "validation shocks assigned to frozen discovery centroids",
+  "collector_sensitivity": "full rerun with liquidity/book family reduced to spread only",
+  "forecasting_claim": false,
+  "regime_count_claim": false,
+  "n_all_q99_asset_events": 337,
+  "n_usable_q99_asset_events": 337,
+  "n_usable_unique_event_times": 198,
+  "min_l2_window_coverage_primary": 0.75,
+  "n_primary_l2_covered_asset_events": 96,
+  "n_primary_l2_covered_unique_event_times": 58,
+  "n_historical_missing_l2_projection_events": 241
+}

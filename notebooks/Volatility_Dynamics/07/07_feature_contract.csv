@@ -1,0 +1,13 @@
+feature,family,present,module05_origin,used_only_before_t0
+intrabar_range_bps,activity,True,True,True
+volume_usd,activity,True,True,True
+trade_count,activity,True,True,True
+option_iv_atm_forward,iv_level,True,True,True
+iv_put_25d,iv_level,True,True,True
+iv_call_25d,iv_level,True,True,True
+book_twa_spread_bps,liquidity_book_activity,True,True,True
+book_update_count,liquidity_book_activity,True,True,True
+book_obi_20_raw_zero_cross_count,l2_instability,True,True,True
+book_obi_20_transition_count,l2_instability,True,True,True
+book_obi_20_raw_zero_cross_rate,l2_instability,True,True,True
+book_obi_20_path_roughness_per_min,l2_instability,True,True,True
