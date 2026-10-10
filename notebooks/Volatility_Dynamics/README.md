@@ -6,6 +6,8 @@ Independent research branch for the observable dynamics of physical volatility.
 
 This branch starts from the shared research database only. It does **not** import research outputs, fitted models, frozen specifications, selected features, thresholds, state definitions, or empirical assumptions from HSMM, Volatility Regression, Volatility Risk Premium, Pairwise Feature Regression, or any other research branch.
 
+**Approved exception (Ivan, 2026-10-10):** Module 10 reuses the Volatility Risk Premium branch's Black-76 conventions (`option_pricing`) and its pricing-audit findings (VRP 006), and never touches sessions from the VRP confirmation boundary (2026-11-07) onward. No other module uses VRP outputs.
+
 Cross-module inheritance inside this branch is also not automatic: each module states explicitly whether it consumes an earlier module. Module 02 does **not** consume Module 01 outputs or conclusions.
 
 ## Research sequence
@@ -227,6 +229,34 @@ A positive result would be a stable taxonomy of q99 precursor paths. It would **
 ### 08 — Jump arrivals as a point process (VD 017)
 
 `08_jump_point_process.ipynb` — jumps = returns > 4 local-volatility units (two-sided jump-robust bipower, deseasonalized). Homogeneous Poisson vs clock/volatility-inhomogeneous Poisson vs discrete Hawkes with self- and cross-asset excitation (exponential kernel). Pre-registered: 5-fold blocked CV by day, logLik gain with day-bootstrap lower bound > 0; c grid 3–5 reported only. Explanatory, not a real-time forecaster. Outputs: `08/`.
+
+### 09 — Compound-Poisson jumps (VD 019)
+
+`09_compound_poisson_jumps.ipynb` — Module 08 detection unchanged (c = 4). It produces:
+
+- a jump catalogue;
+- size distributions in bps and in local-σ units (exponential vs GPD tail);
+- a common vs idiosyncratic arrival decomposition (pre-registered P1: co-jump bars vs independence, Poisson p < 0.01);
+- Garwood rate CIs and $P(\ge1\text{ jump in }\tau)$;
+- an index tick-discreteness check (P2: median jump ≤ 3 ticks means an artifact);
+- half-sample stability.
+
+Outputs: `09/`.
+
+### 10 — Physical jump model vs 0DTE option wings (VD 019, cross-branch)
+
+`10_jump_model_vs_option_wings.ipynb` prices every two-sided OTM 0DTE quote (60–1200 min, 15-min grid, non-floor) under a compound-Poisson + diffusion model. The diffusion variance is ex-ante: backward bipower × clock, with settlement-TWAP weights. Jump rate and size are leave-one-session-out. Quotes are compared in price space.
+
+The primary, pre-registered statistic is the median over sessions of the session median $\ln(\text{mid}/P^{jump})$ for $z\in[2,5)$, giving RICH / CHEAP / CONSISTENT by session bootstrap.
+
+Also reported:
+
+- all buckets and per-asset results;
+- the no-jump model;
+- sensitivities: diffusion ×0.85, λ ×0.5 and ×2;
+- hold-to-settlement P&L.
+
+Outputs: `10/`.
 
 ## Data window
 
