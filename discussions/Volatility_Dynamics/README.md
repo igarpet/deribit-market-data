@@ -5,8 +5,10 @@ Research branch for volatility dynamics developed independently from every other
 - **001**: `001_chatgpt_module01_design.md` — historical first design; **superseded** because it reused prior-branch HAR/volatility logic.
 - **002**: `002_chatgpt_all_available_data.md` — historical data-window decision; superseded as part of the full reset.
 - **003**: `003_chatgpt_full_independence_reset.md` — authoritative reset: return-only Module 01, no imported research outputs or assumptions.
-- **Next turn:** `004`.
+- **004**: `004_chatgpt_timestamp_unit_bugfix.md` — Pandas datetime-unit bugfix for the standalone engine.
+- **005**: `005_chatgpt_native_5m_module02.md` — native five-minute squared-return analysis; no rolling 30m block.
+- **Next turn:** `006`.
 
-The live Module 01 is `notebooks/Volatility_Dynamics/01_volatility_baseline.ipynb`.
+Module 01 remains historical baseline work. **Module 02 is authoritative for primitive volatility persistence/duration questions:** `notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`.
 
 Follow `../README.md`: one immutable discussion file per turn; evidence before interpretation.
