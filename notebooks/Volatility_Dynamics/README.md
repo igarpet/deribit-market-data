@@ -185,6 +185,45 @@ Parallel re-runs of Modules 02–06 with the fixes from the Claude review (discu
 
 `06c_student_t_hmm.ipynb` — 06b pipeline with a multivariate Student-t emission (diagonal scale, per-state ν, shared latent scale per bar, missing fields marginalized). Pre-registered: same forecast decision as 06b; K grid 2–10 with an interior-K test; Student-t vs Gaussian validation likelihood on identical sequences. Outputs: `06c/`.
 
+
+### 07 — q99 pre-shock HMM taxonomy
+
+`07_q99_preshock_hmm_taxonomy.ipynb`
+
+Changes the latent-state question after the inconclusive 06b/06c forecasting results.
+
+Module 07 does **not** ask whether an HMM predicts q99 better than volatility. It conditions on q99 having occurred and asks whether the strictly pre-shock trajectories themselves separate into recurring types.
+
+For each asset-level q99 onset, the HMM sees exactly 24 native five-minute bars:
+
+-120m through -5m.
+
+The q99 event bar at t0 and every post-event observation are excluded from the HMM and from shock-type clustering.
+
+The emission information is frozen from the Module 05 -95m research families:
+
+- activity: intrabar range, USD volume, trade count;
+- IV level: ATM forward IV, 25d put IV, 25d call IV;
+- liquidity/book activity: spread, book update count;
+- L2 instability: OBI zero-cross count/rate, transition count, path roughness.
+
+Source features are transformed and normalized by asset x UTC hour using only the discovery-era panel, then averaged within family. The family representation reduces duplicated IV/L2 variables before the diagonal-Gaussian HMM is fit. Missing L2 dimensions are marginalized rather than deleting the shock window.
+
+The analysis has two latent objects:
+
+1. **HMM states** — recurring phases inside the 120-minute precursor window.
+2. **Shock types** — clusters of the complete 24-bar posterior-state trajectory.
+
+Simultaneous multi-asset q99 shocks are kept as separate asset instances but weighted so each exact event timestamp contributes total weight one to HMM fitting and trajectory clustering.
+
+Shock sign, q99 magnitude, simultaneous-asset count, prior-q99/aftershock status, asset, date, and collector era are not used in fitting. They are post-hoc descriptors only.
+
+The chronology is split by unique q99 timestamp into discovery and validation samples. Validation shocks are assigned to frozen discovery shock-type centroids.
+
+Because 06b identified a potential collector shift in `book_update_count`, Module 07 reruns the full taxonomy with the liquidity family defined from spread alone and reports Adjusted Rand Index agreement.
+
+A positive result would be a stable taxonomy of q99 precursor paths. It would **not** establish q99 predictability or an economic regime count.
+
 ## Data window
 
 Both modules default to the full available database history unless their module-specific start/end environment variables are deliberately set.
