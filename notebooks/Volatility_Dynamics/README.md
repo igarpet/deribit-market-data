@@ -61,13 +61,37 @@ Recomputes native five-minute q99 volatility onsets internally, then asks whethe
 
 Predictors are discovered directly from the current `time_series_feature_state` schema at runtime. No feature list or ranking is imported from another research branch or from Module 01/02 outputs.
 
-For each q99 onset, controls are nearby-date non-q99 observations from the same asset and exact five-minute UTC clock slot. Event values are expressed as percentiles versus those controls from -60m through +60m.
+For each q99 onset, controls are nearby-date non-q99 observations from the same asset and exact five-minute UTC clock slot. Event values are expressed as percentiles versus those controls from -120m through +120m.
 
 Only negative relative times can enter precursor rankings. The event bar and post-event bars are descriptive anatomy only.
 
 The exploratory ranking penalizes candidates whose direction is inconsistent across assets or across the pre-event lags (-60, -30, -15, -10, -5 minutes). Simultaneous multi-asset q99 timestamps are averaged before pooled ranking so one broad market move cannot receive seven times the weight.
 
 If coherent candidates emerge, a later module must freeze and test them chronologically before any predictive claim.
+
+
+### 04 — Conditional q99 precursor discrimination
+
+`04_conditional_q99_precursors.ipynb`
+
+Tests whether the frozen Module 03 candidate families remain unusual after controlling for the pre-existing volatility environment.
+
+The matching baseline remains native five-minute data. Each event/control origin is represented by exact single-bar squared-return observations at -120, -60, -30, -15, -10 and -5 minutes.
+
+Controls must be the same asset and exact five-minute UTC clock slot, then are selected for similarity in that six-point native-volatility history. No rolling 30m/60m realized-variance field is used for matching.
+
+The frozen primary candidates are:
+
+- native intrabar range;
+- USD volume and trade count;
+- ATM, 25d put and 25d call IV levels;
+- book spread;
+- book update count;
+- OBI zero-cross / transition / roughness instability measures.
+
+Module 04 recomputes q99 from `return_5m`; it does not read Module 03 output files. It explicitly compares the original clock-only control result with the native-volatility-conditioned result, including candidate-level attenuation/retention and family summaries.
+
+A surviving candidate is still only an incremental precursor candidate. Predictive claims require a later chronological prospective test.
 
 ## Data window
 
