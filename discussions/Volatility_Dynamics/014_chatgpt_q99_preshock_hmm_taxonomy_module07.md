@@ -107,6 +107,33 @@ L2Instability_t
 
 Missing L2 information is marginalized by the Gaussian emission likelihood.
 
+## 5.1 L2-covered primary taxonomy sample
+
+Because the L2 motif fields begin materially later than the broad activity and IV history, the primary HMM cannot be allowed to learn almost entirely from periods in which L2 is absent.
+
+For every exact 24-bar shock window, Module 07 measures the fraction of bars with at least one finite L2 motif source.
+
+By default the primary taxonomy requires:
+
+[
+L2Coverage_{24bar} \ge 0.75.
+]
+
+Only those shocks enter:
+
+- discovery HMM fitting;
+- HMM K selection;
+- shock-type centroid fitting;
+- chronological validation.
+
+Earlier exact-window q99 shocks are not thrown away. After the L2-era model and shock-type centroids are frozen, those earlier windows are projected through the HMM with the missing L2 dimension marginalized and assigned to the nearest frozen centroid.
+
+Those rows are labelled:
+
+`historical_missing_l2`
+
+and are descriptive only. They do not count as validation support.
+
 ## 6. Synchronized shock weighting
 
 A market-wide shock may produce q99 onsets in all seven assets at the same timestamp.
@@ -241,6 +268,7 @@ Expected outputs:
 - `07/07_feature_contract.csv`
 - `07/07_q99_event_catalog_all.csv`
 - `07/07_q99_event_catalog_usable.csv`
+- `07/07_q99_event_catalog_model_sample.csv`
 - `07/07_window_audit.csv`
 - `07/07_source_hour_normalizer.csv`
 - `07/07_family_window_coverage.csv`
