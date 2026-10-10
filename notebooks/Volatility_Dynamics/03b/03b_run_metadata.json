@@ -1,0 +1,17 @@
+{
+  "version": "0.1.0",
+  "core_version": "0.1.0",
+  "module": "03b_q99_precursor_null",
+  "scan": "Module 03 clock-only controls, rank lags -60,-30,-15,-10,-5 min, best-lag discovery score (reproduced exactly)",
+  "null": "day-relabel placebo: UTC day permuted, asset and exact slot kept; same-day events move together",
+  "n_perm": 500,
+  "seed": 3030,
+  "n_predictors": 205,
+  "n_asset_event_onsets": 337,
+  "n_unique_event_times": 198,
+  "start": "earliest_available",
+  "end": "latest_available",
+  "first_time": "2026-09-19 08:00:00+00:00",
+  "last_time": "2026-10-10 07:55:00+00:00",
+  "n_rows": 42336
+}

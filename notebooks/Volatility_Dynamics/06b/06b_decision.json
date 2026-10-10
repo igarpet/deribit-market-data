@@ -1,0 +1,7 @@
+{
+  "rule": "h=60m: logloss(M3)-logloss(M1) < 0 and day-bootstrap q97.5 < 0, >= 20 unique test onset timestamps",
+  "delta_logloss": 0.00036747741812297933,
+  "boot_q975": 0.00456185823756368,
+  "n_unique_test_onset_timestamps": 26,
+  "status": "FAIL"
+}

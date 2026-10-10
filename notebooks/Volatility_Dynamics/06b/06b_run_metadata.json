@@ -1,0 +1,39 @@
+{
+  "version": "0.1.0",
+  "module": "06b_hmm_vs_benchmark",
+  "emissions": [
+    "log_range",
+    "log_volume",
+    "log_trades",
+    "log_book_updates",
+    "log_spread",
+    "atm_iv_dev",
+    "skew_dev"
+  ],
+  "normalization": "training-only robust z per asset x UTC hour",
+  "missing_emissions": "marginalized",
+  "k_grid": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "k_selected_by_validation_ll": 7,
+  "k_at_grid_edge": true,
+  "train_fraction": 0.7,
+  "test_start": "2026-10-04 00:00:00+00:00",
+  "validation_start": "2026-10-01 00:00:00+00:00",
+  "n_unique_test_onset_timestamps": 26,
+  "decision": {
+    "rule": "h=60m: logloss(M3)-logloss(M1) < 0 and day-bootstrap q97.5 < 0, >= 20 unique test onset timestamps",
+    "delta_logloss": 0.00036747741812297933,
+    "boot_q975": 0.00456185823756368,
+    "n_unique_test_onset_timestamps": 26,
+    "status": "FAIL"
+  },
+  "first_time": "2026-09-19 08:00:00+00:00",
+  "last_time": "2026-10-10 07:55:00+00:00",
+  "n_rows": 42336
+}

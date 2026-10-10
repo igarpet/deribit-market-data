@@ -1,0 +1,20 @@
+{
+  "primary_l2_notch": {
+    "n_unique_timestamps": 5,
+    "mean": -0.0675,
+    "one_sided_p": 0.12449377531123444,
+    "status": "INSUFFICIENT_DATA"
+  },
+  "secondary_l2_rebound": {
+    "n_unique_timestamps": 5,
+    "mean": 0.022083333333333337,
+    "one_sided_p": 0.28303584820758965,
+    "status": "INSUFFICIENT_DATA"
+  },
+  "secondary_l2_notch_04b_M2_bc": {
+    "n_unique_timestamps": 2,
+    "mean": -0.04296875,
+    "one_sided_p": 0.49687515624218787,
+    "status": "INSUFFICIENT_DATA"
+  }
+}

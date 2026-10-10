@@ -1,0 +1,59 @@
+{
+  "version": "0.1.0",
+  "core_version": "0.1.0",
+  "module": "04b_repaired_vol_conditioning",
+  "designs": [
+    "clock_only",
+    "M1_matched",
+    "M1_bc",
+    "M2_bc"
+  ],
+  "primary_design": "M2_bc",
+  "statistic": "window mean percentile over rel bars -12..-1 (-60..-5 min), collapsed by timestamp",
+  "clock_window_slots": 6,
+  "min_separation_bars": 48,
+  "max_controls": 8,
+  "min_controls": 4,
+  "gate": {
+    "gate": "retention of ['realized_vol_1h', 'realized_vol_4h'] <= 0.2 under ['M1_bc', 'M2_bc']",
+    "retention": {
+      "M1_bc:realized_vol_1h": 0.11880754804477207,
+      "M1_bc:realized_vol_4h": 0.10256010203227203,
+      "M2_bc:realized_vol_1h": 0.06600180118184283,
+      "M2_bc:realized_vol_4h": 0.014402498256856754
+    },
+    "matching_gate_pass": true,
+    "judging_design_default": "M2_bc",
+    "judging_design_intrabar_range": "M1_bc"
+  },
+  "n_perm": 200,
+  "seed": 4040,
+  "scale_kinds": {
+    "intrabar_range_bps": "log",
+    "volume_usd": "log",
+    "trade_count": "log",
+    "option_iv_atm_forward": "log",
+    "iv_put_25d": "log",
+    "iv_call_25d": "log",
+    "book_twa_spread_bps": "log",
+    "book_update_count": "log",
+    "book_obi_20_raw_zero_cross_count": "log",
+    "book_obi_20_transition_count": "log",
+    "book_obi_20_raw_zero_cross_rate": "log",
+    "book_obi_20_path_roughness_per_min": "log",
+    "realized_vol_30m": "log",
+    "realized_vol_1h": "log",
+    "realized_vol_4h": "log",
+    "trade_flow_imbalance": "identity_signed",
+    "signed_volume_usd": "identity_signed",
+    "open_interest_return_5m": "identity_signed",
+    "perpetual_mid_vs_index_bps": "identity_signed"
+  },
+  "n_asset_event_onsets": 337,
+  "n_unique_event_times": 198,
+  "start": "earliest_available",
+  "end": "latest_available",
+  "first_time": "2026-09-19 08:00:00+00:00",
+  "last_time": "2026-10-10 07:55:00+00:00",
+  "n_rows": 42336
+}

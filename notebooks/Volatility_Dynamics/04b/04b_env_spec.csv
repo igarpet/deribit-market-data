@@ -1,0 +1,7 @@
+column,start_bar,end_bar,min_finite_bars
+env_lrv_15m,-3,-1,2
+env_lrv_1h,-12,-1,9
+env_lrv_4h,-48,-1,36
+env_lrv_24h,-288,-1,216
+env_lrange_15m,-3,-1,2
+env_lrange_1h,-12,-1,9

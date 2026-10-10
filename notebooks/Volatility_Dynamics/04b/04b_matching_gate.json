@@ -1,0 +1,12 @@
+{
+  "gate": "retention of ['realized_vol_1h', 'realized_vol_4h'] <= 0.2 under ['M1_bc', 'M2_bc']",
+  "retention": {
+    "M1_bc:realized_vol_1h": 0.11880754804477207,
+    "M1_bc:realized_vol_4h": 0.10256010203227203,
+    "M2_bc:realized_vol_1h": 0.06600180118184283,
+    "M2_bc:realized_vol_4h": 0.014402498256856754
+  },
+  "matching_gate_pass": true,
+  "judging_design_default": "M2_bc",
+  "judging_design_intrabar_range": "M1_bc"
+}

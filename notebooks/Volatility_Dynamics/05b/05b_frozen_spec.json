@@ -1,0 +1,26 @@
+{
+  "version": "0.1.0",
+  "discovery_end_utc": "2026-10-08 08:00:00+00:00",
+  "motif_bars": [
+    -21,
+    -20,
+    -19,
+    -18,
+    -17
+  ],
+  "center_bar": -19,
+  "l2_features": [
+    "book_obi_20_raw_zero_cross_count",
+    "book_obi_20_transition_count",
+    "book_obi_20_raw_zero_cross_rate",
+    "book_obi_20_path_roughness_per_min"
+  ],
+  "clean_lookback_min": 120,
+  "primary_statistic": "mean over unique prospective timestamps of l2_notch_95 (Module 05 definition)",
+  "pass_rule": "n_unique >= 20 and mean < 0 and one-sided sign-flip p < 0.05",
+  "discovery_reference": {
+    "notch": -0.097,
+    "rebound": 0.093,
+    "n_unique": 13
+  }
+}

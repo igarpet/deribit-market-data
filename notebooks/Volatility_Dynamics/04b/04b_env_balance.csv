@@ -1,0 +1,25 @@
+control_type,env_column,n_events,median_event_minus_control,mean_abs_event_minus_control,note
+clock_only,env_lrv_15m,329,0.949532184520292,1.2704146301434316,
+clock_only,env_lrv_1h,334,0.5803700432212135,0.9002429810806176,
+clock_only,env_lrv_4h,336,0.38717277422493623,0.6097885427671147,
+clock_only,env_lrv_24h,322,0.15873240919090836,0.365322743192713,
+clock_only,env_lrange_15m,303,0.5150424480054094,0.7729827511721798,
+clock_only,env_lrange_1h,283,0.3150988119142233,0.48820989671331916,
+M1_matched,env_lrv_15m,327,0.06847426164482862,0.3314232209844088,
+M1_matched,env_lrv_1h,327,0.04779718044754233,0.31188794737961767,
+M1_matched,env_lrv_4h,327,0.054306603722764635,0.24986968408533675,
+M1_matched,env_lrv_24h,312,0.009467537888152577,0.18354367464553428,
+M1_matched,env_lrange_15m,289,0.18422468547541948,0.4477697058131601,
+M1_matched,env_lrange_1h,273,0.09564332324614622,0.28718803427785755,
+M1_bc,env_lrv_15m,327,0.06847426164482862,0.3314232209844088,"bias correction acts on features, not on this raw env balance"
+M1_bc,env_lrv_1h,327,0.04779718044754233,0.31188794737961767,"bias correction acts on features, not on this raw env balance"
+M1_bc,env_lrv_4h,327,0.054306603722764635,0.24986968408533675,"bias correction acts on features, not on this raw env balance"
+M1_bc,env_lrv_24h,312,0.009467537888152577,0.18354367464553428,"bias correction acts on features, not on this raw env balance"
+M1_bc,env_lrange_15m,289,0.18422468547541948,0.4477697058131601,"bias correction acts on features, not on this raw env balance"
+M1_bc,env_lrange_1h,273,0.09564332324614622,0.28718803427785755,"bias correction acts on features, not on this raw env balance"
+M2_bc,env_lrv_15m,275,0.01793910646521013,0.38438817821305094,"bias correction acts on features, not on this raw env balance"
+M2_bc,env_lrv_1h,275,0.06608370916164219,0.32273363395047816,"bias correction acts on features, not on this raw env balance"
+M2_bc,env_lrv_4h,275,0.04544438890959057,0.2952896788492895,"bias correction acts on features, not on this raw env balance"
+M2_bc,env_lrv_24h,263,-0.0020866515161372945,0.2155665181260464,"bias correction acts on features, not on this raw env balance"
+M2_bc,env_lrange_15m,275,0.08644879068527755,0.2770334095894457,"bias correction acts on features, not on this raw env balance"
+M2_bc,env_lrange_1h,275,0.0726667540427064,0.19506248512192373,"bias correction acts on features, not on this raw env balance"

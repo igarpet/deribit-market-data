@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "module": "02b_clock_null",
+  "question": "How much of the Module 02 exact-slot clock profile of log r^2 is sampling noise?",
+  "null": "per-day random circular rotation of clock labels",
+  "n_perm": 500,
+  "reliability": "even vs odd UTC days, Spearman-Brown corrected",
+  "start": "earliest_available",
+  "end": "latest_available",
+  "n_rows": 42336,
+  "first_time": "2026-09-19 08:00:00+00:00",
+  "last_time": "2026-10-10 07:55:00+00:00"
+}

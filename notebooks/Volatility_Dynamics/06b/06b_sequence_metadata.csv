@@ -1,0 +1,5 @@
+split,n_sequences,rows,median_len
+fit,7,23520,3360.0
+valid,7,6048,864.0
+train,7,29568,4224.0
+test,7,12768,1824.0
