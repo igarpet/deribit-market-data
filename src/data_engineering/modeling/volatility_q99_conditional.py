@@ -397,41 +397,51 @@ def family_summary(comparison: pd.DataFrame) -> pd.DataFrame:
 def selftest() -> dict:
     """Synthetic matching test with one incremental candidate."""
     rng = np.random.default_rng(12)
-    n_days = 80
+    n_days = 100
     slots = 30
     rows = []
     for d in range(n_days):
         date = pd.Timestamp("2026-01-01", tz="UTC") + pd.Timedelta(days=d)
-        latent = rng.normal()
-        for s in range(slots):
-            r = rng.normal(scale=0.001 * np.exp(0.2 * latent))
+        for slot in range(slots):
+            # Low non-event return scale with day-to-day variation.
+            r = rng.normal(scale=0.0005)
             rows.append({
-                "state_time": date + pd.Timedelta(minutes=5 * s),
+                "state_time": date + pd.Timedelta(minutes=5 * slot),
                 "underlying": "TEST",
                 "return_5m": r,
                 "candidate": rng.normal(),
             })
     f = pd.DataFrame(rows)
 
-    # Force repeated q99 events at the same clock, while keeping the preceding
-    # native-vol history comparable to ordinary days and lifting the candidate.
-    event_days = list(range(20, 80, 10))
+    # Force >1% of rows to be q99 events at one repeated clock. Their prior
+    # return history is left untouched, but the candidate is raised one bar
+    # before every forced event.
+    event_days = list(range(10, 100, 3))
     for d in event_days:
         i = d * slots + 20
         f.loc[i, "return_5m"] = 0.20
         f.loc[i - 1, "candidate"] = 6.0
 
     events, _ = qp.identify_q99_onsets(f)
+    forced_times = {
+        pd.Timestamp("2026-01-01", tz="UTC")
+        + pd.Timedelta(days=d)
+        + pd.Timedelta(minutes=5 * 20)
+        for d in event_days
+    }
+    forced_events = events[events["event_time"].isin(forced_times)].copy()
+    assert len(forced_events) >= 20
+
     origins = qp.build_origin_index(f, events)
     controls, support = choose_volatility_matched_controls(
-        f, origins, events, max_controls=8, min_env_dims=4
+        f, origins, forced_events, max_controls=8, min_env_dims=4
     )
     scores = qp.percentile_scores(
-        f, ["candidate"], events, controls, relative_bars=(-1, 0), min_controls=4
+        f, ["candidate"], forced_events, controls, relative_bars=(-1, 0), min_controls=4
     )
     x = scores[(scores["feature"] == "candidate") & (scores["rel_bar"] == -1)]
     assert len(x) > 0
-    assert float(x["percentile_vs_controls"].mean()) > 0.75
+    assert float(x["percentile_vs_controls"].mean()) > 0.85
     assert support["n_controls_selected"].max() <= 8
 
     return {
