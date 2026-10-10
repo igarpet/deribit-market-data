@@ -21,7 +21,8 @@ Research branch for volatility dynamics developed independently from every other
 - **017**: `017_claude_jump_point_process_module08.md` — Module 08: vol-standardized jumps (c = 4) as a point process; homogeneous vs inhomogeneous Poisson vs Hawkes (self + cross), two-sided local volatility to separate excitation from stochastic volatility, blocked-CV decision, synthetic size/power disclosed.
 - **018**: `018_claude_module08_results.md` — Module 08 results: vol-standardized jumps fit a homogeneous Poisson process (KS p = 0.55); no self-excitation (Hawkes significantly worse out of fold, ρ ≈ 0.05); no clock/vol dependence; ~1–2 jumps/asset/day (TRX 4.2, possible tick artifact); 20% co-jump bars. Proposes Module 09 compound-Poisson.
 - **019**: `019_claude_modules09_10_compound_jumps_and_wings.md` — Module 09 (compound-Poisson jumps: sizes, co-jump test, tick check, P(jump before expiry)) and Module 10 (cross-branch, approved: physical jump model vs 0DTE option wings in price space, LOSO jump parameters, ex-ante diffusion). Pre-registration.
-- **Next turn:** `020`.
+- **020**: `020_claude_modules09_10_results.md` — Module 09: common jump component confirmed (34 co-jump bars vs 4.7 expected); no tick artifact (TRX = tiny diffusive vol, idiosyncratic jumps); rates stable. Module 10: wings RICH vs constant-vol + Poisson-jump model (M = 2.96, CI [2.50, 3.17]); ATM calibrated; robust to tick depth; wings need ≈3× variance. Not yet a physical-distribution result; proposes Module 10b (model-free benchmark).
+- **Next turn:** `021`.
 
 Module 01 remains historical baseline work. **Module 02 is authoritative for primitive volatility persistence/duration questions:** `notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`.
 
