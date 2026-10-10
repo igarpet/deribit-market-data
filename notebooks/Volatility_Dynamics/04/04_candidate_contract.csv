@@ -1,0 +1,20 @@
+feature,family,module03_interpretation,present,role
+intrabar_range_bps,native_price_activity,broadly elevated before q99,True,primary_candidate
+volume_usd,trade_activity,broadly elevated before q99,True,primary_candidate
+trade_count,trade_activity,broadly elevated before q99,True,primary_candidate
+option_iv_atm_forward,option_iv_level,ATM IV level elevated before q99,True,primary_candidate
+iv_put_25d,option_iv_level,put-wing IV level elevated before q99,True,primary_candidate
+iv_call_25d,option_iv_level,call-wing IV level elevated before q99,True,primary_candidate
+book_twa_spread_bps,liquidity,spread widened into q99,True,primary_candidate
+book_update_count,book_activity,book update activity increased into q99,True,primary_candidate
+book_obi_20_raw_zero_cross_count,l2_instability,strong but sparse Module 03 candidate,True,primary_candidate
+book_obi_20_transition_count,l2_instability,strong but sparse Module 03 candidate,True,primary_candidate
+book_obi_20_raw_zero_cross_rate,l2_instability,strong but sparse Module 03 candidate,True,primary_candidate
+book_obi_20_path_roughness_per_min,l2_instability,strong but sparse Module 03 candidate,True,primary_candidate
+realized_vol_30m,volatility_environment_check,diagnostic only; should attenuate after native-vol matching,True,environment_check
+realized_vol_1h,volatility_environment_check,diagnostic only; should attenuate after native-vol matching,True,environment_check
+realized_vol_4h,volatility_environment_check,diagnostic only; should attenuate after native-vol matching,True,environment_check
+trade_flow_imbalance,contrast_check,weak/inconsistent in Module 03,True,contrast_check
+signed_volume_usd,contrast_check,weak/inconsistent in Module 03,True,contrast_check
+open_interest_return_5m,contrast_check,weak/inconsistent in Module 03,True,contrast_check
+perpetual_mid_vs_index_bps,contrast_check,weak/inconsistent in Module 03,True,contrast_check

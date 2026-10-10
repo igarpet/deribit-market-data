@@ -1,0 +1,46 @@
+{
+  "version": "0.1.0",
+  "module": "04_conditional_q99_precursor_discrimination",
+  "explicit_inheritance": "q99 definition/utilities and frozen candidates from Volatility Dynamics Module 03 only; no Module 03 output files read",
+  "database_relation": "time_series_feature_state",
+  "q99_recomputed_inside_module": true,
+  "primary_candidates": [
+    "intrabar_range_bps",
+    "volume_usd",
+    "trade_count",
+    "option_iv_atm_forward",
+    "iv_put_25d",
+    "iv_call_25d",
+    "book_twa_spread_bps",
+    "book_update_count",
+    "book_obi_20_raw_zero_cross_count",
+    "book_obi_20_transition_count",
+    "book_obi_20_raw_zero_cross_rate",
+    "book_obi_20_path_roughness_per_min"
+  ],
+  "matching_clock": "same asset + exact 5m UTC slot",
+  "volatility_environment": "exact native 5m return^2 observations at -120,-60,-30,-15,-10,-5 minutes; log transformed for distance only",
+  "rolling_volatility_used_for_matching": false,
+  "anatomy_window_minutes": [
+    -120,
+    120
+  ],
+  "ranking_lags_minutes": [
+    -120,
+    -60,
+    -30,
+    -15,
+    -10,
+    -5
+  ],
+  "max_controls_per_event": 8,
+  "min_controls_per_feature_event": 4,
+  "min_native_vol_dimensions_for_match": 4,
+  "no_predictive_model": true,
+  "no_p_value_claim": true,
+  "start": "earliest_available",
+  "end": "latest_available",
+  "n_rows": 38304,
+  "n_asset_event_onsets": 303,
+  "n_unique_event_times": 180
+}

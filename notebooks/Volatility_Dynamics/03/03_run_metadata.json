@@ -1,0 +1,34 @@
+{
+  "version": "0.2.0",
+  "module": "03_q99_precursor_discovery",
+  "research_question": "Do numeric/boolean market-state fields observable before a native 5m q99 volatility onset differ from same-asset exact-clock non-event controls?",
+  "database_relation": "time_series_feature_state",
+  "event_definition": "asset-specific full-sample q99 of return_5m**2; consecutive q99 runs reduced to first bar",
+  "q99_recomputed_inside_module": true,
+  "predictor_source": "all runtime-discovered numeric/boolean fields except identifiers",
+  "strict_precursor_boundary": "relative_bar < 0 only",
+  "event_and_post_bars_for_anatomy_only": true,
+  "control_matching": "same asset, exact 5m UTC clock slot, nearest eligible dates",
+  "max_controls_per_event": 8,
+  "min_controls_per_feature_event": 4,
+  "anatomy_window_minutes": [
+    -120,
+    120
+  ],
+  "ranking_lags_minutes": [
+    -60,
+    -30,
+    -15,
+    -10,
+    -5
+  ],
+  "synchronous_asset_weighting": "asset-events sharing exact timestamp averaged before pooled ranking",
+  "no_predictive_model": true,
+  "no_p_value_claim": true,
+  "start": "earliest_available",
+  "end": "latest_available",
+  "n_rows": 38304,
+  "n_predictors": 205,
+  "n_asset_event_onsets": 303,
+  "n_unique_event_times": 180
+}
