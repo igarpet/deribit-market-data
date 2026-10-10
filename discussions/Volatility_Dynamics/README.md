@@ -10,7 +10,8 @@ Research branch for volatility dynamics developed independently from every other
 - **006**: `006_chatgpt_q99_precursor_module03.md` — full-schema q99 precursor discovery with strict pre-event information boundary and matched controls.
 - **007**: `007_chatgpt_module03_2h_and_conditional_module04.md` — extends Module 03 anatomy to ±120m and adds native-volatility-conditioned q99 precursor Module 04.
 - **008**: `008_chatgpt_minus95m_motif_module05.md` — dedicated five-candle -95m motif study with prior-q99 contamination exclusion and stability checks.
-- **Next turn:** `009`.
+- **009**: `009_chatgpt_latent_state_hmm_module06.md` — first latent-state HMM: training-only normalization, chronological held-out filtering, external q99 hazard, and duration diagnostics before any HSMM.
+- **Next turn:** `010`.
 
 Module 01 remains historical baseline work. **Module 02 is authoritative for primitive volatility persistence/duration questions:** `notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`.
 
