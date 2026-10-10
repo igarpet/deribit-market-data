@@ -7,7 +7,8 @@ Research branch for volatility dynamics developed independently from every other
 - **003**: `003_chatgpt_full_independence_reset.md` — authoritative reset: return-only Module 01, no imported research outputs or assumptions.
 - **004**: `004_chatgpt_timestamp_unit_bugfix.md` — Pandas datetime-unit bugfix for the standalone engine.
 - **005**: `005_chatgpt_native_5m_module02.md` — native five-minute squared-return analysis; no rolling 30m block.
-- **Next turn:** `006`.
+- **006**: `006_chatgpt_q99_precursor_module03.md` — full-schema q99 precursor discovery with strict pre-event information boundary and matched controls.
+- **Next turn:** `007`.
 
 Module 01 remains historical baseline work. **Module 02 is authoritative for primitive volatility persistence/duration questions:** `notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`.
 
