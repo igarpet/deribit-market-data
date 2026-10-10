@@ -1,0 +1,13 @@
+feature,family,reason,present
+intrabar_range_bps,activity,Module 03/04 broad activity or native-range precursor,True
+volume_usd,activity,Module 03/04 broad activity or native-range precursor,True
+trade_count,activity,Module 03/04 broad activity or native-range precursor,True
+option_iv_atm_forward,iv_level,Module 03/04 elevated option-IV level,True
+iv_put_25d,iv_level,Module 03/04 elevated option-IV level,True
+iv_call_25d,iv_level,Module 03/04 elevated option-IV level,True
+book_twa_spread_bps,liquidity_book_activity,Module 03/04 spread or book-activity precursor,True
+book_update_count,liquidity_book_activity,Module 03/04 spread or book-activity precursor,True
+book_obi_20_raw_zero_cross_count,l2_instability,Module 03/04 sparse L2 instability precursor,True
+book_obi_20_transition_count,l2_instability,Module 03/04 sparse L2 instability precursor,True
+book_obi_20_raw_zero_cross_rate,l2_instability,Module 03/04 sparse L2 instability precursor,True
+book_obi_20_path_roughness_per_min,l2_instability,Module 03/04 sparse L2 instability precursor,True

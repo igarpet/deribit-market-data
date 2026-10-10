@@ -1,0 +1,28 @@
+{
+  "version": "0.1.0",
+  "module": "05_minus95m_q99_motif",
+  "motivation": "visual pattern around -95m after extending q99 anatomy to +/-120m",
+  "post_selection_exploratory": true,
+  "q99_recomputed_inside_module": true,
+  "motif_window_minutes": [
+    -105,
+    -100,
+    -95,
+    -90,
+    -85
+  ],
+  "motif_center_minutes": -95,
+  "primary_sample": "q99 onsets with no prior q99 bar in previous 120 minutes",
+  "control_matching": "same asset + exact 5m UTC clock + native-volatility history matching from Module 04",
+  "simultaneous_asset_weighting": "collapsed by exact event timestamp for pooled summaries",
+  "bootstrap_note": "descriptive stability only; motif selected after viewing same data",
+  "no_predictive_model": true,
+  "no_trading_claim": true,
+  "start": "earliest_available",
+  "end": "latest_available",
+  "n_rows": 38304,
+  "n_all_asset_events": 303,
+  "n_clean_asset_events": 180,
+  "n_all_unique_event_times": 180,
+  "n_clean_unique_event_times": 121
+}
