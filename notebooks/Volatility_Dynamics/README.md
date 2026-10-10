@@ -169,6 +169,18 @@ For each selected model, Module 06 reports:
 
 An HSMM is not the automatic next step. It is justified only if duration/age diagnostics indicate material HMM misspecification and the richer model subsequently improves chronological out-of-sample performance.
 
+## b-run (02b–06b) — review re-run, VD 010
+
+Parallel re-runs of Modules 02–06 with the fixes from the Claude review (discussion `010`). The original notebooks and outputs are unchanged. Outputs go to `02b/` … `06b/`. Shared vectorized core: `volatility_vd_b_core.py`. Tests: `tests/test_volatility_dynamics_b.py`.
+
+| Notebook | Question | Pre-registered rule |
+|---|---|---|
+| `02b_clock_null.ipynb` | How much of the exact-slot clock profile is sampling noise? (per-day rotation null, split-half reliability, slot vs hour) | descriptive |
+| `03b_q99_precursor_null.ipynb` | Is the Module 03 ranking beyond selection noise? (exact Module 03 scan on day-relabel placebo events; per-field and family-wise p) | descriptive; volatility fields are expected to beat this null |
+| `04b_repaired_vol_conditioning.ipynb` | Does anything survive real volatility conditioning? (causal 15m/1h/4h/24h RV + range environment, ±30 min clock pool, bias-corrected matching, placebo band) | gate: RV1h/RV4h retention ≤ 0.20 under M1_bc and M2_bc; survivors need Holm p < 0.05 under M2_bc; survival is necessary, not sufficient |
+| `05b_prospective_motif95.ipynb` | Does the frozen −95m L2 notch appear in clean q99 onsets after 2026-10-08 08:00 UTC? | PASS iff ≥ 20 unique timestamps, mean notch < 0, one-sided sign-flip p < 0.05 |
+| `06b_hmm_vs_benchmark.ipynb` | Do HMM states forecast q99 beyond a trivial volatility benchmark? | h = 60 min: logloss(M3) − logloss(M1) < 0 with day-bootstrap q97.5 < 0 and ≥ 20 unique test onset timestamps |
+
 ## Data window
 
 Both modules default to the full available database history unless their module-specific start/end environment variables are deliberately set.
