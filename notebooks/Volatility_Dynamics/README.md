@@ -6,15 +6,7 @@ Independent research branch for the observable dynamics of physical volatility.
 
 This branch starts from the shared research database only. It does **not** import research outputs, fitted models, frozen specifications, selected features, thresholds, state definitions, or empirical assumptions from HSMM, Volatility Regression, Volatility Risk Premium, Pairwise Feature Regression, or any other research branch.
 
-Module 01 reads only:
-
-- `state_time`
-- `underlying`
-- `return_5m`
-
-from `time_series_feature_state`.
-
-Any later complexity must be motivated by results produced inside Volatility Dynamics itself.
+Cross-module inheritance inside this branch is also not automatic: each module states explicitly whether it consumes an earlier module. Module 02 does **not** consume Module 01 outputs or conclusions.
 
 ## Research sequence
 
@@ -22,33 +14,54 @@ Any later complexity must be motivated by results produced inside Volatility Dyn
 
 `01_volatility_baseline.ipynb`
 
-Starts without a forecasting model or latent-state assumption. It constructs realized variance directly from contiguous five-minute index returns and measures:
+Historical first standalone module. It constructed several rolling realized-variance horizons from raw five-minute returns. Its results remain useful descriptively, but rolling 30m episode durations are not suitable as primitive duration evidence because the window itself induces persistence.
 
-- distributions at 5m, 15m, 30m, 60m and 4h backward horizons;
-- 30m/60m forward realized variance for descriptive current-vs-future association;
-- UTC clock structure, estimated internally rather than assumed;
-- volatility persistence at several lags;
-- high-volatility episode thresholds and contiguous episode durations;
-- buildup and decay paths around the first threshold crossing.
+### 02 — Native five-minute volatility dynamics
 
-No option, flow, order-book, HAR, HMM/HSMM, MOM/MR/VS/Bridge or prior-branch variable enters Module 01.
+`02_native_5m_volatility.ipynb`
 
-Outputs live in `01/` and are compact.
+This is the authoritative primitive-timescale study for volatility persistence and duration.
 
-### Later modules
+It reads only:
 
-The next module is **not precommitted**. Module 01 results decide what comes next.
+- `state_time`
+- `underlying`
+- `return_5m`
 
-Possible future questions include forecast baselines, volatility surprise, absorption/Bridge, or volatility-conditioned MOM/MR, but none is imported as an assumption.
+and defines:
+
+[
+v_t=r_t^2
+]
+
+for the single native five-minute bar.
+
+There is no rolling realized-variance block.
+
+Module 02 measures:
+
+- five-minute variance distribution and tails;
+- missingness by date and exact five-minute UTC slot;
+- exact-slot five-minute volatility clock structure;
+- lag dependence between individual five-minute variance observations;
+- one-step empirical volatility-quantile transition matrices;
+- 90th / 95th / 99th percentile single-bar tail persistence;
+- consecutive runs of extreme native five-minute bars;
+- five-minute event paths around run onset;
+- same-timestamp cross-asset extreme-volatility synchronization.
+
+Any future claim about duration or persistence should start from Module 02, not from the rolling-window duration in Module 01.
 
 ## Data window
 
-The default is the entire available database history. Set `VD_START` or `VD_END` only when a deliberate historical cutoff is desired.
+Both modules default to the full available database history unless their module-specific start/end environment variables are deliberately set.
 
-## Run
+## Run Module 02
 
-Open and run:
+Open:
 
-`notebooks/Volatility_Dynamics/01_volatility_baseline.ipynb`
+`notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`
+
+It writes compact outputs to `notebooks/Volatility_Dynamics/02/`.
 
 The notebook reads `DERIBIT_DATA_ROOT/database/research.duckdb` read-only.
