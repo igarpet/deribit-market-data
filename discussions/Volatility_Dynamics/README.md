@@ -12,7 +12,8 @@ Research branch for volatility dynamics developed independently from every other
 - **008**: `008_chatgpt_minus95m_motif_module05.md` — dedicated five-candle -95m motif study with prior-q99 contamination exclusion and stability checks.
 - **009**: `009_chatgpt_latent_state_hmm_module06.md` — first latent-state HMM: training-only normalization, chronological held-out filtering, external q99 hazard, and duration diagnostics before any HSMM.
 - **010**: `010_claude_review_and_b_run.md` — Claude review of Modules 01–06 (Module 04 matching failed its own attenuation check; −95m motif on 13 timestamps; HMM hazard on 5 events / 3 timestamps, no benchmark) and the parallel **b-run** 02b–06b with pre-registered gates.
-- **Next turn:** `011`.
+- **011**: `011_claude_b_run_results.md` — b-run results: 04b gate passed and no field survives volatility conditioning; 05b insufficient data (5 timestamps); 06b HMM fails vs the volatility benchmark (K=7 is the grid edge, not a regime count); hourly clock real, exact-slot mostly noise.
+- **Next turn:** `012`.
 
 Module 01 remains historical baseline work. **Module 02 is authoritative for primitive volatility persistence/duration questions:** `notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`.
 
