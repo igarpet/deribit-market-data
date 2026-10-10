@@ -16,7 +16,8 @@ Research branch for volatility dynamics developed independently from every other
 - **012**: `012_claude_student_t_hmm_06c.md` — Student-t emission HMM (06c): tests whether 06b's grid-edge K was inflated by heavy tails; same pre-registered forecast decision as 06b.
 - **013**: `013_claude_06c_results.md` — 06c: Student-t fits better but K still climbs to the grid edge (10); states encode assets/days; adding states significantly worsens the 60m q99 forecast. Recommendation: close the latent-state line in this branch.
 - **014**: `014_chatgpt_q99_preshock_hmm_taxonomy_module07.md` — conditions on q99 shocks and clusters their strictly pre-shock 24-bar HMM trajectories into candidate shock types.
-- **Next turn:** `015`.
+- **015**: `015_claude_module07_review.md` — Module 07 review: SyntaxError fixed (literal \n in `adjusted_rand_index`); on a synthetic single-factor world Module 07 finds 4 "types" passing all VD 014 §13 criteria (volatility-level bins). Proposed 07b with volatility-matched non-shock controls, nulls and numeric thresholds.
+- **Next turn:** `016`.
 
 Module 01 remains historical baseline work. **Module 02 is authoritative for primitive volatility persistence/duration questions:** `notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`.
 

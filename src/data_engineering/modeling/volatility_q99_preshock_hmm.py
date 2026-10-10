@@ -677,7 +677,34 @@ def composition_tables(assignments: pd.DataFrame) -> tuple[pd.DataFrame, pd.Data
     return asset, date
 
 
-def adjusted_rand_index(labels_a: np.ndarray, labels_b: np.ndarray) -> float:\n    """Label-permutation-invariant agreement for sensitivity taxonomy."""\n    a = np.asarray(labels_a, int)\n    b = np.asarray(labels_b, int)\n    if len(a) != len(b) or len(a) < 2:\n        return np.nan\n    ua, ia = np.unique(a, return_inverse=True)\n    ub, ib = np.unique(b, return_inverse=True)\n    tab = np.zeros((len(ua), len(ub)), int)\n    np.add.at(tab, (ia, ib), 1)\n    def c2(x):\n        x = np.asarray(x, float)\n        return x * (x - 1) / 2\n    sum_nij = float(np.sum(c2(tab)))\n    sum_ai = float(np.sum(c2(tab.sum(axis=1))))\n    sum_bj = float(np.sum(c2(tab.sum(axis=0))))\n    total = float(c2(np.asarray([len(a)]))[0])\n    if total <= 0:\n        return np.nan\n    expected = sum_ai * sum_bj / total\n    max_index = 0.5 * (sum_ai + sum_bj)\n    denom = max_index - expected\n    if abs(denom) < 1e-12:\n        return 1.0\n    return float((sum_nij - expected) / denom)\n\ndef validation_stability(
+def adjusted_rand_index(labels_a: np.ndarray, labels_b: np.ndarray) -> float:
+    """Label-permutation-invariant agreement for sensitivity taxonomy."""
+    a = np.asarray(labels_a, int)
+    b = np.asarray(labels_b, int)
+    if len(a) != len(b) or len(a) < 2:
+        return np.nan
+    ua, ia = np.unique(a, return_inverse=True)
+    ub, ib = np.unique(b, return_inverse=True)
+    tab = np.zeros((len(ua), len(ub)), int)
+    np.add.at(tab, (ia, ib), 1)
+    def c2(x):
+        x = np.asarray(x, float)
+        return x * (x - 1) / 2
+    sum_nij = float(np.sum(c2(tab)))
+    sum_ai = float(np.sum(c2(tab.sum(axis=1))))
+    sum_bj = float(np.sum(c2(tab.sum(axis=0))))
+    total = float(c2(np.asarray([len(a)]))[0])
+    if total <= 0:
+        return np.nan
+    expected = sum_ai * sum_bj / total
+    max_index = 0.5 * (sum_ai + sum_bj)
+    denom = max_index - expected
+    if abs(denom) < 1e-12:
+        return 1.0
+    return float((sum_nij - expected) / denom)
+
+
+def validation_stability(
     discovery_embeddings: np.ndarray,
     validation_embeddings: np.ndarray,
     discovery_labels: np.ndarray,
