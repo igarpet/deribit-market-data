@@ -181,6 +181,10 @@ Parallel re-runs of Modules 02–06 with the fixes from the Claude review (discu
 | `05b_prospective_motif95.ipynb` | Does the frozen −95m L2 notch appear in clean q99 onsets after 2026-10-08 08:00 UTC? | PASS iff ≥ 20 unique timestamps, mean notch < 0, one-sided sign-flip p < 0.05 |
 | `06b_hmm_vs_benchmark.ipynb` | Do HMM states forecast q99 beyond a trivial volatility benchmark? | h = 60 min: logloss(M3) − logloss(M1) < 0 with day-bootstrap q97.5 < 0 and ≥ 20 unique test onset timestamps |
 
+### 06c — Student-t emission HMM (VD 012)
+
+`06c_student_t_hmm.ipynb` — 06b pipeline with a multivariate Student-t emission (diagonal scale, per-state ν, shared latent scale per bar, missing fields marginalized). Pre-registered: same forecast decision as 06b; K grid 2–10 with an interior-K test; Student-t vs Gaussian validation likelihood on identical sequences. Outputs: `06c/`.
+
 ## Data window
 
 Both modules default to the full available database history unless their module-specific start/end environment variables are deliberately set.
