@@ -1,0 +1,54 @@
+{
+  "version": "0.1.0",
+  "module": "06_latent_market_state_hmm",
+  "model_class": "first-order diagonal-Gaussian HMM",
+  "numpy_only_implementation": true,
+  "q99_used_in_fit": false,
+  "return_5m_used_as_emission": false,
+  "state_labels_forced": false,
+  "duration_model": "standard HMM geometric implication only",
+  "train_fraction_by_utc_date": 0.7,
+  "split_time": "2026-10-03 00:00:00+00:00",
+  "normalization": "training-only asset/exact-clock robust z with shrinkage",
+  "core_features": [
+    "intrabar_range_bps",
+    "volume_usd",
+    "trade_count",
+    "option_iv_atm_forward",
+    "iv_put_25d",
+    "iv_call_25d",
+    "book_twa_spread_bps",
+    "book_update_count"
+  ],
+  "l2_features": [
+    "book_obi_20_raw_zero_cross_count",
+    "book_obi_20_transition_count",
+    "book_obi_20_raw_zero_cross_rate",
+    "book_obi_20_path_roughness_per_min"
+  ],
+  "core_candidate_K": [
+    2,
+    3,
+    4,
+    5
+  ],
+  "core_selected_K_training_BIC": 5,
+  "l2_candidate_K": [
+    2,
+    3,
+    4
+  ],
+  "l2_selected_K_training_BIC": 4,
+  "future_q99_horizons_min": [
+    30,
+    60,
+    90,
+    120
+  ],
+  "heldout_hazard_uses_filtered_states_only": true,
+  "smoothing_used_for_heldout_decisions": false,
+  "hsmm_not_fit": true,
+  "start": "earliest_available",
+  "end": "latest_available",
+  "n_rows": 38304
+}

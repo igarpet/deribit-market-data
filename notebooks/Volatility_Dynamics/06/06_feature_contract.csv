@@ -1,0 +1,13 @@
+feature,model,present,role
+intrabar_range_bps,core,True,HMM emission
+volume_usd,core,True,HMM emission
+trade_count,core,True,HMM emission
+option_iv_atm_forward,core,True,HMM emission
+iv_put_25d,core,True,HMM emission
+iv_call_25d,core,True,HMM emission
+book_twa_spread_bps,core,True,HMM emission
+book_update_count,core,True,HMM emission
+book_obi_20_raw_zero_cross_count,l2_enhanced,True,HMM emission in sparse-L2 enhancement only
+book_obi_20_transition_count,l2_enhanced,True,HMM emission in sparse-L2 enhancement only
+book_obi_20_raw_zero_cross_rate,l2_enhanced,True,HMM emission in sparse-L2 enhancement only
+book_obi_20_path_roughness_per_min,l2_enhanced,True,HMM emission in sparse-L2 enhancement only

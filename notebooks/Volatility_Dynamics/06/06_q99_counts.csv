@@ -1,0 +1,15 @@
+split,underlying,q99_bars,q99_onsets,rows
+test,AVAX,5,4,1536
+test,BTC,4,3,1536
+test,ETH,6,5,1536
+test,HYPE,3,3,1536
+test,SOL,2,2,1536
+test,TRX,7,7,1536
+test,XRP,2,1,1536
+train,AVAX,33,32,3936
+train,BTC,33,28,3936
+train,ETH,33,30,3936
+train,HYPE,33,32,3936
+train,SOL,33,28,3936
+train,TRX,33,31,3936
+train,XRP,33,29,3936
