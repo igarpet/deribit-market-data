@@ -19,7 +19,8 @@ Research branch for volatility dynamics developed independently from every other
 - **015**: `015_claude_module07_review.md` — Module 07 review: SyntaxError fixed (literal \n in `adjusted_rand_index`); on a synthetic single-factor world Module 07 finds 4 "types" passing all VD 014 §13 criteria (volatility-level bins). Proposed 07b with volatility-matched non-shock controls, nulls and numeric thresholds.
 - **016**: `016_claude_module07_results.md` — Module 07 results: 58 L2-covered timestamps; 2 'types' with silhouette 0.24 (below the synthetic no-types reference), split by IV level/activity, validation ~one day, unstable under collector sensitivity. No evidence of shock types; recommend pausing the line.
 - **017**: `017_claude_jump_point_process_module08.md` — Module 08: vol-standardized jumps (c = 4) as a point process; homogeneous vs inhomogeneous Poisson vs Hawkes (self + cross), two-sided local volatility to separate excitation from stochastic volatility, blocked-CV decision, synthetic size/power disclosed.
-- **Next turn:** `018`.
+- **018**: `018_claude_module08_results.md` — Module 08 results: vol-standardized jumps fit a homogeneous Poisson process (KS p = 0.55); no self-excitation (Hawkes significantly worse out of fold, ρ ≈ 0.05); no clock/vol dependence; ~1–2 jumps/asset/day (TRX 4.2, possible tick artifact); 20% co-jump bars. Proposes Module 09 compound-Poisson.
+- **Next turn:** `019`.
 
 Module 01 remains historical baseline work. **Module 02 is authoritative for primitive volatility persistence/duration questions:** `notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`.
 
