@@ -1,0 +1,36 @@
+{
+  "primary_empirical_z_2_5": {
+    "n_rows": 14805,
+    "n_sessions": 19,
+    "M": 1.0499518652785598,
+    "ci_low": 0.4762631831000336,
+    "ci_high": 2.3416497282362965,
+    "verdict": "RICH",
+    "bootstrap_verdict": "RICH",
+    "share_model_price_zero": 0.0,
+    "n_boot": 1000
+  },
+  "variance_mixture": {
+    "n_rows": 14805,
+    "n_sessions": 19,
+    "M": 0.5986806745731912,
+    "ci_low": 0.18119618162772957,
+    "ci_high": 1.2202437743128762,
+    "verdict": "RICH",
+    "bootstrap_verdict": "RICH",
+    "share_model_price_zero": 0.0,
+    "n_boot": 300
+  },
+  "tte_conditioned_empirical": {
+    "n_rows": 13787,
+    "n_sessions": 19,
+    "M": 1.332669306057304,
+    "ci_low": 0.9675087540357342,
+    "ci_high": 1.9195151826376105,
+    "verdict": "RICH",
+    "mean_ratio_mid_over_model": 553.195640032066,
+    "share_model_price_zero": 0.06822019587977035
+  },
+  "module10_jump_model_M_same_rows": 2.984273777416061,
+  "excluded_assets": []
+}
