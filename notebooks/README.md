@@ -13,7 +13,7 @@ Research branches are independent experiments. They may share the common data-en
 | [Volatility_Risk_Premium](./Volatility_Risk_Premium/) | Option pricing audit, forecast vs implied variance, executable option P&L. |
 | [Volatility_Regression](./Volatility_Regression/) | Native-frequency next-5m volatility OLS with broad market/option features and backward elimination. |
 | [Pairwise_Feature_Regression](./Pairwise_Feature_Regression/) | v1 descriptive directed single-predictor OLS matrices: raw beta, in-sample residual RMSE, pairwise coverage and heatmaps by asset. |
-| [Volatility_Dynamics](./Volatility_Dynamics/) | Independent return-only volatility research; Module 02 studies native 5m squared returns directly, including tails, clock structure, persistence, transitions, run duration and cross-asset synchronization. Modules 02b–06b re-run the q99 precursor / HMM line with nulls, repaired volatility conditioning and pre-registered gates (VD 010). Modules 08–10: jump point process, compound-Poisson jumps, and physical jump model vs 0DTE wings (VD 017–019). |
+| [Volatility_Dynamics](./Volatility_Dynamics/) | Independent return-only volatility research; Module 02 studies native 5m squared returns directly, including tails, clock structure, persistence, transitions, run duration and cross-asset synchronization. Modules 02b–06b re-run the q99 precursor / HMM line with nulls, repaired volatility conditioning and pre-registered gates (VD 010). Modules 08–10b: jump point process, compound-Poisson jumps, physical jump model and model-free benchmark vs 0DTE wings (VD 017–021). |
 
 ## Output-size policy (from 2026-10-09)
 

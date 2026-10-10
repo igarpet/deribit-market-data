@@ -6,7 +6,7 @@ Independent research branch for the observable dynamics of physical volatility.
 
 This branch starts from the shared research database only. It does **not** import research outputs, fitted models, frozen specifications, selected features, thresholds, state definitions, or empirical assumptions from HSMM, Volatility Regression, Volatility Risk Premium, Pairwise Feature Regression, or any other research branch.
 
-**Approved exception (Ivan, 2026-10-10):** Module 10 reuses the Volatility Risk Premium branch's Black-76 conventions (`option_pricing`) and its pricing-audit findings (VRP 006), and never touches sessions from the VRP confirmation boundary (2026-11-07) onward. No other module uses VRP outputs.
+**Approved exception (Ivan, 2026-10-10):** Module 10 reuses the Volatility Risk Premium branch's Black-76 conventions (`option_pricing`) and its pricing-audit findings (VRP 006), and never touches sessions from the VRP confirmation boundary (2026-11-07) onward. Module 10b inherits this through Module 10's priced quotes. No other module uses VRP outputs.
 
 Cross-module inheritance inside this branch is also not automatic: each module states explicitly whether it consumes an earlier module. Module 02 does **not** consume Module 01 outputs or conclusions.
 
@@ -257,6 +257,14 @@ Also reported:
 - hold-to-settlement P&L.
 
 Outputs: `10/`.
+
+### 10b — Model-free physical benchmark for the wings (VD 021)
+
+`10b_model_free_wing_benchmark.ipynb` re-prices Module 10's primary rows from the realized distribution of the standardized move to settlement, $u=\ln(S_T/I_t)/\sqrt{D_t}$, using Module 10's own ex-ante $D$, so any bias in $D$ cancels. The $u$ pool is leave-one-session-out, with the raw outer tails kept and a per-quote martingale normalization.
+
+Pre-registered rule: $M$ is the median of session-median $\ln(\text{mid}/P^{emp})$ for $z\in[2,5)$. The confidence interval comes from a joint session bootstrap that resamples quotes and outcomes together, giving RICH / CHEAP / CONSISTENT. Rows priced at zero are dropped, which is conservative against RICH. The verdict becomes INSUFFICIENT_TAIL if more than 25% are dropped.
+
+Reported only: the variance mixture, the TTE-conditioned pool, per asset, buckets and tail frequencies. 10b consumes `10/10_priced_quotes.csv.gz`. Outputs: `10b/`.
 
 ## Data window
 
