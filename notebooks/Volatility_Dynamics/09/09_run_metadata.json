@@ -1,0 +1,9 @@
+{
+  "version": "0.1.0",
+  "module": "09_compound_poisson_jumps",
+  "c": 4.0,
+  "first_time": "2026-09-19 08:00:00+00:00",
+  "last_time": "2026-10-10 07:55:00+00:00",
+  "n_rows": 42336,
+  "n_jumps": 245
+}

@@ -1,0 +1,21 @@
+{
+  "primary_z_2_5": {
+    "n_rows": 14805,
+    "n_sessions": 19,
+    "M": 2.956626311328909,
+    "ci_low": 2.4965829736135627,
+    "ci_high": 3.1712665630603323,
+    "verdict": "RICH",
+    "mean_ratio_mid_over_model": 2108.9817222605425
+  },
+  "same_rows_diffusion_only": {
+    "n_rows": 14805,
+    "n_sessions": 19,
+    "M": 3.7330008141273754,
+    "ci_low": 3.1331002250628597,
+    "ci_high": 3.9647508236585223,
+    "verdict": "RICH",
+    "mean_ratio_mid_over_model": 21985.699655869546
+  },
+  "excluded_assets_tick_artifact": []
+}

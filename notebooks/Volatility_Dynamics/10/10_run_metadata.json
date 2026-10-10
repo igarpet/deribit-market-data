@@ -1,0 +1,19 @@
+{
+  "version": "0.1.0",
+  "module": "10_jump_model_vs_option_wings",
+  "cross_branch_reuse": "approved by Ivan 2026-10-10: VRP option_pricing conventions + VRP 006 audit findings",
+  "vrp_confirmation_start_excluded": "2026-11-07 00:00:00+00:00",
+  "tte_min": [
+    60,
+    1200
+  ],
+  "quote_grid_min": 15,
+  "primary_z": [
+    2.0,
+    5.0
+  ],
+  "n_quotes_priced": 76405,
+  "n_primary_rows": 14805,
+  "first_time": "2026-09-19 08:00:00+00:00",
+  "last_time": "2026-10-10 07:55:00+00:00"
+}

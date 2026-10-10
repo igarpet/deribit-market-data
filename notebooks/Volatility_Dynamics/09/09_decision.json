@@ -1,0 +1,15 @@
+{
+  "P1_common_component": {
+    "observed_bars_ge2": 34,
+    "expected_bars_ge2_independent": 4.684990120506073,
+    "ratio": 7.257219145710241,
+    "poisson_p_one_sided": 1.1102230246251565e-16,
+    "common_component": true
+  },
+  "P2_tick_artifact_assets": [],
+  "P3_tail_all": {
+    "gpd_xi": 0.11000000000000004,
+    "gpd_vs_exp_lr_p": 0.06193457668820235
+  },
+  "P4_unstable_assets_holm05": []
+}
