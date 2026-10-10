@@ -471,6 +471,13 @@ def precursor_rankings(
         consistent = int(np.sum(aa["asset_direction"].to_numpy(float) == direction))
         consistency = consistent / n_assets if n_assets else np.nan
 
+        lag_dirs = np.sign(g["deviation"].to_numpy(float))
+        lag_consistency = float(np.mean(lag_dirs == direction)) if len(lag_dirs) else np.nan
+        mean_abs_across_lags = float(g["abs_deviation"].mean())
+        discovery_score = float(
+            best["abs_deviation"] * consistency * lag_consistency
+        )
+
         recs.append({
             "feature": feature,
             "best_rel_bar": rel,
@@ -481,9 +488,11 @@ def precursor_rankings(
             "median_percentile": float(best["median_percentile"]),
             "direction": "high_before_event" if direction > 0 else "low_before_event",
             "abs_deviation_from_half": float(best["abs_deviation"]),
+            "mean_abs_deviation_across_rank_lags": mean_abs_across_lags,
             "assets_consistent_direction": consistent,
             "asset_direction_consistency": float(consistency),
-            "discovery_score": float(best["abs_deviation"] * consistency),
+            "lag_direction_consistency": lag_consistency,
+            "discovery_score": discovery_score,
         })
 
     if not recs:
