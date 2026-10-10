@@ -1,0 +1,29 @@
+{
+  "primary": {
+    "rule": "h=60m: logloss(M3)-logloss(M1) < 0 and day-bootstrap q97.5 < 0, >= 20 unique test onset timestamps",
+    "delta_logloss": 0.00824213760143235,
+    "boot_q975": 0.014202176786695504,
+    "n_unique_test_onset_timestamps": 26,
+    "status": "FAIL"
+  },
+  "k_and_emission": {
+    "k_grid": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "student_t_selected_K": 10,
+    "student_t_interior_K": false,
+    "student_t_valid_ll_per_row_selected": -8.869034966668579,
+    "gaussian_selected_K": 10,
+    "gaussian_interior_K": false,
+    "gaussian_valid_ll_per_row_selected": -9.094263291164177,
+    "student_t_fits_better": true
+  }
+}

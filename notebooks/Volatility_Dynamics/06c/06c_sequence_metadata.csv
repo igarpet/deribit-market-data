@@ -1,0 +1,5 @@
+split,n_sequences,rows
+fit,7,23520
+valid,7,6048
+train,7,29568
+test,7,12768

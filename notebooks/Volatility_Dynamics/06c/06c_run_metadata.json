@@ -1,0 +1,76 @@
+{
+  "version": "0.1.0",
+  "pipeline_version_06b": "0.1.0",
+  "module": "06c_student_t_hmm",
+  "emission": "multivariate Student-t, diagonal scale, per-state nu, shared latent scale per bar, missing fields marginalized",
+  "emissions": [
+    "log_range",
+    "log_volume",
+    "log_trades",
+    "log_book_updates",
+    "log_spread",
+    "atm_iv_dev",
+    "skew_dev"
+  ],
+  "k_grid": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "n_init": 3,
+  "n_init_gaussian": 1,
+  "student_t_selected_K": 10,
+  "gaussian_selected_K": 10,
+  "nu_by_state": [
+    7.4566583061746226,
+    10.381699867495414,
+    14.711644955863983,
+    9.22425216838692,
+    5.240248086161368,
+    9.707281021217103,
+    2.3074041334731143,
+    3.8073480374647333,
+    7.740982907644584,
+    7.6890732573832485
+  ],
+  "train_fraction": 0.7,
+  "test_start": "2026-10-04 00:00:00+00:00",
+  "validation_start": "2026-10-01 00:00:00+00:00",
+  "n_unique_test_onset_timestamps": 26,
+  "decision": {
+    "rule": "h=60m: logloss(M3)-logloss(M1) < 0 and day-bootstrap q97.5 < 0, >= 20 unique test onset timestamps",
+    "delta_logloss": 0.00824213760143235,
+    "boot_q975": 0.014202176786695504,
+    "n_unique_test_onset_timestamps": 26,
+    "status": "FAIL"
+  },
+  "k_and_emission": {
+    "k_grid": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "student_t_selected_K": 10,
+    "student_t_interior_K": false,
+    "student_t_valid_ll_per_row_selected": -8.869034966668579,
+    "gaussian_selected_K": 10,
+    "gaussian_interior_K": false,
+    "gaussian_valid_ll_per_row_selected": -9.094263291164177,
+    "student_t_fits_better": true
+  },
+  "first_time": "2026-09-19 08:00:00+00:00",
+  "last_time": "2026-10-10 07:55:00+00:00",
+  "n_rows": 42336
+}
