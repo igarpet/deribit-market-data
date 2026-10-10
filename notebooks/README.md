@@ -13,7 +13,7 @@ Research branches are independent experiments. They may share the common data-en
 | [Volatility_Risk_Premium](./Volatility_Risk_Premium/) | Option pricing audit, forecast vs implied variance, executable option P&L. |
 | [Volatility_Regression](./Volatility_Regression/) | Native-frequency next-5m volatility OLS with broad market/option features and backward elimination. |
 | [Pairwise_Feature_Regression](./Pairwise_Feature_Regression/) | v1 descriptive directed single-predictor OLS matrices: raw beta, in-sample residual RMSE, pairwise coverage and heatmaps by asset. |
-| [Volatility_Dynamics](./Volatility_Dynamics/) | Independent return-only volatility baseline: realized-variance distributions, internally measured clock structure, persistence, high-vol episode duration and buildup/decay. |
+| [Volatility_Dynamics](./Volatility_Dynamics/) | Independent return-only volatility research; Module 02 studies native 5m squared returns directly, including tails, clock structure, persistence, transitions, run duration and cross-asset synchronization. |
 
 ## Output-size policy (from 2026-10-09)
 
