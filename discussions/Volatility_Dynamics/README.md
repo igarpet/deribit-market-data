@@ -14,7 +14,8 @@ Research branch for volatility dynamics developed independently from every other
 - **010**: `010_claude_review_and_b_run.md` — Claude review of Modules 01–06 (Module 04 matching failed its own attenuation check; −95m motif on 13 timestamps; HMM hazard on 5 events / 3 timestamps, no benchmark) and the parallel **b-run** 02b–06b with pre-registered gates.
 - **011**: `011_claude_b_run_results.md` — b-run results: 04b gate passed and no field survives volatility conditioning; 05b insufficient data (5 timestamps); 06b HMM fails vs the volatility benchmark (K=7 is the grid edge, not a regime count); hourly clock real, exact-slot mostly noise.
 - **012**: `012_claude_student_t_hmm_06c.md` — Student-t emission HMM (06c): tests whether 06b's grid-edge K was inflated by heavy tails; same pre-registered forecast decision as 06b.
-- **Next turn:** `013`.
+- **013**: `013_claude_06c_results.md` — 06c: Student-t fits better but K still climbs to the grid edge (10); states encode assets/days; adding states significantly worsens the 60m q99 forecast. Recommendation: close the latent-state line in this branch.
+- **Next turn:** `014`.
 
 Module 01 remains historical baseline work. **Module 02 is authoritative for primitive volatility persistence/duration questions:** `notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`.
 
