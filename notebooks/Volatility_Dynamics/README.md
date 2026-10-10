@@ -123,6 +123,52 @@ Module 05 rebuilds the same-asset, exact-clock, native-volatility-matched contro
 
 Because the -95m motif was discovered by viewing the same sample, Module 05 is explicitly **post-selection exploratory analysis**. It cannot establish prospective predictability. A surviving clean motif must be frozen and tested on later/non-discovery observations.
 
+
+### 06 — Latent market-state HMM
+
+`06_latent_market_state_hmm.ipynb`
+
+Introduces the first latent-state model in the Volatility Dynamics branch.
+
+The core model is a first-order diagonal-Gaussian HMM fit to a compact emission vector motivated by Modules 03–05:
+
+- intrabar range;
+- USD volume;
+- trade count;
+- ATM forward IV;
+- 25d put IV;
+- 25d call IV;
+- book spread;
+- book update count.
+
+The sparse L2 zero-cross/transition/roughness variables are tested only in a **separate L2-enhanced HMM**, so their limited history does not shorten the main core model.
+
+Key design constraints:
+
+- q99 is **not** used to fit the HMM;
+- `return_5m` is not an emission feature;
+- no MR/MOM/VOL/Bridge/Clean/Noisy labels are forced;
+- no HSMM duration distribution is imposed;
+- deterministic asset/clock scaling is estimated from the training period only;
+- model fitting uses a chronological train/test split;
+- candidate state count is selected using training BIC with an occupancy guard;
+- held-out q99 hazard is calculated from **filtered** state probabilities only;
+- smoothed states are not used for held-out/live-style evaluation;
+- sequences break on asset changes, missing required emissions, or non-five-minute gaps, but not at UTC midnight.
+
+For each selected model, Module 06 reports:
+
+- candidate-K train/test likelihood and training BIC;
+- state emission profiles;
+- transition probabilities;
+- held-out filtered-state q99 hazard at 30/60/90/120m horizons;
+- held-out hard-state transition q99 hazard;
+- event-aligned filtered state probabilities around q99;
+- empirical filtered-state durations versus the HMM geometric-duration implication;
+- age-specific empirical exit hazard versus the HMM constant exit hazard.
+
+An HSMM is not the automatic next step. It is justified only if duration/age diagnostics indicate material HMM misspecification and the richer model subsequently improves chronological out-of-sample performance.
+
 ## Data window
 
 Both modules default to the full available database history unless their module-specific start/end environment variables are deliberately set.
