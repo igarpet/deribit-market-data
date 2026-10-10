@@ -1,4 +1,4 @@
-"""Synthetic tests for the Volatility Dynamics "b" run (02b-06b) and 06c; no research DuckDB required.
+"""Synthetic tests for the Volatility Dynamics "b" run (02b-06b), 06c and 08; no research DuckDB required.
 
 Run from repo root: python -m unittest discover -s tests -p "test_volatility_dynamics_b.py" -v
 """
@@ -19,6 +19,7 @@ from data_engineering.modeling import volatility_q99_matching_b as mb
 from data_engineering.modeling import volatility_q99_motif95_prospective as mp
 from data_engineering.modeling import volatility_hmm_states_b as hb
 from data_engineering.modeling import volatility_hmm_states_c as hc
+from data_engineering.modeling import volatility_jump_hawkes as jh
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -89,6 +90,10 @@ class TestModuleSelftests(unittest.TestCase):
 
     def test_06c_student_t_hmm(self):
         self.assertTrue(all(hc.selftest().values()))
+
+    def test_08_jump_hawkes(self):
+        r = jh.selftest()
+        self.assertTrue(all(v for k, v in r.items() if isinstance(v, bool)))
 
 
 class TestHolm(unittest.TestCase):

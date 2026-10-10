@@ -224,6 +224,10 @@ Because 06b identified a potential collector shift in `book_update_count`, Modul
 
 A positive result would be a stable taxonomy of q99 precursor paths. It would **not** establish q99 predictability or an economic regime count.
 
+### 08 — Jump arrivals as a point process (VD 017)
+
+`08_jump_point_process.ipynb` — jumps = returns > 4 local-volatility units (two-sided jump-robust bipower, deseasonalized). Homogeneous Poisson vs clock/volatility-inhomogeneous Poisson vs discrete Hawkes with self- and cross-asset excitation (exponential kernel). Pre-registered: 5-fold blocked CV by day, logLik gain with day-bootstrap lower bound > 0; c grid 3–5 reported only. Explanatory, not a real-time forecaster. Outputs: `08/`.
+
 ## Data window
 
 Both modules default to the full available database history unless their module-specific start/end environment variables are deliberately set.
