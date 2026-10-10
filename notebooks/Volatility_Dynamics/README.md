@@ -93,6 +93,36 @@ Module 04 recomputes q99 from `return_5m`; it does not read Module 03 output fil
 
 A surviving candidate is still only an incremental precursor candidate. Predictive claims require a later chronological prospective test.
 
+
+### 05 — The −95 minute q99 precursor motif
+
+`05_minus95m_q99_motif.ipynb`
+
+Characterizes the visually discovered structure around roughly 95 minutes before q99 onset.
+
+The motif is frozen as the five native candles at:
+
+- -105m
+- -100m
+- -95m
+- -90m
+- -85m
+
+rather than treating one exact plotted point as a magic lag.
+
+The primary sample excludes any q99 onset that had **any prior q99 bar in the preceding 120 minutes**. Eligible matched controls are subjected to the same exclusion. This is designed to distinguish a genuine pre-event motif from the after-effects of an earlier extreme-volatility shock.
+
+Module 05 rebuilds the same-asset, exact-clock, native-volatility-matched controls used in Module 04. It then reports:
+
+- all-event versus clean-event profiles;
+- feature-level local motif level, center deviation and rebound;
+- family-level activity, IV, liquidity/book-activity and L2-instability components;
+- descriptive bootstrap stability over unique event timestamps;
+- leave-one-asset-out stability;
+- exact -95m asset-level diagnostics.
+
+Because the -95m motif was discovered by viewing the same sample, Module 05 is explicitly **post-selection exploratory analysis**. It cannot establish prospective predictability. A surviving clean motif must be frozen and tested on later/non-discovery observations.
+
 ## Data window
 
 Both modules default to the full available database history unless their module-specific start/end environment variables are deliberately set.
