@@ -7,10 +7,27 @@ Physical-volatility forecasts versus option-implied variance, and ultimately exe
 | Notebook | Former | Content | Status |
 |---|---|---|---|
 | `01_vrp_pricing_audit.ipynb` | 15 | Step 1: Black-76 repricing, exchange IV time basis, ATM IV feature vs straddle IV, terminal/30m wedge decomposition, index RV noise | Run; A pass, B no offset (BTC/SOL narrow fail), C fail, D/E reported (VRP 006) |
+| `02_long_straddle_settlement.ipynb` | — | Step 2 (long only, VRP 007): ATM straddle bought at the ask + taker fee every hour (TTE 2–20h), held to the exchange delivery price, no hedge. Pre-registered verdict on the session-bootstrap CI of mean return on premium | Built; not yet run on real data |
 
-Outputs: `01/01_*.csv`. Code: `src/data_engineering/modeling/option_pricing.py`, `vrp_audit.py`.
+Outputs: `01/01_*.csv`, `02/02_*`. Code: `src/data_engineering/modeling/option_pricing.py`, `vrp_audit.py`, `vrp_long_straddle.py`.
 
-Planned: VRP 02, the unconditional hold-to-settlement ATM straddle at executable prices (5m and 30m perp hedges), then the conditional forecast-vs-price wedge.
+Ivan trades long only (VRP 007 §1). Delta-hedged and short-side variants are reported mirrors, not decisions. Next, only if 02 is not NO_LONG_EDGE: conditioning of the long straddle.
+
+## Running 02 (PC, Windows CMD)
+
+Close the notebook in Jupyter first. The PC must reach `www.deribit.com` (delivery prices, cached to `02/02_delivery_prices.csv`).
+
+```bat
+cd /d D:\Projects\deribit_market_data
+git pull
+python -m unittest discover -s tests -p "test_vrp_long_straddle.py" -v
+jupyter nbconvert --to notebook --execute --inplace notebooks\Volatility_Risk_Premium\02_long_straddle_settlement.ipynb
+git add notebooks\Volatility_Risk_Premium
+git commit -m "VRP 02: long straddle run"
+git push
+```
+
+Optional: `set VRP02_OFFLINE=1` (use the cached delivery prices only), `set VRP02_ASSETS=BTC,ETH`.
 
 ## Samples
 
