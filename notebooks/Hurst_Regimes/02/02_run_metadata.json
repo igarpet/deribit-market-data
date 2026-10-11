@@ -1,0 +1,19 @@
+{
+  "module": "02_roughness",
+  "version": "0.1.1",
+  "assets": [
+    "AVAX",
+    "BTC",
+    "ETH",
+    "SOL",
+    "TRX",
+    "XRP"
+  ],
+  "excluded_short_history_days": {
+    "HYPE": 16
+  },
+  "cal_reps": 3,
+  "history_dir": "D:\\MarketData\\Deribit\\history\\price_5m",
+  "first": "2024-09-01 00:05:00+00:00",
+  "last": "2026-10-11 00:05:00+00:00"
+}
