@@ -1,0 +1,31 @@
+{
+  "development": {
+    "eligible_assets": 6,
+    "G1_assets_passing": 1,
+    "G1": false,
+    "G2_assets_passing": 5,
+    "G2": true,
+    "G3_assets_passing": 0,
+    "G3": false,
+    "median_excess_sd": 0.012827804724312043,
+    "median_excess_rho2": 0.10973128733274626,
+    "median_excess_rho3": -0.014471359860267968,
+    "development_all_pass": false
+  },
+  "registration": {
+    "version": "0.1.0",
+    "bars": 288,
+    "min_bars": 280,
+    "min_blocks": 200,
+    "conf_min_blocks": 100,
+    "dev_end": "2026-03-31",
+    "conf_start": "2026-04-01",
+    "n_rep": 400,
+    "seed": 9001,
+    "vol_win": 12,
+    "g1_min_excess_sd": 0.02,
+    "g2_min_excess_rho": 0.1,
+    "alpha_holm": 0.05,
+    "verdict_rule": "PROCEED_TO_HMM iff G1,G2,G3 pass on development and G3 passes on confirmation"
+  }
+}

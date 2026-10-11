@@ -1,0 +1,19 @@
+{
+  "module": "01_hurst_variation_gates",
+  "version": "0.1.0",
+  "history_dir": "D:\\MarketData\\Deribit\\history\\price_5m",
+  "assets": [
+    "AVAX",
+    "BTC",
+    "ETH",
+    "SOL",
+    "TRX",
+    "XRP"
+  ],
+  "n_rep": 400,
+  "confirm_run": false,
+  "verdict": "STOP",
+  "sources": [
+    "binance_spot"
+  ]
+}
