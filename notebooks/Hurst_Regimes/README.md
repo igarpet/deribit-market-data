@@ -5,7 +5,7 @@
 | Notebook | Content | Status |
 |---|---|---|
 | `01_hurst_variation_gates.ipynb` | Session $H$ (change-of-frequency estimator) on non-overlapping 08:00-to-08:00 blocks; gates G1 variation, G2 persistence, G3 relevance against a volatility-modulated constant-$H$ fGn null; development ≤ 2026-03-31, confirmation from 2026-04-01 (G3, run once) | Run `1216fc8`: **STOP**. G1 fail (excess SD 0.013), G2 pass (lag-1 echo only), G3 fail (ρ₃ ≈ 0) (HR 002) |
-| `02_roughness.ipynb` | Descriptive (no gate): price $H$ by horizon (5m–30m, 1–8h, 1–7d); volatility roughness of $\log\sigma$ at 1h/4h/1d with noise correction and simulation calibration; monofractal check $\zeta(q)$; ACF power-law vs exponential; fOU fit (thesis estimators); half-year stability | Built; not yet run on real data (HR 003) |
+| `02_roughness.ipynb` | Descriptive (no gate): price $H$ by horizon (5m–30m, 1–8h, 1–7d); volatility roughness of $\log\sigma$ at 1h/4h/1d with noise correction and simulation calibration; monofractal check $\zeta(q)$; ACF power-law vs exponential; fOU fit (thesis estimators); half-year stability | Run `7aaef84` (HR 004): price H ≈ 0.48–0.51 at all horizons (majors); volatility rough, monofractal, calibrated H ≈ 0.03–0.09; hourly ACF power-law; fOU κ not identified |
 
 Code: `src/data_engineering/modeling/hurst_regimes.py`, `hurst_roughness.py`. Tests: `tests/test_hurst_regimes.py`, `test_hurst_roughness.py`. Outputs: `01/01_*`, `02/02_*`.
 
