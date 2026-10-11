@@ -4,7 +4,7 @@
 
 | Notebook | Content | Status |
 |---|---|---|
-| `01_hurst_variation_gates.ipynb` | Session $H$ (change-of-frequency estimator) on non-overlapping 08:00-to-08:00 blocks; gates G1 variation, G2 persistence, G3 relevance against a volatility-modulated constant-$H$ fGn null; development ≤ 2026-03-31, confirmation from 2026-04-01 (G3, run once) | Built; not yet run on real data |
+| `01_hurst_variation_gates.ipynb` | Session $H$ (change-of-frequency estimator) on non-overlapping 08:00-to-08:00 blocks; gates G1 variation, G2 persistence, G3 relevance against a volatility-modulated constant-$H$ fGn null; development ≤ 2026-03-31, confirmation from 2026-04-01 (G3, run once) | Run `1216fc8`: **STOP**. G1 fail (excess SD 0.013), G2 pass (lag-1 echo only), G3 fail (ρ₃ ≈ 0) (HR 002) |
 
 Code: `src/data_engineering/modeling/hurst_regimes.py`. Tests: `tests/test_hurst_regimes.py`. Outputs: `01/01_*`.
 

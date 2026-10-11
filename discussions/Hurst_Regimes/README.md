@@ -9,7 +9,8 @@ Independent branch: it uses only the shared 5-minute history files, no other bra
 | Turn | Content |
 |---|---|
 | `001_claude_branch_preregistration.md` | Branch rationale, three gates (variation, persistence, relevance), volatility-modulated fGn null, development/confirmation split |
+| `002_claude_01_results.md` | 01 results: STOP. H ≈ 0.5 within noise (except TRX, structural); lag-1-only echo; no prediction of next-session terminal move |
 
-Next turn in this branch: `002`.
+Next turn in this branch: `003`.
 
 Procedure and numbering rules: `../README.md`.
