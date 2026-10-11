@@ -25,7 +25,8 @@ Research branch for volatility dynamics developed independently from every other
 - **021**: `021_claude_module10b_model_free_benchmark.md` — Module 10b pre-registration: wings priced from the realized LOSO distribution of standardized moves to settlement (same ex-ante D, bias cancels), joint session bootstrap, zero-price rows dropped (INSUFFICIENT_TAIL > 25%); variance mixture replaces "mixture + jumps" (double count). Synthetic DB: Module 10 RICH (3.98) becomes CONSISTENT under 10b.
 - **022**: `022_claude_module10b_results.md` — 10b: wings RICH vs realized LOSO outcomes (M = 1.05, joint CI [0.48, 2.34]); fat physical tails (P(|u|>3) 2.9% vs 0.27%) remove 2/3 of Module 10's gap; at the bid M ≈ 0.48 (post hoc); one ±8σ day per asset-year would erase the bid premium (peso problem). Proposes 10c: long-history physical tail.
 - **023**: `023_claude_module10c_long_history.md` — Module 10c pre-registration: ~2-year out-of-sample outcome pool (Binance spot, Deribit perp fallback) with Module 10's own clock; consistency gate vs 10b index outcomes; decision at the bid (V_bid) via joint bootstrap; consequence fixed in advance (RICH → defined-risk wing-selling backtest).
-- **Next turn:** `024`.
+- **024**: `024_claude_module10c_results.md` — 10c: gate passes 7/7; against 2 years of outcomes (P(|u|>4) = 1.6%) the wings are CONSISTENT at the bid (M = −0.28 [−0.58, 0.27]) and at the mid; 10b's premium was a short-pool artifact; no wing-selling backtest (pre-registered consequence). Calm regimes have ~10× fatter standardized tails; proposes 10d (regime-conditioned benchmark, bid and ask).
+- **Next turn:** `025`.
 
 Module 01 remains historical baseline work. **Module 02 is authoritative for primitive volatility persistence/duration questions:** `notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`.
 
