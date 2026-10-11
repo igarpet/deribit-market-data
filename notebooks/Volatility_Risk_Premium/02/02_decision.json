@@ -1,0 +1,31 @@
+{
+  "primary": {
+    "n_sessions": 20,
+    "M": -0.266365891646526,
+    "ci_low": -0.3893195242293167,
+    "ci_high": -0.12166118812904109,
+    "loso_min": -0.3107301818402613,
+    "loso_max": -0.25207399203875774,
+    "share_sessions_positive": 0.15,
+    "verdict": "NO_LONG_EDGE",
+    "n_straddles": 2515,
+    "n_session_assets": 140
+  },
+  "registration": {
+    "version": "0.1.0",
+    "confirmation_start_excluded": "2026-11-07",
+    "tte_min": [
+      120,
+      1200
+    ],
+    "entry_grid_min": 60,
+    "fee_rate": 0.0003,
+    "fee_cap": 0.125,
+    "delivery_fee_rate_sensitivity": 0.00015,
+    "n_boot": 4000,
+    "seed": 7007,
+    "primary_unit": "R_net = payoff/(ask+fee) - 1",
+    "primary_statistic": "mean over sessions of session-pooled mean R_net",
+    "decision": "CI>0 LONG_EDGE_CANDIDATE; CI<0 NO_LONG_EDGE; else INCONCLUSIVE"
+  }
+}

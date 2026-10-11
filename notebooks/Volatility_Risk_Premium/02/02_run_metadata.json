@@ -1,0 +1,23 @@
+{
+  "module": "02_long_straddle_settlement",
+  "version": "0.1.0",
+  "offline": false,
+  "assets_filter": [],
+  "n_straddles": 2515,
+  "sessions": [
+    "2026-09-21",
+    "2026-10-10"
+  ],
+  "settle_sources": {
+    "exchange": 140
+  },
+  "index_names": [
+    "avax_usdc",
+    "btc_usdc",
+    "eth_usdc",
+    "hype_usdc",
+    "sol_usdc",
+    "trx_usdc",
+    "xrp_usdc"
+  ]
+}
