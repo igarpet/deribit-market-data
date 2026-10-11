@@ -37,7 +37,7 @@ import pandas as pd
 from data_engineering.modeling import hurst_regimes as hr
 
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"   # 0.1.1: empty structure functions keep their columns (short histories)
 BAR_MIN = 5
 PRICE_LAGS = (1, 2, 3, 4, 6, 12, 18, 24, 36, 48, 72, 96, 288, 432, 576, 864, 1152, 1440, 2016)
 PRICE_RANGES = {"5m-30m": (1, 6), "1h-8h": (12, 96), "1d-7d": (288, 2016)}
@@ -105,7 +105,7 @@ def structure_function(x: np.ndarray, lags: Sequence[int], qs: Sequence[float] =
         if len(inc) < 50:
             continue
         rows.append({"lag": int(d), "n": int(len(inc)), **{f"m{q:g}": float(np.mean(inc ** q)) for q in qs}})
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, columns=["lag", "n"] + [f"m{q:g}" for q in qs])
 
 
 def zeta(sf: pd.DataFrame, lo: int, hi: int, qs: Sequence[float] = QS) -> dict:
@@ -224,6 +224,7 @@ def rough_vol_path(n_bars: int, H: float = 0.1, nu: float = 1.0, kappa_per_day: 
     return base_vol * np.exp(y) * rng.standard_normal(n_bars)
 
 
+MIN_DAYS = 365                    # assets with a shorter history are excluded from notebook 02
 CAL_H = (0.03, 0.06, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5)
 CAL_REPS = 3
 
