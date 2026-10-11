@@ -1,4 +1,4 @@
-"""Synthetic tests for the Volatility Dynamics "b" run (02b-06b), 06c, 08, 09, 10 and 10b; no research DuckDB required.
+"""Synthetic tests for the Volatility Dynamics "b" run (02b-06b), 06c, 08, 09, 10, 10b and 10c; no research DuckDB required.
 
 Run from repo root: python -m unittest discover -s tests -p "test_volatility_dynamics_b.py" -v
 """
@@ -23,6 +23,7 @@ from data_engineering.modeling import volatility_jump_hawkes as jh
 from data_engineering.modeling import volatility_jump_compound as jc
 from data_engineering.modeling import volatility_jump_option_wings as ow
 from data_engineering.modeling import volatility_wings_empirical as we
+from data_engineering.modeling import volatility_wings_longhistory as wl
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -106,6 +107,9 @@ class TestModuleSelftests(unittest.TestCase):
 
     def test_10b_empirical_wings(self):
         self.assertTrue(all(v for v in we.selftest().values() if isinstance(v, bool)))
+
+    def test_10c_long_history(self):
+        self.assertTrue(all(v for v in wl.selftest().values() if isinstance(v, bool)))
 
 
 class TestHolm(unittest.TestCase):

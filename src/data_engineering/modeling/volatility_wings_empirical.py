@@ -91,7 +91,7 @@ from data_engineering.modeling import volatility_jump_hawkes as jh
 from data_engineering.modeling import volatility_jump_option_wings as ow
 
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"   # 0.1.1: origin_outcomes also returns v (backward bipower); results unchanged
 Q_NODES = 500
 Q_NODES_MIX = 200
 N_BOOT = 1000
@@ -158,8 +158,9 @@ def origin_outcomes(panel: jh.Panel, S: np.ndarray, BVb: np.ndarray, I: np.ndarr
             w2 = w * w
             rv = np.sum(w2[fin] * seg[fin] ** 2) * (w2.sum() / w2[fin].sum())
             rows.append((a_name, sess[t0], int(t0), float(mins[t0]), float(D[i]),
-                         float(np.log(settle[key] / I[t0, a]) / np.sqrt(D[i])), float(rv / D[i])))
-    out = pd.DataFrame(rows, columns=["underlying", "session", "bar_index", "minutes_to_expiry", "D", "u", "k"])
+                         float(np.log(settle[key] / I[t0, a]) / np.sqrt(D[i])), float(rv / D[i]),
+                         float(BVb[t0, a])))
+    out = pd.DataFrame(rows, columns=["underlying", "session", "bar_index", "minutes_to_expiry", "D", "u", "k", "v"])
     out["tte_bucket"] = pd.cut(out["minutes_to_expiry"], ow.TTE_EDGES_MIN, right=True).astype(str)
     return out
 

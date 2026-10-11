@@ -266,6 +266,18 @@ Pre-registered rule: $M$ is the median of session-median $\ln(\text{mid}/P^{emp}
 
 Reported only: the variance mixture, the TTE-conditioned pool, per asset, buckets and tail frequencies. 10b consumes `10/10_priced_quotes.csv.gz`. Outputs: `10b/`.
 
+### 10c — Long-history physical tail for the wings (VD 023)
+
+`10c_long_history_wing_benchmark.ipynb` replaces 10b's 18-session outcome pool with about two years of 5-minute history taken strictly before the first quote. The history is Binance spot `<ASSET>USDT`, falling back to the Deribit perpetual, and is downloaded with `tools/download_price_history.py` to `DERIBIT_DATA_ROOT/history/price_5m/`. $D$ uses exactly Module 10's clock.
+
+A consistency gate compares the long-history $u$ with 10b's index $u$ on the quote window (corr ≥ 0.90, sd ratio in [0.85, 1.15]).
+
+- **Decision V_bid:** the median of session-median $\ln(\text{bid}/P)$, with a CI from a joint bootstrap over quote sessions × history dates (B = 1000).
+- **V_mid:** the same at the mid, for continuity.
+- **Reported:** net-of-fee bid, break-even disaster mass, and a refitted-clock sensitivity.
+
+Outputs: `10c/`.
+
 ## Data window
 
 Both modules default to the full available database history unless their module-specific start/end environment variables are deliberately set.

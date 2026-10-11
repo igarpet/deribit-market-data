@@ -24,7 +24,8 @@ Research branch for volatility dynamics developed independently from every other
 - **020**: `020_claude_modules09_10_results.md` — Module 09: common jump component confirmed (34 co-jump bars vs 4.7 expected); no tick artifact (TRX = tiny diffusive vol, idiosyncratic jumps); rates stable. Module 10: wings RICH vs constant-vol + Poisson-jump model (M = 2.96, CI [2.50, 3.17]); ATM calibrated; robust to tick depth; wings need ≈3× variance. Not yet a physical-distribution result; proposes Module 10b (model-free benchmark).
 - **021**: `021_claude_module10b_model_free_benchmark.md` — Module 10b pre-registration: wings priced from the realized LOSO distribution of standardized moves to settlement (same ex-ante D, bias cancels), joint session bootstrap, zero-price rows dropped (INSUFFICIENT_TAIL > 25%); variance mixture replaces "mixture + jumps" (double count). Synthetic DB: Module 10 RICH (3.98) becomes CONSISTENT under 10b.
 - **022**: `022_claude_module10b_results.md` — 10b: wings RICH vs realized LOSO outcomes (M = 1.05, joint CI [0.48, 2.34]); fat physical tails (P(|u|>3) 2.9% vs 0.27%) remove 2/3 of Module 10's gap; at the bid M ≈ 0.48 (post hoc); one ±8σ day per asset-year would erase the bid premium (peso problem). Proposes 10c: long-history physical tail.
-- **Next turn:** `023`.
+- **023**: `023_claude_module10c_long_history.md` — Module 10c pre-registration: ~2-year out-of-sample outcome pool (Binance spot, Deribit perp fallback) with Module 10's own clock; consistency gate vs 10b index outcomes; decision at the bid (V_bid) via joint bootstrap; consequence fixed in advance (RICH → defined-risk wing-selling backtest).
+- **Next turn:** `024`.
 
 Module 01 remains historical baseline work. **Module 02 is authoritative for primitive volatility persistence/duration questions:** `notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`.
 

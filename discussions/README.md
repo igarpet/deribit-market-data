@@ -23,6 +23,7 @@ Each research line is a **branch**: one folder here and one under `notebooks/`, 
 | Volatility Regression | `Volatility_Regression/` | `notebooks/Volatility_Regression/` |
 | Pairwise Feature Regression | `Pairwise_Feature_Regression/` | `notebooks/Pairwise_Feature_Regression/` |
 | Volatility Dynamics | `Volatility_Dynamics/` | `notebooks/Volatility_Dynamics/` |
+| Order Book Imbalance (proposed 2026-10-11; handoff only) | `Order_Book_Imbalance/` | `notebooks/Order_Book_Imbalance/` (not yet created) |
 
 A new branch gets both folders, each with a `README.md` that states its question, sequence and current status. Branches can run in parallel.
 
