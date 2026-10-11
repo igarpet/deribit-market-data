@@ -1,0 +1,15 @@
+{
+  "version": "0.1.0",
+  "module": "10c_long_history_wing_benchmark",
+  "history_dir": "D:\\MarketData\\Deribit\\history\\price_5m",
+  "sources": [
+    "binance_spot"
+  ],
+  "pool_last_session": "2026-09-19",
+  "n_boot": 1000,
+  "tail_raw_share": 0.001,
+  "consumes": [
+    "10/10_priced_quotes.csv.gz",
+    "10b/10b_origin_outcomes.csv.gz"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "V_bid": {
+    "M": -0.27864792410499667,
+    "ci_low": -0.5848589664236828,
+    "ci_high": 0.2698138638336553,
+    "verdict": "CONSISTENT",
+    "bootstrap_verdict": "CONSISTENT",
+    "n_boot": 1000
+  },
+  "V_mid": {
+    "M": 0.2550503913884161,
+    "ci_low": -0.049111225720173686,
+    "ci_high": 0.7091774711895895,
+    "verdict": "CONSISTENT",
+    "bootstrap_verdict": "CONSISTENT",
+    "n_boot": 1000
+  },
+  "net_bid_reported": {
+    "M": -0.41217931672951924,
+    "ci_low": -0.7183903590482055,
+    "ci_high": 0.13628247120913276,
+    "verdict": "CONSISTENT",
+    "bootstrap_verdict": "CONSISTENT",
+    "n_boot": 1000
+  },
+  "gate_failures": [],
+  "gate_fail": false,
+  "pool": {
+    "n_pool_origins": 1027968,
+    "n_pool_dates": 749
+  },
+  "share_model_price_zero": 0.0
+}
