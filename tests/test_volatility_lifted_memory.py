@@ -22,13 +22,47 @@ def synthetic(days=15, seed=11):
 
 
 def test_causal_ema_gap_and_history():
-    p = pd.DataFrame({'underlying':['AAA']*5,'y':[1.,2.,3.,np.nan,10.]})
+    p = pd.DataFrame({'underlying':['AAA']*6,'y':[1.,2.,3.,np.nan,10.,7.]})
     e = lm.ema_prior(p,np.array([5.]))
     assert np.isnan(e[0,0])
-    assert e[1,0] == 1.0  # DOES NOT include current y=2
-    assert abs(e[2,0]-1.5) < 1e-10
-    assert np.isnan(e[3,0])
-    assert np.isnan(e[4,0])
+    assert e[1,0] == 1.0  # does NOT include current y=2
+    assert abs(e[2,0] - (0.5*1 + 2)/1.5) < 1e-10
+    # Missing bar has NO contribution, but surviving observations keep decaying.
+    assert np.isfinite(e[3,0])
+    assert np.isfinite(e[4,0])
+    assert abs(e[4,0]-e[3,0]) < 1e-10 # decay of numerator and mass cancels
+    p2=p.copy(); p2.loc[4,'y']=999. # cannot affect bar 4's prior state
+    assert np.isclose(lm.ema_prior(p2,np.array([5.]))[4,0], e[4,0])
+    # Missing rows in the origin are excluded by readiness, not imputed.
+    assert not lm.regularity_mask(p, min_history=3)[3]
+
+
+def test_periodic_gaps_preserve_valid_and_test_and_censor_labels():
+    raw = synthetic(days=21)
+    # A systematic daily return outage prevents even one 288-long finite run.
+    outage = (raw.state_time.dt.hour == 8) & (raw.state_time.dt.minute == 0)
+    raw.loc[outage, 'return_5m'] = np.nan
+    panel, _ = lm.training_clock(lm.dense_panel(raw))
+    diag = lm.memory_diagnostics(panel)
+    assert not diag.memory_ready.iloc[:288].any()
+    assert diag.memory_ready[panel.split=='valid'].sum() > 100
+    assert diag.memory_ready[panel.split=='test'].sum() > 100
+    assert diag.past_memory_coverage[panel.split=='valid'].dropna().min() >= .99
+    labs, _ = lm.q99_labels(panel)
+    frame = panel.join(labs[['eligible_now', 'y_60m']])
+    frame = frame.join(lm.fixed_lags(panel))
+    frame = frame.join(lm.simple_exponential_features(panel)[['ema_30m','ema_240m']])
+    lift, _ = lm.lifted_features(panel, .1, 4)
+    frame = frame.join(lift[['kernel_memory','fast_minus_slow']])
+    frame['eligible_now'] &= diag.memory_ready
+    for model in [['now'], ['now','lag_5m','lag_10m','lag_30m','lag_60m','lag_120m'],
+                  ['now','ema_30m','ema_240m'], ['now','kernel_memory','fast_minus_slow']]:
+        stats, pred = lm.fit_predict(frame, model, 1e-3, 60, eval_split='valid')
+        assert np.isfinite(stats['logloss']) and len(pred) > 30
+    # Labels are still censored at any missing future bar.
+    origin = panel[(panel.underlying=='BTC') &
+                   (panel.state_time==pd.Timestamp('2026-09-05 07:55Z'))].index[0]
+    assert np.isnan(labs.loc[origin, 'y_60m'])
 
 
 def test_quadrature_positive_and_shape():

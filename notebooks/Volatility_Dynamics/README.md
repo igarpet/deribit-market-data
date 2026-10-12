@@ -299,3 +299,26 @@ Open:
 It writes compact outputs to `notebooks/Volatility_Dynamics/02/`.
 
 The notebook reads `DERIBIT_DATA_ROOT/database/research.duckdb` read-only.
+
+
+### 11 v0.1.1 — Missing-aware lifted volatility memory (2026-10-12)
+
+`11_lifted_rough_memory.ipynb` and `src/data_engineering/modeling/volatility_lifted_memory.py`.
+Original 2026-10-12 execution in commit `16487be` **failed during validation**: after requiring
+288 **consecutive** finite returns the shared support was train 2,216 / 25,536,
+validation 0 / 8,064, test 0 / 8,736. The failure is a filter-design bug, **not a
+negative forecast result**. No valid real-data scores or PASS/FAIL verdict exist.
+
+v0.1.1 retains 288 elapsed 5m slots, requires >=80% *observed* returns over the
+strictly previous 24h plus at least one valid return in the previous 15m, and
+uses observed-weight-normalized causal EMAs. Missing returns contribute zero
+observation weight; no data are interpolated or fabricated. Test labels still
+require fully observed future windows and cannot cross chronological splits.
+The 80% / 15m policy is a documented engineering repair, **not an empirically
+optimized research threshold**. Daily-gap synthetic tests now protect against
+zeroing validation/test support; seven automated tests pass locally.
+
+Results are **PENDING RERUN** on `research.duckdb`, after pulling the fix.
+With the original roughly 21-day observed window (five test UTC days), the
+pre-registered >=10-test-day confirmation gate will still return
+`INSUFFICIENT_DATA` even if predictive scores can now be computed.

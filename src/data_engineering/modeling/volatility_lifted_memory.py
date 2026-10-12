@@ -19,6 +19,8 @@ H_GRID = (0.05, 0.10, 0.20, 0.30, 0.40)
 N_GRID = (4, 6, 8)
 RIDGE_GRID = (1e-4, 1e-3, 1e-2)
 MIN_MEMORY_BARS = 288
+MIN_HISTORY_COVERAGE = 0.80  # fraction of PREVIOUS 288 observed 5m bars
+MAX_PRIOR_STALE_BARS = 3  # at least one observed input over previous 15 min
 LAG_BARS = (1, 2, 6, 12, 24)
 
 
@@ -89,16 +91,47 @@ def training_clock(panel: pd.DataFrame, min_n_hour: int = 20) -> tuple[pd.DataFr
     return p, par
 
 
-def regularity_mask(p: pd.DataFrame, min_history: int = MIN_MEMORY_BARS) -> np.ndarray:
-    """True only after min_history consecutively observed bars INCLUDING current bar."""
-    good = np.zeros(len(p), dtype=bool)
+def memory_diagnostics(p: pd.DataFrame, min_history: int = MIN_MEMORY_BARS,
+                       min_coverage: float = MIN_HISTORY_COVERAGE,
+                       max_prior_stale_bars: int = MAX_PRIOR_STALE_BARS) -> pd.DataFrame:
+    """Causal history-readiness evidence, with no fabricated or imputed bars.
+
+    The historical interval for origin t is [t-min_history, t), EXCLUDING t.
+    We require an elapsed 24h lookback, >=80% observed returns in that
+    lookback, and >=1 observed return in the last 15m. A missing current
+    return is always ineligible. These are fixed pre-data design thresholds,
+    not selected by evaluating q99 outcomes.
+    """
+    if min_history < 1 or not (0 < min_coverage <= 1) or max_prior_stale_bars < 1:
+        raise ValueError('Invalid memory history coverage policy')
+    cover = np.full(len(p), np.nan)
+    last_recent = np.zeros(len(p), dtype=bool)
+    ready = np.zeros(len(p), dtype=bool)
     for _, a in p.groupby('underlying', sort=False):
         ix = a.index.to_numpy()
-        run = 0
-        for k, z in enumerate(a.y.to_numpy(float)):
-            run = run + 1 if np.isfinite(z) else 0
-            good[ix[k]] = run >= min_history
-    return good
+        good = np.isfinite(a.y.to_numpy(float))
+        n = len(good)
+        t = np.arange(n)
+        cs = np.r_[0, np.cumsum(good.astype(np.int64))]
+        past_obs = cs[t] - cs[np.maximum(0, t-min_history)]
+        enough_elapsed = t >= min_history
+        coverage = past_obs / min_history
+        cover[ix] = np.where(enough_elapsed, coverage, np.nan)
+        recently_observed = (cs[t] - cs[np.maximum(0,t-max_prior_stale_bars)]) > 0
+        last_recent[ix] = recently_observed
+        ready[ix] = good & enough_elapsed & (coverage >= min_coverage) & recently_observed
+    return pd.DataFrame({'past_memory_coverage': cover,
+                         'recent_prior_observed': last_recent,
+                         'memory_ready': ready}, index=p.index)
+
+
+def regularity_mask(p: pd.DataFrame, min_history: int = MIN_MEMORY_BARS) -> np.ndarray:
+    """Observed-history readiness, not an impossible run of 288 perfect bars.
+
+    Gaps are never filled. This is an availability gate; EMA states incorporate
+    finite past observations only and explicitly discount unobserved intervals.
+    """
+    return memory_diagnostics(p, min_history=min_history).memory_ready.to_numpy(bool)
 
 
 def fixed_lags(p: pd.DataFrame) -> pd.DataFrame:
@@ -110,31 +143,35 @@ def fixed_lags(p: pd.DataFrame) -> pd.DataFrame:
 
 
 def ema_prior(p: pd.DataFrame, half_lives_min: np.ndarray) -> np.ndarray:
-    """Only y_{t-1} and earlier enter the state at the end of bar t.
+    """Causal, observation-weight-normalized exponential memories.
 
-    Returns NaN on the first bar of a new contiguous finite stretch.
-    Missing values reset *all* factors. No direct lookahead or future imputation.
+    At t, incorporate *only* y[t-1] when it is finite; a missing bar
+    contributes ZERO observation mass, with both weighted numerator and
+    denominator decaying at the correct 5-minute rate. We never fill NaN
+    returns or confuse an absent bar with a zero return. A normalization by
+    observed exponential weight avoids initializing long half-life filters
+    to the first bar after a gap. Require memory_diagnostics readiness
+    before using factor values in regressions. These are empirical
+    missing-aware EMA filters, not calibrated latent OU factors.
     """
     tau = np.asarray(half_lives_min, dtype=float)
-    if tau.ndim != 1 or len(tau) < 1 or np.any(tau <= 0):
-        raise ValueError('Positive one-dimensional half lives required')
+    if tau.ndim != 1 or len(tau) < 1 or np.any(~np.isfinite(tau)) or np.any(tau <= 0):
+        raise ValueError('Positive finite one-dimensional half lives required')
     decay = np.exp(-np.log(2.0) * BAR_MIN / tau)
     out = np.full((len(p), len(tau)), np.nan)
     for _, a in p.groupby('underlying', sort=False):
-        state = None
+        numerator = np.zeros(len(tau), dtype=float)
+        mass = np.zeros(len(tau), dtype=float)
         prev = np.nan
         for row_id, cur in zip(a.index.to_numpy(), a.y.to_numpy(float)):
-            if np.isfinite(cur):
-                if np.isfinite(prev):
-                    if state is None:
-                        state = np.full(len(tau), prev)
-                    else:
-                        state = decay * state + (1.0 - decay) * prev
-                    out[row_id] = state
-                else:
-                    state = None
-            else:
-                state = None
+            numerator *= decay
+            mass *= decay
+            if np.isfinite(prev):
+                numerator += (1.0 - decay) * prev
+                mass += (1.0 - decay)
+            good = mass > 1e-12
+            if good.any():
+                out[row_id, good] = numerator[good] / mass[good]
             prev = cur
     return out
 
