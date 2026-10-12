@@ -6,8 +6,9 @@
 |---|---|---|
 | `01_hurst_variation_gates.ipynb` | Session $H$ (change-of-frequency estimator) on non-overlapping 08:00-to-08:00 blocks; gates G1 variation, G2 persistence, G3 relevance against a volatility-modulated constant-$H$ fGn null; development ≤ 2026-03-31, confirmation from 2026-04-01 (G3, run once) | Run `1216fc8`: **STOP**. G1 fail (excess SD 0.013), G2 pass (lag-1 echo only), G3 fail (ρ₃ ≈ 0) (HR 002) |
 | `02_roughness.ipynb` | Descriptive (no gate): price $H$ by horizon (5m–30m, 1–8h, 1–7d); volatility roughness of $\log\sigma$ at 1h/4h/1d with noise correction and simulation calibration; monofractal check $\zeta(q)$; ACF power-law vs exponential; fOU fit (thesis estimators); half-year stability | Run `7aaef84` (HR 004): price H ≈ 0.48–0.51 at all horizons (majors); volatility rough, monofractal, calibrated H ≈ 0.03–0.09; hourly ACF power-law; fOU κ not identified |
+| `03_rough_vol_smm.ipynb` | HR 004 review fixes: dow×tod deseasonalization with 24h/168h lags excluded; parametric fOU+noise structure function (1h, secondary); SMM over (H, κ, ν, df) with full simulator (seasonality, t tails, RV integration, gaps), 10 reps, sandwich SEs; recovery check on the real layout | Built; not yet run on real data (HR 005). Runtime ≈ 1–1.5 h |
 
-Code: `src/data_engineering/modeling/hurst_regimes.py`, `hurst_roughness.py`. Tests: `tests/test_hurst_regimes.py`, `test_hurst_roughness.py`. Outputs: `01/01_*`, `02/02_*`.
+Code: `src/data_engineering/modeling/hurst_regimes.py`, `hurst_roughness.py`, `rough_vol_smm.py`. Tests: `tests/test_hurst_regimes.py`, `test_hurst_roughness.py`, `test_rough_vol_smm.py`. Outputs: `01/01_*`, `02/02_*`, `03/03_*`.
 
 Data: `DERIBIT_DATA_ROOT/history/price_5m/<ASSET>.csv.gz` (from `tools/download_price_history.py`, already downloaded for VD 10c).
 
@@ -38,3 +39,17 @@ git add notebooks\Hurst_Regimes
 git commit -m "Hurst Regimes 02: roughness run"
 git push
 ```
+
+## Running 03 (PC, Windows CMD; about 1–1.5 h)
+
+```bat
+cd /d D:\Projects\deribit_market_data
+git pull
+python -m unittest discover -s tests -p "test_rough_vol_smm.py" -v
+jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 notebooks\Hurst_Regimes\03_rough_vol_smm.ipynb
+git add notebooks\Hurst_Regimes
+git commit -m "Hurst Regimes 03: SMM run"
+git push
+```
+
+Faster variants: `set HR03_RECOVERY=0` (skips the two recovery checks, about 15–20 min), `set HR_ASSETS=BTC,ETH`.
