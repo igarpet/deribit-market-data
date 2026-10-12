@@ -28,7 +28,8 @@ Research branch for volatility dynamics developed independently from every other
 - **024**: `024_claude_module10c_results.md` — 10c: gate passes 7/7; against 2 years of outcomes (P(|u|>4) = 1.6%) the wings are CONSISTENT at the bid (M = −0.28 [−0.58, 0.27]) and at the mid; 10b's premium was a short-pool artifact; no wing-selling backtest (pre-registered consequence). Calm regimes have ~10× fatter standardized tails; proposes 10d (regime-conditioned benchmark, bid and ask).
 - **025**: `025_chatgpt_module11_missing_history_hotfix.md` — Module 11 v0.1.0 eligibility bug (288 consecutive bars left 0 validation/test rows); v0.1.1 observed-history readiness and causal observed-weight EMAs.
 - **026**: `026_claude_module11_review_module12_long_history.md` — Module 11 review (C ≈ two EMAs; H unidentified; near-zero skill vs constant; ~15 events) and Module 12 pre-registration: same pipeline on two-year history before 2026-09-19, plus unrestricted (U) and climatology (K) benchmarks; synthetic shows the task cannot detect roughness.
-- **Next turn:** `027`.
+- **027**: `027_claude_module12_results.md` — Module 12: TWO_EMA_MEMORY_SUFFICIENT (445 onsets, 150 test days). Real skill vs climatology (~21% logloss at 60m); 4h memory beats 2h lags; C ≈ E ≈ F, U worse than E, H flat to 1e-5. Proposes closing the rough-memory line; E is the benchmark for any incremental test.
+- **Next turn:** `028`.
 
 Module 01 remains historical baseline work. **Module 02 is authoritative for primitive volatility persistence/duration questions:** `notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`.
 

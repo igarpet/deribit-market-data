@@ -290,6 +290,8 @@ Implementation: `src/data_engineering/modeling/volatility_lifted_memory.py`. Tes
 
 `12_lifted_memory_long_history.ipynb` — Module 11 v0.1.1's pipeline and rules, unchanged, on the two-year Binance-spot 5m history (`DERIBIT_DATA_ROOT/history/price_5m`, from `tools/download_price_history.py`), restricted to data **before 2026-09-19** (the Module 11 window is excluded). Adds **K** (climatology: asset effects + time-of-day only) and **U** (every factor EMA as its own regressor). Pre-registered 60m status ladder: `PASS_ROUGH_SPECIFIC` → `MULTISCALE_MEMORY_NOT_ROUGH_SPECIFIC` → `TWO_EMA_MEMORY_SUFFICIENT` → `SKILL_WITHOUT_LONG_MEMORY` → `NO_SKILL`. Synthetic power check: a truly rough panel ($H$ = 0.08) returns `TWO_EMA_MEMORY_SUFFICIENT`, so this task cannot detect roughness (VD 026 §3).
 
+**Result (run `55c46c4`, VD 027): `TWO_EMA_MEMORY_SUFFICIENT`.** 445 onsets / 150 test days; ~21% log-loss skill over climatology at 60m; two EMAs beat 2h lags; rough kernel, equal weights and unrestricted weights add nothing (unrestricted is worse); $H$ unidentified.
+
 Code: `src/data_engineering/modeling/volatility_lifted_memory_long.py` (+ `volatility_lifted_memory.py`). Tests: `tests/test_volatility_lifted_memory_long.py`. Outputs: `12/12_*`. Runtime about 5–15 min.
 
 Run (PC, Windows CMD; close the notebook in Jupyter first):
