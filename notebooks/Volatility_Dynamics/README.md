@@ -286,6 +286,24 @@ The notebook uses read-only `time_series_feature_state` (`state_time`, `underlyi
 
 Implementation: `src/data_engineering/modeling/volatility_lifted_memory.py`. Tests: `tests/test_volatility_lifted_memory.py`. This module is a separate memory-representation research test; it does **not** reopen the option-wing backtest that was paused after Module 10c. No empirical Deribit result is claimed until the notebook is executed on the current research database.
 
+### 12 — Module 11 on two years of history, with unrestricted and climatology benchmarks (VD 026)
+
+`12_lifted_memory_long_history.ipynb` — Module 11 v0.1.1's pipeline and rules, unchanged, on the two-year Binance-spot 5m history (`DERIBIT_DATA_ROOT/history/price_5m`, from `tools/download_price_history.py`), restricted to data **before 2026-09-19** (the Module 11 window is excluded). Adds **K** (climatology: asset effects + time-of-day only) and **U** (every factor EMA as its own regressor). Pre-registered 60m status ladder: `PASS_ROUGH_SPECIFIC` → `MULTISCALE_MEMORY_NOT_ROUGH_SPECIFIC` → `TWO_EMA_MEMORY_SUFFICIENT` → `SKILL_WITHOUT_LONG_MEMORY` → `NO_SKILL`. Synthetic power check: a truly rough panel ($H$ = 0.08) returns `TWO_EMA_MEMORY_SUFFICIENT`, so this task cannot detect roughness (VD 026 §3).
+
+Code: `src/data_engineering/modeling/volatility_lifted_memory_long.py` (+ `volatility_lifted_memory.py`). Tests: `tests/test_volatility_lifted_memory_long.py`. Outputs: `12/12_*`. Runtime about 5–15 min.
+
+Run (PC, Windows CMD; close the notebook in Jupyter first):
+
+```bat
+cd /d D:\Projects\deribit_market_data
+git pull
+python -m unittest discover -s tests -p "test_volatility_lifted_memory_long.py" -v
+jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 notebooks\Volatility_Dynamics\12_lifted_memory_long_history.ipynb
+git add notebooks\Volatility_Dynamics
+git commit -m "VD 12: long-history lifted memory run"
+git push
+```
+
 ## Data window
 
 Both modules default to the full available database history unless their module-specific start/end environment variables are deliberately set.
