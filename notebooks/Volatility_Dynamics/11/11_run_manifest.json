@@ -1,0 +1,131 @@
+{
+  "module": "Volatility_Dynamics_11",
+  "research_type": "rough-kernel-inspired-observable-memory",
+  "source": "time_series_feature_state(state_time, underlying, return_5m)",
+  "source_read_only": true,
+  "start": "2026-09-19 08:00:00+00:00",
+  "end": "2026-10-10 07:55:00+00:00",
+  "n_original": 42336,
+  "n_dense": 42336,
+  "n_assets": 7,
+  "split_first_last": {
+    "test": {
+      "start": "2026-10-06 00:00:00+00:00",
+      "end": "2026-10-10 07:55:00+00:00",
+      "rows": 8736,
+      "days": 5
+    },
+    "train": {
+      "start": "2026-09-19 08:00:00+00:00",
+      "end": "2026-10-01 23:55:00+00:00",
+      "rows": 25536,
+      "days": 13
+    },
+    "valid": {
+      "start": "2026-10-02 00:00:00+00:00",
+      "end": "2026-10-05 23:55:00+00:00",
+      "rows": 8064,
+      "days": 4
+    }
+  },
+  "n_common_valid_origins": 6852,
+  "n_common_test_origins": 6958,
+  "epsilon_clock_train_only": true,
+  "train_q99_thresholds": {
+    "AVAX": 0.00011810519767415384,
+    "BTC": 1.5386483026703845e-05,
+    "ETH": 2.142013723524585e-05,
+    "HYPE": 4.8299882226424516e-05,
+    "SOL": 4.1268357151627085e-05,
+    "TRX": 3.2187217988687236e-06,
+    "XRP": 6.379555184147263e-05
+  },
+  "selection": {
+    "C_lifted": {
+      "ridge": 0.01,
+      "H": 0.05,
+      "N": 6,
+      "tag": "h05_n6"
+    },
+    "F_equal_multiscale": {
+      "ridge": 0.001,
+      "H": null,
+      "N": 4,
+      "tag": "f_n4"
+    },
+    "E_exponential": {
+      "ridge": 0.01,
+      "H": null,
+      "N": null,
+      "tag": ""
+    },
+    "B_fixed": {
+      "ridge": 0.01,
+      "H": null,
+      "N": null,
+      "tag": ""
+    },
+    "A_current": {
+      "ridge": 0.01,
+      "H": null,
+      "N": null,
+      "tag": ""
+    }
+  },
+  "chosen_kernel": {
+    "H": 0.05,
+    "N": 6,
+    "half_lives_min": [
+      8.015292550572703,
+      20.59767143907117,
+      52.93182576119623,
+      136.02402517689538,
+      349.5540756292726,
+      898.2828704718395
+    ],
+    "mean_reversion_rates_per_min": [
+      0.08647808875178474,
+      0.03365172527439839,
+      0.013095092991636127,
+      0.0050957702483699265,
+      0.001982946928346154,
+      0.0007716357545545281
+    ],
+    "quadrature_weights": [
+      0.09936408174627073,
+      0.06497929376658718,
+      0.04249330889190151,
+      0.027788564570565544,
+      0.01817237445210253,
+      0.01188385216475783
+    ],
+    "memory_mass_weights": [
+      0.03161536213445724,
+      0.05313032495337996,
+      0.08928670238368636,
+      0.15004830536135877,
+      0.2521595415750202,
+      0.42375976359209755
+    ],
+    "kernel_relative_rms_error": 0.2961753729843077,
+    "kernel_column": "h05_n6_kernel",
+    "slope_column": "h05_n6_slope"
+  },
+  "decision": {
+    "status": "INSUFFICIENT_DATA",
+    "primary_horizon_min": 60,
+    "n_unique_test_onset_times": 15,
+    "n_test_days": 5,
+    "rule": "C must improve versus both B and F with paired day-bootstrap upper 97.5% bound < 0; >=20 unique test onsets; >=10 UTC test days",
+    "selected_tag": "h05_n6",
+    "selected_H": 0.05,
+    "selected_N": 6
+  },
+  "caveats": [
+    "Observed-return EMA factors are not inferred lifted-Heston stochastic latent factors",
+    "H selected for forecast validation; not a consistent structural roughness estimator",
+    "Finite factor grid has material truncation/initialization error",
+    "No option surface or L2 used; no cross-branch model import",
+    "Event-aligned figures are descriptive only"
+  ]
+}

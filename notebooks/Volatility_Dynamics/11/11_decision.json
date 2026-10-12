@@ -1,0 +1,10 @@
+{
+  "status": "INSUFFICIENT_DATA",
+  "primary_horizon_min": 60,
+  "n_unique_test_onset_times": 15,
+  "n_test_days": 5,
+  "rule": "C must improve versus both B and F with paired day-bootstrap upper 97.5% bound < 0; >=20 unique test onsets; >=10 UTC test days",
+  "selected_tag": "h05_n6",
+  "selected_H": 0.05,
+  "selected_N": 6
+}
