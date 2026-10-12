@@ -1,0 +1,17 @@
+{
+  "status": "TWO_EMA_MEMORY_SUFFICIENT",
+  "primary_horizon_min": 60,
+  "n_unique_test_onset_times": 445,
+  "n_test_days": 150,
+  "memory_vs_lags": true,
+  "rough_specific": false,
+  "beyond_two_ema": false,
+  "two_ema_vs_lags": true,
+  "skill": true,
+  "vd11_rule_pass": false,
+  "selected_C": "h10_n6",
+  "selected_H": 0.1,
+  "selected_N_C": 6,
+  "selected_N_U": 4,
+  "selected_N_F": 4
+}

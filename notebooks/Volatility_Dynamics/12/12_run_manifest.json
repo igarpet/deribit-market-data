@@ -1,0 +1,199 @@
+{
+  "module": "Volatility_Dynamics_12",
+  "version": "0.1.0",
+  "base_module_version": "volatility_lifted_memory v0.1.1",
+  "source": "D:\\MarketData\\Deribit\\history\\price_5m",
+  "excluded_assets": {
+    "HYPE": "0 days"
+  },
+  "assets": [
+    "AVAX",
+    "BTC",
+    "ETH",
+    "SOL",
+    "TRX",
+    "XRP"
+  ],
+  "start": "2024-09-01 00:05:00+00:00",
+  "end": "2026-09-18 23:55:00+00:00",
+  "split": {
+    "test": {
+      "start": "2026-04-22 00:00:00+00:00",
+      "end": "2026-09-18 23:55:00+00:00",
+      "days": 150
+    },
+    "train": {
+      "start": "2024-09-01 00:05:00+00:00",
+      "end": "2025-11-22 23:55:00+00:00",
+      "days": 448
+    },
+    "valid": {
+      "start": "2025-11-23 00:00:00+00:00",
+      "end": "2026-04-21 23:55:00+00:00",
+      "days": 150
+    }
+  },
+  "eligible_origins": {
+    "test": 258309,
+    "train": 764674,
+    "valid": 257456
+  },
+  "train_q99_thresholds": {
+    "AVAX": 9.488415728168092e-05,
+    "BTC": 2.570057516962976e-05,
+    "ETH": 5.704334685163622e-05,
+    "SOL": 8.084621635945599e-05,
+    "TRX": 2.618308885395781e-05,
+    "XRP": 0.00012362091757527014
+  },
+  "selection": {
+    "F_equal_multiscale": {
+      "ridge": 0.01,
+      "H": null,
+      "N": 4,
+      "tag": "f_n4"
+    },
+    "C_lifted": {
+      "ridge": 0.01,
+      "H": 0.1,
+      "N": 6,
+      "tag": "h10_n6"
+    },
+    "E_exponential": {
+      "ridge": 0.01,
+      "H": null,
+      "N": null,
+      "tag": ""
+    },
+    "U_unrestricted": {
+      "ridge": 0.01,
+      "H": null,
+      "N": 4,
+      "tag": "u_n4"
+    },
+    "B_fixed": {
+      "ridge": 0.001,
+      "H": null,
+      "N": null,
+      "tag": ""
+    },
+    "A_current": {
+      "ridge": 0.0001,
+      "H": null,
+      "N": null,
+      "tag": ""
+    },
+    "K_climatology": {
+      "ridge": 0.0001,
+      "H": null,
+      "N": null,
+      "tag": ""
+    }
+  },
+  "chosen_kernel": {
+    "H": 0.1,
+    "N": 6,
+    "half_lives_min": [
+      8.015292550572703,
+      20.59767143907117,
+      52.93182576119623,
+      136.02402517689538,
+      349.5540756292726,
+      898.2828704718395
+    ],
+    "mean_reversion_rates_per_min": [
+      0.08647808875178474,
+      0.03365172527439839,
+      0.013095092991636127,
+      0.0050957702483699265,
+      0.001982946928346154,
+      0.0007716357545545281
+    ],
+    "quadrature_weights": [
+      0.10796606322480942,
+      0.07401636738814649,
+      0.05074208022135416,
+      0.03478634248136149,
+      0.02384785207763962,
+      0.01634894640106818
+    ],
+    "memory_mass_weights": [
+      0.0263596666925466,
+      0.04643860479142388,
+      0.08181226417342512,
+      0.1441310866087514,
+      0.2539200000990478,
+      0.4473383776348053
+    ],
+    "kernel_relative_rms_error": 0.31786414018905185,
+    "kernel_column": "h10_n6_kernel",
+    "slope_column": "h10_n6_slope"
+  },
+  "decision": {
+    "status": "TWO_EMA_MEMORY_SUFFICIENT",
+    "primary_horizon_min": 60,
+    "n_unique_test_onset_times": 445,
+    "n_test_days": 150,
+    "memory_vs_lags": true,
+    "rough_specific": false,
+    "beyond_two_ema": false,
+    "two_ema_vs_lags": true,
+    "skill": true,
+    "vd11_rule_pass": false,
+    "selected_C": "h10_n6",
+    "selected_H": 0.1,
+    "selected_N_C": 6,
+    "selected_N_U": 4,
+    "selected_N_F": 4
+  },
+  "registration": {
+    "version": "0.1.0",
+    "base_module": "volatility_lifted_memory",
+    "sample_end_exclusive": "2026-09-19 00:00:00+00:00",
+    "min_days": 365,
+    "boot": 1000,
+    "models": [
+      "K_climatology",
+      "A_current",
+      "B_fixed",
+      "E_exponential",
+      "F_equal_multiscale",
+      "C_lifted",
+      "U_unrestricted"
+    ],
+    "h_grid": [
+      0.05,
+      0.1,
+      0.2,
+      0.3,
+      0.4
+    ],
+    "n_grid": [
+      4,
+      6,
+      8
+    ],
+    "ridge_grid": [
+      0.0001,
+      0.001,
+      0.01
+    ],
+    "horizons": [
+      30,
+      60,
+      90,
+      120
+    ],
+    "primary_horizon": 60,
+    "history_coverage": 0.8,
+    "status_order": [
+      "INSUFFICIENT_DATA",
+      "PASS_ROUGH_SPECIFIC",
+      "MULTISCALE_MEMORY_NOT_ROUGH_SPECIFIC",
+      "TWO_EMA_MEMORY_SUFFICIENT",
+      "SKILL_WITHOUT_LONG_MEMORY",
+      "NO_SKILL"
+    ]
+  },
+  "runtime_s": 450
+}
