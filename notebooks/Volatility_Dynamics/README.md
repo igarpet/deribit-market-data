@@ -278,6 +278,14 @@ A consistency gate compares the long-history $u$ with 10b's index $u$ on the quo
 
 Outputs: `10c/`.
 
+### 11 — Lifted rough-kernel volatility memory (VD 11)
+
+`11_lifted_rough_memory.ipynb` — An independent prospective test of whether a finite exponential lift of native 5-minute squared-return memory improves q99-onset hazard prediction beyond fixed volatility lags and ordinary exponential-memory baselines. It does **not** fit a latent lifted-Heston model, imply a validated roughness estimate, modify the HSMM, or authorize option trades.
+
+The notebook uses read-only `time_series_feature_state` (`state_time`, `underlying`, `return_5m`) and writes compact research artifacts to `11/`. Methodology: training-only variance floor and asset/UTC-hour de-clocking; 60/20/20 chronological fit/validation/test split; strict five-minute continuity; asset-specific training q99 thresholds; fully observed 30/60/90/120-minute forward-label windows; validation-selected `H`, lift dimension, and ridge; paired UTC-day bootstrap. Primary 60-minute confirmation requires improvements versus **both** fixed-lag and equal-timescale exponential-memory baselines, at least 20 unique held-out q99 onsets and at least 10 test days.
+
+Implementation: `src/data_engineering/modeling/volatility_lifted_memory.py`. Tests: `tests/test_volatility_lifted_memory.py`. This module is a separate memory-representation research test; it does **not** reopen the option-wing backtest that was paused after Module 10c. No empirical Deribit result is claimed until the notebook is executed on the current research database.
+
 ## Data window
 
 Both modules default to the full available database history unless their module-specific start/end environment variables are deliberately set.
