@@ -13,7 +13,8 @@ Independent branch: it uses only the shared 5-minute history files, no other bra
 | `003_claude_02_roughness_design.md` | Notebook 02 design: descriptive price and volatility roughness, estimator bias and simulation calibration |
 | `004_claude_02_results.md` | 02 results: price Brownian 5m–7d; volatility very rough (H ≈ 0.05–0.1), monofractal, stable; power-law memory; weekly cycle; next-step options |
 | `005_claude_03_review_fixes.md` | Notebook 03: review fixes 1–3; SMM over (H, κ, ν, df), recovery table, parametric fit secondary |
+| `006_claude_03_results.md` | 03 results: single rough fOU rejected (max \|t\| 10–14, df at bound); fast + slow structure likely; seasonality fix works; AVAX data issue; proposes 04 model comparison |
 
-Next turn in this branch: `006`.
+Next turn in this branch: `007`.
 
 Procedure and numbering rules: `../README.md`.
