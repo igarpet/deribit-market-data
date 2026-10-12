@@ -1,0 +1,71 @@
+{
+  "decision": {
+    "verdict": "INSUFFICIENT_SESSIONS",
+    "n_sessions": 17,
+    "M": -0.1132847501109557,
+    "ci_low": -0.22270182341120345,
+    "ci_high": -0.010555250765370814,
+    "loso_min": -0.13981718838753368,
+    "loso_max": -0.08205878377361397,
+    "share_sessions_positive": 0.35294117647058826,
+    "mode": "development",
+    "binding": false
+  },
+  "high_minus_low": {
+    "exec_ironfly_ror": {
+      "n_sessions": 17,
+      "M": 0.09630255090333047,
+      "ci_low": -0.0241919687390037,
+      "ci_high": 0.2216791249548846,
+      "loso_min": 0.05517489581511478,
+      "loso_max": 0.11647244646015706,
+      "share_sessions_positive": 0.5882352941176471
+    },
+    "exec_straddle_ret_on_credit": {
+      "n_sessions": 17,
+      "M": 0.33553066156560035,
+      "ci_low": 0.06559275882254831,
+      "ci_high": 0.6132361624402545,
+      "loso_min": 0.24730529792478176,
+      "loso_max": 0.3927144822438395,
+      "share_sessions_positive": 0.6470588235294118
+    },
+    "mid_ironfly_ror": {
+      "n_sessions": 17,
+      "M": 0.13359538800782877,
+      "ci_low": 0.012636631599809956,
+      "ci_high": 0.26496583448341093,
+      "loso_min": 0.09088964412709541,
+      "loso_max": 0.15281796485967103,
+      "share_sessions_positive": 0.5882352941176471
+    },
+    "mid_straddle_ret_on_credit": {
+      "n_sessions": 17,
+      "M": 0.3014419613543185,
+      "ci_low": 0.07183136433673933,
+      "ci_high": 0.5471018318024305,
+      "loso_min": 0.21915597458553968,
+      "loso_max": 0.3462246460594409,
+      "share_sessions_positive": 0.5882352941176471
+    }
+  },
+  "thresholds": [
+    -0.19209099117703587,
+    0.2044670332096173
+  ],
+  "registration": {
+    "version": "0.1.0",
+    "confirmation_start": "2026-11-07",
+    "half_lives_bars": [
+      12,
+      48,
+      288
+    ],
+    "min_history_bars": 576,
+    "z_wing": 1.5,
+    "n_boot": 4000,
+    "seed": 9004,
+    "min_confirm_sessions": 20,
+    "decision": "confirmation only: top-tercile short iron fly at executable prices, session-bootstrap CI of mean RoR"
+  }
+}

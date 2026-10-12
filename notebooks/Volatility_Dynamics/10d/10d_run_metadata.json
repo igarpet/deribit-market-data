@@ -1,0 +1,14 @@
+{
+  "version": "0.1.0",
+  "module": "10d_regime_conditioned_wings",
+  "history_dir": "D:\\MarketData\\Deribit\\history\\price_5m",
+  "n_boot": 1000,
+  "n_quotes": 14493,
+  "n_pool_origins": 1027968,
+  "pool_last_session": "2026-09-19",
+  "consumes": [
+    "10/10_priced_quotes.csv.gz",
+    "10b/10b_origin_outcomes.csv.gz",
+    "10/10_decision.json"
+  ]
+}

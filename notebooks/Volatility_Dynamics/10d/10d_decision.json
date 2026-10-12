@@ -1,0 +1,37 @@
+{
+  "decision": {
+    "n_low": 6375,
+    "n_high": 2187,
+    "sessions_low": 19,
+    "sessions_high": 15,
+    "M_ask_low": {
+      "M": 0.5368934816450495,
+      "ci_low": 0.22917022729491385,
+      "ci_high": 1.2117875088842613,
+      "p_one_sided": 0.999,
+      "holm_rejected": false
+    },
+    "M_bid_high": {
+      "M": -0.231979684861501,
+      "ci_low": -1.0351333803460097,
+      "ci_high": 0.26320980790463666,
+      "p_one_sided": 0.835,
+      "holm_rejected": false
+    },
+    "D_long_verdict": "NOT_CHEAP",
+    "D_short_verdict": "NOT_RICH"
+  },
+  "gate_failures": [],
+  "gate_fail": false,
+  "registration": {
+    "version": "0.1.0",
+    "n_boot": 1000,
+    "seed": 1028,
+    "alpha_holm": 0.05,
+    "decisions": {
+      "D_long": "low tercile, ask net of fee, CHEAP if Holm-rejected H0 M>=0",
+      "D_short": "high tercile, bid net of fee, RICH if Holm-rejected H0 M<=0"
+    },
+    "cell": "(own-asset v tercile from 2-year pool cutoffs) x (Module 10 TTE bucket)"
+  }
+}

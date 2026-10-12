@@ -1,0 +1,54 @@
+{
+  "decision": {
+    "buy": {
+      "verdict": "INCONCLUSIVE",
+      "delta_M": -0.0015115982154515074,
+      "delta_ci": [
+        -0.009508583283702046,
+        0.00804551606480921
+      ],
+      "R_policy_M": -0.26787748986197746,
+      "R_policy_ci": [
+        -0.3971088872118724,
+        -0.11902724691103289
+      ],
+      "fill_rate_both": 0.07554671968190854
+    },
+    "sell": {
+      "verdict": "PASSIVE_HURTS",
+      "delta_M": -0.04250537093241096,
+      "delta_ci": [
+        -0.08049553850789284,
+        -0.014013385166803633
+      ],
+      "R_policy_M": 0.018386022454322838,
+      "R_policy_ci": [
+        -0.2424701122881452,
+        0.1942795853113145
+      ],
+      "fill_rate_both": 0.022266401590457258
+    }
+  },
+  "registration": {
+    "version": "0.1.0",
+    "q_levels": [
+      0.0,
+      0.5
+    ],
+    "windows_min": [
+      5,
+      15,
+      30,
+      60
+    ],
+    "primary": [
+      0.5,
+      15
+    ],
+    "n_boot": 4000,
+    "seed": 9003,
+    "policy": "passive-then-cross",
+    "entries": "VRP 02 (hourly, TTE 2-20h, ATM)",
+    "decision": "per side: session-bootstrap CI of paired Delta R (policy - aggressive) > 0 PASSIVE_HELPS, < 0 PASSIVE_HURTS"
+  }
+}

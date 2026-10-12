@@ -1,0 +1,17 @@
+{
+  "module": "04_conditional_short",
+  "version": "0.1.0",
+  "mode": "development",
+  "n_entries": 2515,
+  "sessions": [
+    "2026-09-21",
+    "2026-10-10"
+  ],
+  "n_sessions": 20,
+  "ironfly_available_share": 0.9188866799204771,
+  "thresholds": [
+    -0.19209099117703587,
+    0.2044670332096173
+  ],
+  "runtime_s": 11
+}

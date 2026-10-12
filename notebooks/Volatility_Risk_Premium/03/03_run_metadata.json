@@ -1,0 +1,15 @@
+{
+  "module": "03_passive_execution",
+  "version": "0.1.0",
+  "offline": false,
+  "n_entries": 2515,
+  "sessions": [
+    "2026-09-21",
+    "2026-10-10"
+  ],
+  "n_sessions": 20,
+  "settle_sources": {
+    "exchange": 140
+  },
+  "runtime_s": 43
+}
