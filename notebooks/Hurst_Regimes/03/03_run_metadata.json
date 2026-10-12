@@ -1,0 +1,56 @@
+{
+  "module": "03_rough_vol_smm",
+  "version": "0.1.0",
+  "assets": [
+    "AVAX",
+    "BTC",
+    "ETH",
+    "SOL",
+    "TRX",
+    "XRP"
+  ],
+  "recovery_run": true,
+  "r_final": 10,
+  "r_cov": 30,
+  "h_grid": [
+    0.005,
+    0.01,
+    0.02,
+    0.04,
+    0.07,
+    0.1,
+    0.15,
+    0.2,
+    0.3,
+    0.45
+  ],
+  "kappa_grid_per_day": [
+    0.003,
+    0.01,
+    0.03,
+    0.1,
+    0.3,
+    1.0
+  ],
+  "moments": [
+    "log_m2_1h_lag1",
+    "log_m2_1h_lag2",
+    "log_m2_1h_lag3",
+    "log_m2_1h_lag4",
+    "log_m2_1h_lag6",
+    "log_m2_1h_lag12",
+    "log_m2_4h_lag1",
+    "log_m2_4h_lag2",
+    "log_m2_4h_lag3",
+    "log_m2_4h_lag5",
+    "log_m2_1d_lag1",
+    "log_m2_1d_lag2",
+    "log_m2_1d_lag3",
+    "log_m2_1d_lag5",
+    "log_m2_1d_lag10",
+    "log_m2_1d_lag20",
+    "log_var_lv_1d",
+    "log_kurt_5m"
+  ],
+  "history_dir": "D:\\MarketData\\Deribit\\history\\price_5m"
+}
