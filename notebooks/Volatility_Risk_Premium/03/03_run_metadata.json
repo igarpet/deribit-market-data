@@ -1,6 +1,6 @@
 {
   "module": "03_passive_execution",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "offline": false,
   "n_entries": 2515,
   "sessions": [
@@ -11,5 +11,5 @@
   "settle_sources": {
     "exchange": 140
   },
-  "runtime_s": 43
+  "runtime_s": 36
 }
