@@ -278,6 +278,20 @@ A consistency gate compares the long-history $u$ with 10b's index $u$ on the quo
 
 Outputs: `10c/`.
 
+### 10d — Wings priced by volatility regime × time to expiry (VD 028)
+
+`10d_regime_conditioned_wings.ipynb` — 10c's two-year pool, clock and gate; each wing quote priced from its own (own-asset volatility tercile × TTE bucket) cell. Two pre-registered one-sided decisions with Holm (α = 0.05): calm tercile CHEAP at the ask net of fee (long edge), volatile tercile RICH at the bid net of fee (short edge). No rejection closes the wing line. Code: `volatility_wings_regime.py`; tests: `tests/test_volatility_wings_regime.py`; outputs `10d/`.
+
+```bat
+cd /d D:\Projects\deribit_market_data
+git pull
+python -m unittest discover -s tests -p "test_volatility_wings_regime.py" -v
+jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 notebooks\Volatility_Dynamics\10d_regime_conditioned_wings.ipynb
+git add notebooks\Volatility_Dynamics
+git commit -m "VD 10d: regime-conditioned wings run"
+git push
+```
+
 ### 11 — Lifted rough-kernel volatility memory (VD 11)
 
 `11_lifted_rough_memory.ipynb` — An independent prospective test of whether a finite exponential lift of native 5-minute squared-return memory improves q99-onset hazard prediction beyond fixed volatility lags and ordinary exponential-memory baselines. It does **not** fit a latent lifted-Heston model, imply a validated roughness estimate, modify the HSMM, or authorize option trades.

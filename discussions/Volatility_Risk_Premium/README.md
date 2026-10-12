@@ -16,9 +16,10 @@ The branch is separate from the HSMM line and can progress while the prospective
 | `006_claude_audit_part_b_final.md` | 022 | Audit complete, proposal to start step 2 |
 | `007_claude_long_straddle_preregistration.md` | — | Step 2 as a long-only test: VRP 02 pre-registration (unhedged ATM straddle at the ask, held to settlement) |
 | `008_claude_long_straddle_results.md` | — | VRP 02 results: NO_LONG_EDGE (−27% of premium net); spread ≈ half the loss; Part D superseded |
+| `009_claude_execution_and_conditional_short.md` | Pre-registration of VRP 03 (passive execution, both sides) and VRP 04 (conditional short straddle / iron fly; confirmation from 2026-11-07) |
 
 Their text uses the former numbers (e.g. "018 §2.4" = VRP 002 §2.4; "Module 12" = HSMM 06).
 
-Next turn in this branch: `009`.
+Next turn in this branch: `010`.
 
 Procedure and numbering rules: `../README.md`.
