@@ -63,7 +63,7 @@ import pandas as pd
 from data_engineering.modeling import vrp_long_straddle as ls
 
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 Q_LEVELS = (0.0, 0.5)
 WINDOWS_MIN = (5, 15, 30, 60)
 PRIMARY = (0.5, 15)
@@ -211,7 +211,9 @@ def simulate_policy(st: pd.DataFrame, snap: pd.DataFrame, ticks: pd.Series, side
         filled = kf > 0
         cross_col = "best_ask_price" if side == "buy" else "best_bid_price"
         cross = paths[cross_col][:, k - 1]
-        cross = np.where(np.isfinite(cross), cross, ask if side == "buy" else bid)     # missing: original touch
+        # v0.1.1: an absent or non-positive touch at t+W is not executable (v0.1.0 crossed at a zero
+        # bid or fell back to the stale entry touch); such entries are excluded from every statistic.
+        cross = np.where(np.isfinite(cross) & (cross > 0), cross, np.nan)
         px = np.where(filled, p, cross)
         total += px
         fees += fee_native(px, F, inv)
@@ -233,6 +235,14 @@ def returns(st: pd.DataFrame, px_total: np.ndarray, fees: np.ndarray, side: str)
     if side == "buy":
         return pay / (px_total + fees) - 1.0
     return (px_total - fees - pay) / px_total
+
+
+def pnl_bps(st: pd.DataFrame, px_total: np.ndarray, fees: np.ndarray, side: str) -> np.ndarray:
+    """P&L per straddle in basis points of the forward (well conditioned for both sides)."""
+    pay = payoff_native(st)
+    F_native = np.where(st["inverse"].to_numpy(bool), 1.0, st["F"].to_numpy(float))
+    pnl = pay - px_total - fees if side == "buy" else px_total - fees - pay
+    return 1e4 * pnl / F_native
 
 
 def aggressive(st: pd.DataFrame, side: str) -> tuple[np.ndarray, np.ndarray]:
@@ -271,11 +281,21 @@ def evaluate(st: pd.DataFrame, snap: pd.DataFrame, ticks: pd.Series, n_boot: int
             for w in WINDOWS_MIN:
                 sim = simulate_policy(st, snap, ticks, side, q, w)
                 r_pol = returns(st, sim["px_total"].to_numpy(), sim["fees"].to_numpy(), side)
+                # v0.1.1: one common entry set for policy, aggressive and their difference
+                ok = np.isfinite(r_pol) & np.isfinite(r_agg)
+                r_pol = np.where(ok, r_pol, np.nan)
                 delta = r_pol - r_agg
-                both = sim["both_filled"].to_numpy(bool)
+                d_bps = np.where(ok, pnl_bps(st, sim["px_total"].to_numpy(), sim["fees"].to_numpy(), side)
+                                 - pnl_bps(st, agg_px, agg_fee, side), np.nan)
+                both = sim["both_filled"].to_numpy(bool) & ok
                 d = session_boot(delta, sess, n_boot)
                 a = session_boot(r_pol, sess, n_boot)
+                g = session_boot(np.where(ok, r_agg, np.nan), sess, n_boot)
+                db = session_boot(d_bps, sess, n_boot)
                 rows.append({"side": side, "q": q, "window_min": w, "n_entries": int(len(st)),
+                             "n_used": int(ok.sum()), "n_sessions": d.get("n_sessions"),
+                             "R_aggressive_same_M": g.get("M"),
+                             "delta_bps_M": db.get("M"), "delta_bps_ci_low": db.get("ci_low"), "delta_bps_ci_high": db.get("ci_high"),
                              "fill_rate_call": float(sim["filled_call"].mean()), "fill_rate_put": float(sim["filled_put"].mean()),
                              "fill_rate_both": float(both.mean()),
                              "touch_share": float(np.mean(sim["touch_call"] | sim["touch_put"])),
@@ -288,9 +308,11 @@ def evaluate(st: pd.DataFrame, snap: pd.DataFrame, ticks: pd.Series, n_boot: int
                 if (q, w) == PRIMARY:
                     per_entry[side] = pd.DataFrame({"session": sess, "underlying": st["underlying"].to_numpy(),
                                                     "tte_bucket": st["tte_bucket"].to_numpy(), "R_aggressive": r_agg,
-                                                    "R_mid": r_mid, "R_policy": r_pol, "delta": delta, "both_filled": both})
+                                                    "R_mid": r_mid, "R_policy": r_pol, "delta": delta, "delta_bps": d_bps,
+                                                    "both_filled": both})
         base = session_boot(r_agg, sess, n_boot)
-        rows.append({"side": side, "q": np.nan, "window_min": 0, "n_entries": int(len(st)), "R_policy_M": base.get("M"),
+        rows.append({"side": side, "q": np.nan, "window_min": 0, "n_entries": int(len(st)),
+                     "n_used": int(np.isfinite(r_agg).sum()), "n_sessions": base.get("n_sessions"), "R_policy_M": base.get("M"),
                      "R_policy_ci_low": base.get("ci_low"), "R_policy_ci_high": base.get("ci_high"),
                      "delta_verdict": "BASELINE_AGGRESSIVE"})
     grid = pd.DataFrame(rows)
@@ -299,7 +321,12 @@ def evaluate(st: pd.DataFrame, snap: pd.DataFrame, ticks: pd.Series, n_boot: int
                        "delta_ci": [prim.loc[side, "delta_ci_low"], prim.loc[side, "delta_ci_high"]],
                        "R_policy_M": prim.loc[side, "R_policy_M"],
                        "R_policy_ci": [prim.loc[side, "R_policy_ci_low"], prim.loc[side, "R_policy_ci_high"]],
-                       "fill_rate_both": prim.loc[side, "fill_rate_both"]} for side in ("buy", "sell")}
+                       "fill_rate_both": prim.loc[side, "fill_rate_both"],
+                       "n_used": prim.loc[side, "n_used"], "n_sessions": prim.loc[side, "n_sessions"],
+                       "R_aggressive_same_M": prim.loc[side, "R_aggressive_same_M"],
+                       "delta_bps_M": prim.loc[side, "delta_bps_M"],
+                       "delta_bps_ci": [prim.loc[side, "delta_bps_ci_low"], prim.loc[side, "delta_bps_ci_high"]]}
+                for side in ("buy", "sell")}
     return {"grid": grid, "per_entry": per_entry, "decision": decision}
 
 

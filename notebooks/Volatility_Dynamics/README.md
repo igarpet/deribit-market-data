@@ -280,7 +280,7 @@ Outputs: `10c/`.
 
 ### 10d — Wings priced by volatility regime × time to expiry (VD 028)
 
-`10d_regime_conditioned_wings.ipynb` — 10c's two-year pool, clock and gate; each wing quote priced from its own (own-asset volatility tercile × TTE bucket) cell. Two pre-registered one-sided decisions with Holm (α = 0.05): calm tercile CHEAP at the ask net of fee (long edge), volatile tercile RICH at the bid net of fee (short edge). No rejection closes the wing line. Code: `volatility_wings_regime.py`; tests: `tests/test_volatility_wings_regime.py`; outputs `10d/`.
+`10d_regime_conditioned_wings.ipynb` — 10c's two-year pool, clock and gate; each wing quote priced from its own (own-asset volatility tercile × TTE bucket) cell. Two pre-registered one-sided decisions with Holm (α = 0.05): calm tercile CHEAP at the ask net of fee (long edge), volatile tercile RICH at the bid net of fee (short edge). No rejection closes the wing line. **Result (VD 029): `NOT_CHEAP` (calm ask +0.54 log over fair) / `NOT_RICH` (volatile bid −0.23) — wing line closed.** Code: `volatility_wings_regime.py`; tests: `tests/test_volatility_wings_regime.py`; outputs `10d/`.
 
 ```bat
 cd /d D:\Projects\deribit_market_data
