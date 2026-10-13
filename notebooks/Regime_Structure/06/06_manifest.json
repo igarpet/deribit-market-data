@@ -1,0 +1,54 @@
+{
+  "registration": {
+    "hedge_min": 15,
+    "hedge_grid": [
+      5,
+      15,
+      30,
+      60
+    ],
+    "taker_fee": 0.0005,
+    "low_fee": 0.0002,
+    "default_half_spread_bps": 1.0,
+    "max_ffill_bars": 3,
+    "max_missing_share": 0.1,
+    "n_boot": 4000,
+    "version": "gamma_scalp v1.0",
+    "vrp": {
+      "version": "0.1.0",
+      "confirmation_start_excluded": "2026-11-07",
+      "tte_min": [
+        120,
+        1200
+      ],
+      "entry_grid_min": 60,
+      "fee_rate": 0.0003,
+      "fee_cap": 0.125,
+      "delivery_fee_rate_sensitivity": 0.00015,
+      "n_boot": 4000,
+      "seed": 7007,
+      "primary_unit": "R_net = payoff/(ask+fee) - 1",
+      "primary_statistic": "mean over sessions of session-pooled mean R_net",
+      "decision": "CI>0 LONG_EDGE_CANDIDATE; CI<0 NO_LONG_EDGE; else INCONCLUSIVE"
+    },
+    "primary": "R_hedged at H=15min, taker 0.05% + half-spread; VRP 02 session statistic and verdict"
+  },
+  "synthetic": false,
+  "primary": {
+    "n_sessions": 22,
+    "M": -0.4098730184323227,
+    "ci_low": -0.48424733343063003,
+    "ci_high": -0.3367570489675417,
+    "loso_min": -0.4247716951283874,
+    "loso_max": -0.3925036467094677,
+    "share_sessions_positive": 0.0,
+    "verdict": "NO_LONG_EDGE",
+    "n_straddles": 1610,
+    "metric": "R_h15_taker"
+  },
+  "sessions": [
+    "2026-09-21",
+    "2026-10-13"
+  ],
+  "run_utc": "2026-10-13 20:43:18.537265+00:00"
+}
