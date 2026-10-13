@@ -8,7 +8,7 @@
 | Responds to | RS 001; Ivan's run, commit e1ba890 (v1.0) |
 | Status | Result under v1.0, plus a validity correction of the null (v1.1) that must be re-run before C3 is accepted |
 
-## 1. Pre-registered results (test window 2026-04-01 → 2026-10-11, BTC/ETH/SOL/XRP, `01/01_primary.csv`)
+## 1. Pre-registered results (test window 2026-04-01 → 2026-10-11, BTC/ETH/SOL/XRP, `01/01_primary_v1.0.csv`, renamed 2026-10-13)
 
 | Test | Lift real | Lift null (median) | Ratio | p | Pass |
 |---|---|---|---|---|---|
