@@ -1,0 +1,92 @@
+{
+  "registration": {
+    "entry_utc_hour": 12,
+    "n_boot": 4000,
+    "n_null": 399,
+    "family_alpha": 0.05,
+    "seed": 20261013,
+    "version": "big_move_followups v1.0",
+    "rs03": "big_move_days v1.0",
+    "vrp": "0.1.0",
+    "test_start": "2026-04-01 00:00:00+00:00",
+    "rs04": "beta of log(move/implied) on log(pre_rv_prev_vs_fcst); session bootstrap 95% CI",
+    "rs05": "real vs shared-sign 5m null; two-sided p <= 0.05/5; test window",
+    "stats": [
+      "S1_VR_all",
+      "S2_ER_big",
+      "S3_GIVE_big",
+      "S4_TOP_big",
+      "S5_LIFT"
+    ]
+  },
+  "synthetic": false,
+  "assets": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "decision": [
+    {
+      "window": "test",
+      "stat": "S1_VR_all",
+      "real": 0.7462106809485568,
+      "null_median": 0.9956721495516224,
+      "null_q025": 0.8504313119610964,
+      "null_q975": 1.1856028739784836,
+      "real_over_null": 0.7494542066729448,
+      "p_two_sided": 0.005,
+      "alpha": 0.01,
+      "significant": true
+    },
+    {
+      "window": "test",
+      "stat": "S2_ER_big",
+      "real": 0.13640529997519382,
+      "null_median": 0.14511114140956122,
+      "null_q025": 0.13388431382023633,
+      "null_q975": 0.15603957850278938,
+      "real_over_null": 0.9400056994259589,
+      "p_two_sided": 0.12,
+      "alpha": 0.01,
+      "significant": false
+    },
+    {
+      "window": "test",
+      "stat": "S3_GIVE_big",
+      "real": 0.495141796289985,
+      "null_median": 0.28146021162896717,
+      "null_q025": 0.20936276561823328,
+      "null_q975": 0.3778268207105575,
+      "real_over_null": 1.759189312849313,
+      "p_two_sided": 0.005,
+      "alpha": 0.01,
+      "significant": true
+    },
+    {
+      "window": "test",
+      "stat": "S4_TOP_big",
+      "real": 0.20005251057424178,
+      "null_median": 0.16378169541695248,
+      "null_q025": 0.15132516645494123,
+      "null_q975": 0.17701894400475007,
+      "real_over_null": 1.2214582958428395,
+      "p_two_sided": 0.005,
+      "alpha": 0.01,
+      "significant": true
+    },
+    {
+      "window": "test",
+      "stat": "S5_LIFT",
+      "real": 1.4834483360992228,
+      "null_median": 1.1996891996891996,
+      "null_q025": 0.7974302393133562,
+      "null_q975": 1.722829176171034,
+      "real_over_null": 1.2365272076163858,
+      "p_two_sided": 0.315,
+      "alpha": 0.01,
+      "significant": false
+    }
+  ],
+  "run_utc": "2026-10-13 19:49:15.460469+00:00"
+}

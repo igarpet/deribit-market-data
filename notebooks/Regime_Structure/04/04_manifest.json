@@ -1,0 +1,40 @@
+{
+  "registration": {
+    "entry_utc_hour": 12,
+    "n_boot": 4000,
+    "n_null": 399,
+    "family_alpha": 0.05,
+    "seed": 20261013,
+    "version": "big_move_followups v1.0",
+    "rs03": "big_move_days v1.0",
+    "vrp": "0.1.0",
+    "test_start": "2026-04-01 00:00:00+00:00",
+    "rs04": "beta of log(move/implied) on log(pre_rv_prev_vs_fcst); session bootstrap 95% CI",
+    "rs05": "real vs shared-sign 5m null; two-sided p <= 0.05/5; test window",
+    "stats": [
+      "S1_VR_all",
+      "S2_ER_big",
+      "S3_GIVE_big",
+      "S4_TOP_big",
+      "S5_LIFT"
+    ]
+  },
+  "synthetic": false,
+  "primary": {
+    "n": 79,
+    "sessions": 20,
+    "beta": -0.589223553589257,
+    "lo": -1.4857830543501775,
+    "hi": 0.21448977181286843,
+    "verdict": "NO_EVIDENCE"
+  },
+  "cutoffs": [
+    -0.18592553405269105,
+    0.05002438046916434
+  ],
+  "sessions": [
+    "2026-09-22",
+    "2026-10-11"
+  ],
+  "run_utc": "2026-10-13 19:41:01.316360+00:00"
+}
