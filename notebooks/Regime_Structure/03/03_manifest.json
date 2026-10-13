@@ -1,0 +1,35 @@
+{
+  "registration": {
+    "forecast_sessions": 7,
+    "context_sessions": 30,
+    "big_q": 0.85,
+    "last_bars": 48,
+    "early_bars": 24,
+    "shock_k": 3.0,
+    "n_boot": 2000,
+    "seed": 20261013,
+    "version": "big_move_days v1.0",
+    "test_start": "2026-04-01 00:00:00+00:00",
+    "session": "24h ending 08:00 UTC, labelled by end date",
+    "big": "z=|session log return|/sigma_hat(7 prior sessions) >= dev q85 per asset",
+    "big_rest": "EARLY target: |10:00->08:00 return|/(sigma_hat sqrt(22/24)) >= dev q85 per asset",
+    "rule": "candidate: dev 95% CI of AUC excludes 0.5; confirmed: test CI at 1-0.05/n_candidates excludes 0.5, same side"
+  },
+  "synthetic": false,
+  "assets": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "thresholds": {
+    "BTC": 1.3225832100635533,
+    "ETH": 1.3379744374869627,
+    "SOL": 1.4003366461397708,
+    "XRP": 1.3366667088771849
+  },
+  "confirmed": [
+    "pre_rv_prev_vs_fcst"
+  ],
+  "run_utc": "2026-10-13 18:30:51.636948+00:00"
+}

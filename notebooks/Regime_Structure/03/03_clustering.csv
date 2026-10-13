@@ -1,0 +1,7 @@
+window,stat,value,lo,hi,n
+dev,P(big next | big) / P(big),1.3734948940710257,1.0182930576941291,1.7372241311218877,2152
+dev,share of sessions with all 4 assets big (independent: 0.0005),0.059369202226345084,,,539
+dev,share of big days that are big in >= 3 assets,0.5432098765432098,,,539
+test,P(big next | big) / P(big),1.4834483360992228,0.7817045639456487,2.2035344763060687,772
+test,share of sessions with all 4 assets big (independent: 0.0004),0.05670103092783505,,,194
+test,share of big days that are big in >= 3 assets,0.6355140186915887,,,194
