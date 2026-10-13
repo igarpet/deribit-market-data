@@ -356,3 +356,13 @@ Results are **PENDING RERUN** on `research.duckdb`, after pulling the fix.
 With the original roughly 21-day observed window (five test UTC days), the
 pre-registered >=10-test-day confirmation gate will still return
 `INSUFFICIENT_DATA` even if predictive scores can now be computed.
+
+### 13 — Two timescales, a price martingale and conditional local reversion
+
+`13_two_timescale_price_distribution.ipynb`
+
+Independent research starting from shared Binance spot 5-minute close history (`DERIBIT_DATA_ROOT/history/price_5m`), using no fitted model/output from other research branches. Historical input is strictly before 2026-09-19. Pre-registration: `discussions/Volatility_Dynamics/030_chatgpt_vd13_price_distribution_preregistration.md`.
+
+Primary 60-minute forecast (secondary 15m, 240m): integrated future realized variance, signed net log return, and the probability of a large absolute net move (95th-percentile threshold learned on training only). Compares a zero-drift constant-variance random walk K, the established two-EMA memory baseline E, nonlinear volatility-phase model P, signed-return mean correction M, and phase-conditioned return mean PM. All models use exactly the same uncensored future labels and complete-case forecast origins. Model statistics: Gaussian return log score, log-RV MSE, tail log loss/Brier, and up/down log loss; paired UTC-day bootstrap.
+
+**Status: pre-registered, synthetic-tested, not run on real data.** The previously analyzed two-year historical sample is deliberately labeled retrospective/exploratory; new prospective data are required for confirmation. Regime Structure 06's `NO_LONG_EDGE` gamma-scalping result is an external motivation, **not** imported research evidence or an authorized option-trading signal. Results are compact in `13/`.
