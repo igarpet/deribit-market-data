@@ -4,7 +4,7 @@ Pre-registration: `discussions/VWAP_Events/001_claude_branch_preregistration.md`
 
 | Notebook | Content | Status |
 |---|---|---|
-| `01_vwap_touch_event_study.ipynb` | Real VWAP touches (08:00 UTC session, 4h) vs offset and random-phase placebo touches; time-of-day-normalised realised volatility after the touch; Bonferroni gates on the test window | Built, synthetic-validated, awaiting first real run |
+| `01_vwap_touch_event_study.ipynb` | Real VWAP touches (08:00 UTC session, 4h) vs offset and random-phase placebo touches; time-of-day-normalised realised volatility after the touch; Bonferroni gates on the test window | Run 8e40e73 (BTC, ETH, SOL, XRP): **no gate passes** — VWAP touches not special vs random-anchor VWAP (VWAP 002). v1.1 fixes -inf in secondary k=5 / M outputs |
 
 ## Data
 

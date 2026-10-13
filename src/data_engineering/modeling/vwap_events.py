@@ -31,7 +31,7 @@ from dataclasses import asdict, dataclass, field
 import numpy as np
 import pandas as pd
 
-VERSION = "vwap_events v1.0"
+VERSION = "vwap_events v1.1"   # v1.1: zero RV / zero move -> NaN (was -inf); primary unaffected
 
 TEST_START = pd.Timestamp("2026-04-01", tz="UTC")
 ASSETS = ("BTC", "ETH", "SOL", "XRP", "AVAX", "TRX", "HYPE")
@@ -198,8 +198,8 @@ def outcomes_at(oa: dict, idx: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarr
     with np.errstate(invalid="ignore", divide="ignore"):
         logR = np.log(rv / den)
         logM = np.log(np.abs(oa["logc"][j] - oa["logc"][idx]) / den)
-    logR[~ok] = np.nan
-    logM[~ok] = np.nan
+    logR[~ok | ~np.isfinite(logR)] = np.nan      # zero realised vol / zero move -> excluded, not -inf
+    logM[~ok | ~np.isfinite(logM)] = np.nan
     return logR, logM
 
 
