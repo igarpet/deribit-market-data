@@ -1,0 +1,111 @@
+{
+  "registration": {
+    "bar_min": 5,
+    "n_bars": 12,
+    "ewma_halflife": 24,
+    "sigma_min_periods": 96,
+    "shock_k": 3.0,
+    "move_k": 1.0,
+    "er_lo_q": 0.33,
+    "er_hi_q": 0.67,
+    "rvol_q": 0.25,
+    "rrv_q": 0.33,
+    "n_null": 199,
+    "family_alpha": 0.05,
+    "min_effect": 1.1,
+    "seed": 20261013,
+    "version": "regime_structure v1.0",
+    "test_start": "2026-04-01 00:00:00+00:00",
+    "alpha_per_test": 0.01,
+    "labels": [
+      "SHOCK",
+      "DISP",
+      "NOISE",
+      "RANGE",
+      "OTHER"
+    ],
+    "tests": [
+      {
+        "id": "E1",
+        "from": "RANGE",
+        "to": "RANGE"
+      },
+      {
+        "id": "E2",
+        "from": "DISP",
+        "to": "DISP"
+      },
+      {
+        "id": "C1",
+        "from": "RANGE",
+        "to": "DISP"
+      },
+      {
+        "id": "C2",
+        "from": "DISP",
+        "to": "NOISE"
+      },
+      {
+        "id": "C3",
+        "from": "upDISP",
+        "to": "SHOCK"
+      }
+    ],
+    "rule": "pass iff p <= alpha_per_test and lift_real / median(lift_null) >= min_effect, test window, pooled"
+  },
+  "assets_run": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "synthetic": false,
+  "decision": [
+    {
+      "test": "C1",
+      "from": "RANGE",
+      "to": "DISP",
+      "lift_real": 0.8986614127130546,
+      "ratio_to_null": 0.9131749092368482,
+      "p_value": 0.99,
+      "pass": false
+    },
+    {
+      "test": "C2",
+      "from": "DISP",
+      "to": "NOISE",
+      "lift_real": 0.7002223777662715,
+      "ratio_to_null": 0.7036675966277963,
+      "p_value": 1.0,
+      "pass": false
+    },
+    {
+      "test": "C3",
+      "from": "upDISP",
+      "to": "SHOCK",
+      "lift_real": 1.2474344679485547,
+      "ratio_to_null": 1.188336802764424,
+      "p_value": 0.005,
+      "pass": true
+    },
+    {
+      "test": "E1",
+      "from": "RANGE",
+      "to": "RANGE",
+      "lift_real": 1.3398201137856438,
+      "ratio_to_null": 1.018444397564054,
+      "p_value": 0.335,
+      "pass": false
+    },
+    {
+      "test": "E2",
+      "from": "DISP",
+      "to": "DISP",
+      "lift_real": 1.029716901145145,
+      "ratio_to_null": 1.0047237722964404,
+      "p_value": 0.455,
+      "pass": false
+    }
+  ],
+  "run_utc": "2026-10-13 01:37:58.329703+00:00"
+}
