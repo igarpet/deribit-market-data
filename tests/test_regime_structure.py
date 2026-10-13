@@ -48,9 +48,9 @@ class TestAggregation(unittest.TestCase):
 
 class TestPower(unittest.TestCase):
     def run_one(self, regime):
-        p = rs.Params(n_null=99)
+        p = rs.Params(n_null=99, scales=(12,))
         out = rs.run_asset(rs.synthetic_klines(n_days=200, seed=3, regime=regime), p)
-        ev = rs.evaluate([out["counts"]], [out["null_counts"]], p)
+        ev = rs.evaluate([out["counts"][12]], [out["null_counts"][12]], p)
         return ev[ev["window"] == "test"].set_index("test")
 
     def test_planted_regimes_detected(self):
@@ -61,6 +61,26 @@ class TestPower(unittest.TestCase):
     def test_no_regimes_no_pass(self):
         ev = self.run_one(False)
         self.assertFalse(ev["pass"].any())
+
+
+class TestScales(unittest.TestCase):
+    def test_windows_align_and_cover_all_scales(self):
+        df = rs.synthetic_klines(n_days=4, seed=5, regime=False)
+        m = rs.prepare_minutes(df)
+        b = rs.bars5(m, rs.Params())
+        for n in (3, 6, 12, 24, 48):
+            w = rs.windows(b, n, rs.Params())
+            self.assertTrue(((w["t"] - m.t0).dt.total_seconds() % (n * 300) == 0).all())
+            self.assertAlmostEqual(w["net"].iloc[2], b["r5"][2 * n:3 * n].sum(), places=12)
+        h = rs.hourly(m, rs.Params())
+        self.assertTrue(np.allclose(h["net"], rs.windows(b, 12, rs.Params())["net"]))
+
+    def test_run_asset_returns_every_scale_and_sweep_alpha(self):
+        p = rs.Params(n_null=3)
+        out = rs.run_asset(rs.synthetic_klines(n_days=150, seed=6, regime=False), p)
+        self.assertEqual(set(out["counts"]), set(p.scales))
+        self.assertEqual(len(out["null_counts"][3]), 3)
+        self.assertAlmostEqual(p.alpha_sweep, 0.05 / 20)
 
 
 class TestSharedNull(unittest.TestCase):

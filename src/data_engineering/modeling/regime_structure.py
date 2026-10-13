@@ -25,11 +25,18 @@ Null: every 1-minute log return and its taker delta are multiplied by an indepen
 1m |returns|, volume and time of day exactly (so volatility and activity clustering survive) and destroys
 all directional dependence (trend, reversion, CVD-price persistence).
 
-Tests (test window): lift(X -> Y) = P(Y_{h+1} | X_h) / P(Y_{h+1}) (needs >= 30 'from' hours; a null draw below that
-counts as lift 1 = no persistence), pooled as the\ngeometric mean of per-asset lifts, real vs N_NULL null draws (same pooling draw by draw).
+Tests (test window): lift(X -> Y) = P(Y_{w+1} | X_w) / P(Y_{w+1}) between consecutive non-overlapping windows
+(needs >= 30 'from' windows; a null draw below that counts as lift 1 = no persistence), pooled as the
+geometric mean of per-asset lifts, real vs N_NULL null draws (same pooling draw by draw).
     E1 RANGE -> RANGE     E2 DISP -> DISP
     C1 RANGE -> DISP      C2 DISP -> NOISE      C3 upDISP -> SHOCK
-Pass: one-sided permutation p <= 0.05 / 5 and lift_real / median(lift_null) >= 1.10.
+Pass: one-sided permutation p <= alpha and lift_real / median(lift_null) >= 1.10.
+
+Window scales (v1.2, RS 003): the same labels and tests on clock-aligned windows of 15 min, 30 min, 1 h, 2 h and
+4 h (3, 6, 12, 24, 48 five-minute bars). Two families:
+    primary  1 h (as pre-registered in RS 001)          alpha = 0.05 / 5
+    sweep    15 min, 30 min, 2 h, 4 h                    alpha = 0.05 / 20
+Quantile thresholds are computed separately per scale (development window, real data).
 """
 from __future__ import annotations
 
@@ -38,7 +45,8 @@ from dataclasses import asdict, dataclass
 import numpy as np
 import pandas as pd
 
-VERSION = "regime_structure v1.1"
+VERSION = "regime_structure v1.2"
+# v1.2 (RS 003, before any v1.1 run): window-scale sweep 15m/30m/1h/2h/4h in one pass; 399 null draws.
 # v1.1 (after the first real run, RS 002): null signs are SHARED across assets (one random sign per UTC minute),
 # so the null keeps the cross-asset dependence of the real data; v1.0 drew independent signs per asset, which
 # makes the pooled null too narrow and the pooled p-values anti-conservative. Adds shock direction (descriptive).
@@ -53,7 +61,8 @@ TESTS = (("E1", "RANGE", "RANGE"), ("E2", "DISP", "DISP"), ("C1", "RANGE", "DISP
 @dataclass(frozen=True)
 class Params:
     bar_min: int = 5
-    n_bars: int = 12                 # one clock hour
+    n_bars: int = 12                 # primary scale: one clock hour
+    scales: tuple = (3, 6, 12, 24, 48)   # window lengths in 5m bars: 15m, 30m, 1h, 2h, 4h
     ewma_halflife: int = 24          # 5m bars (2 h)
     sigma_min_periods: int = 96
     shock_k: float = 3.0
@@ -62,7 +71,7 @@ class Params:
     er_hi_q: float = 0.67
     rvol_q: float = 0.25
     rrv_q: float = 0.33
-    n_null: int = 199
+    n_null: int = 399
     family_alpha: float = 0.05
     min_effect: float = 1.10
     seed: int = 20261013
@@ -71,11 +80,20 @@ class Params:
     def alpha(self) -> float:
         return self.family_alpha / len(TESTS)
 
+    @property
+    def sweep_scales(self) -> tuple:
+        return tuple(n for n in self.scales if n != self.n_bars)
+
+    @property
+    def alpha_sweep(self) -> float:
+        return self.family_alpha / (len(TESTS) * max(len(self.sweep_scales), 1))
+
 
 def registration(p: Params | None = None) -> dict:
     p = p or Params()
     d = asdict(p)
-    d.update(version=VERSION, test_start=str(TEST_START), alpha_per_test=p.alpha, labels=list(LABELS),
+    d.update(version=VERSION, test_start=str(TEST_START), alpha_per_test=p.alpha, alpha_sweep=p.alpha_sweep,
+             scale_minutes={n: n * p.bar_min for n in p.scales}, labels=list(LABELS),
              tests=[{"id": i, "from": x, "to": y} for i, x, y in TESTS],
              rule="pass iff p <= alpha_per_test and lift_real / median(lift_null) >= min_effect, test window, pooled")
     return d
@@ -108,30 +126,39 @@ def prepare_minutes(df: pd.DataFrame) -> Minutes:
     return Minutes(t0=grid[0], r1=np.where(miss, 0.0, r), d1=2 * tb - vol, v1=vol, n_missing=int(miss.sum()) - 1)
 
 
-def hourly(m: Minutes, p: Params, signs: np.ndarray | None = None) -> pd.DataFrame:
-    """Hourly window quantities; `signs` (+-1 per minute) applies the null."""
+def bars5(m: Minutes, p: Params, signs: np.ndarray | None = None) -> dict:
+    """5-minute bars and causal EWMA sigma; `signs` (+-1 per minute) applies the null."""
     r1, d1 = (m.r1, m.d1) if signs is None else (m.r1 * signs, m.d1 * signs)
     k = p.bar_min
     nb = len(r1) // k
     r5 = r1[:nb * k].reshape(nb, k).sum(1)
-    d5 = d1[:nb * k].reshape(nb, k).sum(1)
-    v5 = m.v1[:nb * k].reshape(nb, k).sum(1)
     sig = np.sqrt(pd.Series(r5 * r5).ewm(halflife=p.ewma_halflife, min_periods=p.sigma_min_periods).mean().to_numpy())
-    n = p.n_bars
-    nh = nb // n
-    R = r5[:nh * n].reshape(nh, n)
-    sig_pre = np.r_[np.nan, sig[n - 1:nh * n - 1:n]][:nh]       # sigma at the last bar before each hour
+    return {"t0": m.t0, "r5": r5, "d5": d1[:nb * k].reshape(nb, k).sum(1),
+            "v5": m.v1[:nb * k].reshape(nb, k).sum(1), "sig": sig}
+
+
+def windows(b: dict, n: int, p: Params) -> pd.DataFrame:
+    """Window quantities for clock-aligned windows of n five-minute bars (sigma measured before the window)."""
+    r5, d5, v5, sig = b["r5"], b["d5"], b["v5"], b["sig"]
+    nw = len(r5) // n
+    R = r5[:nw * n].reshape(nw, n)
+    sig_pre = np.r_[np.nan, sig[n - 1:nw * n - 1:n]][:nw]       # sigma at the last bar before each window
     net = R.sum(1)
     path = np.abs(R).sum(1)
     with np.errstate(invalid="ignore", divide="ignore"):
         er = np.where(path > 0, np.abs(net) / path, np.nan)
         shock = np.abs(R).max(1) / sig_pre
-    shock_up = R[np.arange(nh), np.abs(R).argmax(1)] > 0
-    t = m.t0 + pd.to_timedelta(np.arange(nh), unit="h")
+    shock_up = R[np.arange(nw), np.abs(R).argmax(1)] > 0
+    t = b["t0"] + pd.to_timedelta(np.arange(nw) * n * p.bar_min, unit="min")
     return pd.DataFrame({"t": t, "hour": t.hour, "net": net, "er": er, "s": sig_pre * np.sqrt(n),
                          "shock": shock, "shock_up": shock_up, "rv": np.sqrt((R * R).sum(1)),
-                         "vol": v5[:nh * n].reshape(nh, n).sum(1),
-                         "delta": d5[:nh * n].reshape(nh, n).sum(1)})
+                         "vol": v5[:nw * n].reshape(nw, n).sum(1),
+                         "delta": d5[:nw * n].reshape(nw, n).sum(1)})
+
+
+def hourly(m: Minutes, p: Params, signs: np.ndarray | None = None) -> pd.DataFrame:
+    """Primary-scale (1 h) windows."""
+    return windows(bars5(m, p, signs), p.n_bars, p)
 
 
 # ---------------------------------------------------------------- thresholds and labels
@@ -232,7 +259,7 @@ def run_lengths(lab: pd.DataFrame, window: str) -> pd.Series:
     return runs.groupby("first")["size"].mean().reindex(LABELS)
 
 
-def evaluate(real_by_asset: list, null_by_asset: list, p: Params) -> pd.DataFrame:
+def evaluate(real_by_asset: list, null_by_asset: list, p: Params, alpha: float | None = None) -> pd.DataFrame:
     """real_by_asset: [counts dict per asset]; null_by_asset: [[counts dict per draw] per asset].
     Lifts are pooled as the geometric mean over assets, draw by draw for the null."""
     n_draws = min(len(x) for x in null_by_asset) if null_by_asset else 0
@@ -256,7 +283,8 @@ def evaluate(real_by_asset: list, null_by_asset: list, p: Params) -> pd.DataFram
                      "lift_null_q95": float(np.quantile(ln, 0.95)) if len(ln) else np.nan,
                      "ratio_to_null": lr / med if med else np.nan, "p_value": pval})
     df = pd.DataFrame(rows).sort_values(["window", "test"]).reset_index(drop=True)
-    df["pass"] = (df["p_value"] <= p.alpha) & (df["ratio_to_null"] >= p.min_effect)
+    df["alpha"] = p.alpha if alpha is None else alpha
+    df["pass"] = (df["p_value"] <= df["alpha"]) & (df["ratio_to_null"] >= p.min_effect)
     return df
 
 
@@ -276,22 +304,34 @@ def null_signs(p: Params, draw: int, t0: pd.Timestamp, n: int) -> np.ndarray:
 
 
 def run_asset(df: pd.DataFrame, p: Params, rng: np.random.Generator | None = None) -> dict:
+    """All scales in one pass. Results are dicts keyed by scale n (bars): labels, thresholds, counts,
+    null_counts (list per draw); null transition matrix and run lengths (test window) for every scale."""
     m = prepare_minutes(df)
-    h = hourly(m, p)
-    th = finalize_thresholds(thresholds(h, p), p)
-    lab = label(h, th, p)
-    null_counts, null_trans, null_runs = [], [], []
+    b = bars5(m, p)
+    labs, ths, cnt = {}, {}, {}
+    for n in p.scales:
+        h = windows(b, n, p)
+        ths[n] = finalize_thresholds(thresholds(h, p), p)
+        labs[n] = label(h, ths[n], p)
+        cnt[n] = counts(labs[n])
+    ncnt = {n: [] for n in p.scales}
+    ntr = {n: [] for n in p.scales}
+    nrun = {n: [] for n in p.scales}
     for j in range(p.n_null):
-        s = null_signs(p, j, m.t0, len(m.r1))
-        ln = label(hourly(m, p, s), th, p)
-        null_counts.append(counts(ln))
-        null_trans.append(transition_matrix(ln, "test"))
-        null_runs.append(run_lengths(ln, "test"))
-    return {"labels": lab, "thresholds": {k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in th.items()},
-            "counts": counts(lab), "null_counts": null_counts,
-            "null_trans_mean": (pd.concat(null_trans).groupby(level=0).mean().reindex(index=LABELS, columns=LABELS)
-                                if null_trans else None),
-            "null_runs_mean": pd.concat(null_runs, axis=1).mean(1) if null_runs else None,
+        bn = bars5(m, p, null_signs(p, j, m.t0, len(m.r1)))
+        for n in p.scales:
+            ln = label(windows(bn, n, p), ths[n], p)
+            ncnt[n].append(counts(ln))
+            if n == p.n_bars:
+                ntr[n].append(transition_matrix(ln, "test"))
+                nrun[n].append(run_lengths(ln, "test"))
+    jsonable = lambda th: {k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in th.items()}
+    n0 = p.n_bars
+    return {"labels": labs, "thresholds": {n: jsonable(t) for n, t in ths.items()},
+            "counts": cnt, "null_counts": ncnt,
+            "null_trans_mean": (pd.concat(ntr[n0]).groupby(level=0).mean().reindex(index=LABELS, columns=LABELS)
+                                if ntr[n0] else None),
+            "null_runs_mean": pd.concat(nrun[n0], axis=1).mean(1) if nrun[n0] else None,
             "minutes": len(m.r1), "missing_minutes": m.n_missing}
 
 
