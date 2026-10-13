@@ -14,7 +14,8 @@ Independent branch: Binance USD-M perpetual 1-minute klines for BTC, ETH, SOL, X
 | `004_claude_rs01_v12_readout.md` | Binding v1.2 result: no regime states at 15m–4h (E1, E2, C1 fail; C2 opposite everywhere); C3 up-DISP→SHOCK passes at 1h and 15m, robust across scales/assets and in dev at 15–30m; 4h E2 passes but not in dev |
 | `005_claude_rs02_preregistration.md` | RS 02: C3 signal → Part A move ratios (Binance 2y), Part B long ATM 0DTE straddle at the ask held to settlement on collector quotes (VRP 02 code, approved); primary M_signal with VRP verdict labels |
 | `006_claude_rs02_readout.md` | RS 02: signal raises the move to settlement 5–11% (Binance 2y, all CIs >1); signal straddles lose −21% vs −29% for all entries (INCONCLUSIVE, CI [−0.41, +0.04]); call-only worse; 60-min exit −32%; not enough to pay the spread |
+| `007_claude_rs03_preregistration.md` | RS 03: big-move days (session move ≥ dev q85 of move/7-session forecast) vs normal on 2y Binance; DURING descriptive; PRE/EARLY screened on dev, confirmed on test (Bonferroni over candidates); clustering; mechanical findings flagged in advance |
 
-Next turn in this branch: `007`.
+Next turn in this branch: `008`.
 
 Procedure and numbering rules: `../README.md`.
