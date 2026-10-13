@@ -1,0 +1,76 @@
+{
+  "registration": {
+    "m_approach": 15,
+    "d_approach": 1.0,
+    "cooldown": 15,
+    "ewma_halflife": 60,
+    "sigma_min_periods": 240,
+    "horizons": [
+      5,
+      15,
+      30,
+      60
+    ],
+    "primary_h": 15,
+    "n_placebo": 20,
+    "offset_min": 0.5,
+    "offset_max": 3.0,
+    "n_boot": 2000,
+    "family_alpha": 0.05,
+    "min_effect": 1.1,
+    "seed": 20261013,
+    "anchors": [
+      {
+        "name": "session_0800",
+        "period_min": 1440,
+        "phase_min": 480,
+        "warmup_min": 60,
+        "phase_placebo": [
+          60,
+          1380
+        ]
+      },
+      {
+        "name": "h4",
+        "period_min": 240,
+        "phase_min": 0,
+        "warmup_min": 30,
+        "phase_placebo": [
+          30,
+          210
+        ]
+      }
+    ],
+    "version": "vwap_events v1.0",
+    "test_start": "2026-04-01 00:00:00+00:00",
+    "ci_level": 0.9875,
+    "primary": "y at primary_h, real vs each placebo type, pooled assets, test window",
+    "gates": {
+      "G1": "two-sided CI at ci_level of Delta excludes 0 from above (lower bound > 0)",
+      "G2": "exp(Delta) >= min_effect",
+      "pass": "G1 and G2 vs BOTH placebo types, per anchor"
+    }
+  },
+  "assets_run": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "synthetic": false,
+  "decision": [
+    {
+      "anchor": "h4",
+      "G1_both": false,
+      "G2_both": false,
+      "pass": false
+    },
+    {
+      "anchor": "session_0800",
+      "G1_both": false,
+      "G2_both": false,
+      "pass": false
+    }
+  ],
+  "run_utc": "2026-10-13 01:00:21.932097+00:00"
+}
