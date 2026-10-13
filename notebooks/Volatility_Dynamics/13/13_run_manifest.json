@@ -1,0 +1,97 @@
+{
+  "module": "Volatility_Dynamics_13",
+  "version": "VD13-0.1.0",
+  "registration": {
+    "end_exclusive": "2026-09-19 00:00:00+00:00",
+    "horizons": [
+      15,
+      60,
+      240
+    ],
+    "primary_horizon": 60,
+    "fast_half_life_min": 30,
+    "slow_half_life_min": 240,
+    "minimum_previous_bars": 288,
+    "previous_coverage_min": 0.8,
+    "ridge_var": 0.02,
+    "ridge_mean": 0.1,
+    "tail_quantile": 0.95,
+    "split_train": 0.6,
+    "split_valid": 0.2,
+    "min_test_days": 30,
+    "min_unique_tail_times": 40,
+    "historical_sample_is_exploratory": true,
+    "version": "VD13-0.1.0",
+    "source": "shared history/price_5m raw close files",
+    "not_an_options_backtest": true,
+    "no_tradability_claim": true
+  },
+  "historical_source": "D:\\MarketData\\Deribit\\history\\price_5m",
+  "assets": [
+    "AVAX",
+    "BTC",
+    "ETH",
+    "SOL",
+    "TRX",
+    "XRP"
+  ],
+  "excluded_assets": {
+    "HYPE": "0 days, require 365"
+  },
+  "date_first": "2024-09-01 00:05:00+00:00",
+  "date_last": "2026-09-18 23:55:00+00:00",
+  "rows": 1292538,
+  "split_days": {
+    "test": 150,
+    "train": 448,
+    "valid": 150
+  },
+  "thresholds_train_only": {
+    "15": {
+      "AVAX": 0.010058361042646354,
+      "BTC": 0.004844338262486895,
+      "ETH": 0.007373814945723881,
+      "SOL": 0.008912862992800148,
+      "TRX": 0.00456274555841818,
+      "XRP": 0.009920168411737068
+    },
+    "60": {
+      "AVAX": 0.02004663910685908,
+      "BTC": 0.00976291059041066,
+      "ETH": 0.014937145075337678,
+      "SOL": 0.017733656144724465,
+      "TRX": 0.009848500554277068,
+      "XRP": 0.019390322696251683
+    },
+    "240": {
+      "AVAX": 0.04076465139371967,
+      "BTC": 0.020164281959875508,
+      "ETH": 0.03062928558593856,
+      "SOL": 0.03551060912938571,
+      "TRX": 0.02037910125430039,
+      "XRP": 0.03851386150779341
+    }
+  },
+  "scores_output": "13_scores.csv",
+  "bootstrap_output": "13_paired_day_bootstrap.csv",
+  "decision": {
+    "status": "HISTORICAL_EXPLORATORY",
+    "historical_confirmation_permitted": false,
+    "primary_horizon_min": 60,
+    "n_test_days": 150,
+    "n_unique_positive_tail_origin_times": 2520,
+    "predeclared_flags": {
+      "E_distribution_vs_K": true,
+      "P_phase_vs_E_rv": true,
+      "P_phase_vs_E_nll": true,
+      "P_phase_vs_E_tail": false,
+      "M_price_vs_P_nll": false,
+      "PM_interaction_vs_M_nll": true
+    },
+    "conditional_phase_distribution_support": false,
+    "conditional_price_mean_support": false,
+    "reason": "Past data have been inspected in prior branches; fresh post-2026-10-13 days are required for confirmation."
+  },
+  "source_warning": "Binance spot close history, not RS Binance USD-M perpetual series",
+  "no_trading_claim": true
+}

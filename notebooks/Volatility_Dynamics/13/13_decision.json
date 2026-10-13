@@ -1,0 +1,18 @@
+{
+  "status": "HISTORICAL_EXPLORATORY",
+  "historical_confirmation_permitted": false,
+  "primary_horizon_min": 60,
+  "n_test_days": 150,
+  "n_unique_positive_tail_origin_times": 2520,
+  "predeclared_flags": {
+    "E_distribution_vs_K": true,
+    "P_phase_vs_E_rv": true,
+    "P_phase_vs_E_nll": true,
+    "P_phase_vs_E_tail": false,
+    "M_price_vs_P_nll": false,
+    "PM_interaction_vs_M_nll": true
+  },
+  "conditional_phase_distribution_support": false,
+  "conditional_price_mean_support": false,
+  "reason": "Past data have been inspected in prior branches; fresh post-2026-10-13 days are required for confirmation."
+}
