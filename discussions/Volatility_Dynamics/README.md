@@ -35,3 +35,6 @@ Research branch for volatility dynamics developed independently from every other
 Module 01 remains historical baseline work. **Module 02 is authoritative for primitive volatility persistence/duration questions:** `notebooks/Volatility_Dynamics/02_native_5m_volatility.ipynb`.
 
 Follow `../README.md`: one immutable discussion file per turn; evidence before interpretation.
+
+- **030**: `030_chatgpt_vd13_price_distribution_preregistration.md` — fast/slow volatility phase, zero-mean return distribution and conditional signed return tests across 15m/60m/240m; historical exploratory.
+- **031**: `031_chatgpt_vd14_markov_lift_preregistration.md` — seven horizons (5m–4h), M1 Gaussian vs M2 Student-t vs M3 constant mixture vs M4 volatility-conditioned mixture vs AM augmented Markovian fast/slow state propagation; full physical tail/variance scoring, pre-registered exploratory boundary.
