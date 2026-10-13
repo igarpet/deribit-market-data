@@ -49,7 +49,7 @@ class TestAggregation(unittest.TestCase):
 class TestPower(unittest.TestCase):
     def run_one(self, regime):
         p = rs.Params(n_null=99)
-        out = rs.run_asset(rs.synthetic_klines(n_days=200, seed=3, regime=regime), p, np.random.default_rng(0))
+        out = rs.run_asset(rs.synthetic_klines(n_days=200, seed=3, regime=regime), p)
         ev = rs.evaluate([out["counts"]], [out["null_counts"]], p)
         return ev[ev["window"] == "test"].set_index("test")
 
@@ -61,6 +61,16 @@ class TestPower(unittest.TestCase):
     def test_no_regimes_no_pass(self):
         ev = self.run_one(False)
         self.assertFalse(ev["pass"].any())
+
+
+class TestSharedNull(unittest.TestCase):
+    def test_signs_shared_across_assets_by_minute(self):
+        p = rs.Params()
+        t0 = pd.Timestamp("2025-01-01", tz="UTC")
+        a = rs.null_signs(p, 3, t0, 1000)
+        b = rs.null_signs(p, 3, t0 + pd.Timedelta(minutes=10), 990)   # asset starting 10 minutes later
+        self.assertTrue(np.array_equal(a[10:], b))
+        self.assertFalse(np.array_equal(a, rs.null_signs(p, 4, t0, 1000)))
 
 
 class TestPooling(unittest.TestCase):

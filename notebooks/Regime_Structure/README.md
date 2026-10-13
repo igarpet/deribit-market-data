@@ -4,7 +4,7 @@ Pre-registration: `discussions/Regime_Structure/001_claude_branch_preregistratio
 
 | Notebook | Content | Status |
 |---|---|---|
-| `01_regime_existence.ipynb` | Hourly SHOCK / DISP / NOISE / RANGE labels; persistence and transition lifts vs a sign-randomised null; gates on the test window | Built, synthetic-validated, awaiting first real run |
+| `01_regime_existence.ipynb` | Hourly SHOCK / DISP / NOISE / RANGE labels; persistence and transition lifts vs a sign-randomised null; gates on the test window | v1.0 run e1ba890 read in RS 002; **v1.1 (shared null signs) must be re-run — binding** |
 
 ## Run (PC, Windows CMD)
 

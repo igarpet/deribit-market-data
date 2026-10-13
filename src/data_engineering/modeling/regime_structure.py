@@ -38,7 +38,11 @@ from dataclasses import asdict, dataclass
 import numpy as np
 import pandas as pd
 
-VERSION = "regime_structure v1.0"  # pre-run; pooled lift = geometric mean over assets (smoothed)
+VERSION = "regime_structure v1.1"
+# v1.1 (after the first real run, RS 002): null signs are SHARED across assets (one random sign per UTC minute),
+# so the null keeps the cross-asset dependence of the real data; v1.0 drew independent signs per asset, which
+# makes the pooled null too narrow and the pooled p-values anti-conservative. Adds shock direction (descriptive).
+NULL_EPOCH = pd.Timestamp("2024-01-01", tz="UTC")
 TEST_START = pd.Timestamp("2026-04-01", tz="UTC")
 ASSETS = ("BTC", "ETH", "SOL", "XRP")
 LABELS = ("SHOCK", "DISP", "NOISE", "RANGE", "OTHER")
@@ -122,9 +126,10 @@ def hourly(m: Minutes, p: Params, signs: np.ndarray | None = None) -> pd.DataFra
     with np.errstate(invalid="ignore", divide="ignore"):
         er = np.where(path > 0, np.abs(net) / path, np.nan)
         shock = np.abs(R).max(1) / sig_pre
+    shock_up = R[np.arange(nh), np.abs(R).argmax(1)] > 0
     t = m.t0 + pd.to_timedelta(np.arange(nh), unit="h")
     return pd.DataFrame({"t": t, "hour": t.hour, "net": net, "er": er, "s": sig_pre * np.sqrt(n),
-                         "shock": shock, "rv": np.sqrt((R * R).sum(1)),
+                         "shock": shock, "shock_up": shock_up, "rv": np.sqrt((R * R).sum(1)),
                          "vol": v5[:nh * n].reshape(nh, n).sum(1),
                          "delta": d5[:nh * n].reshape(nh, n).sum(1)})
 
@@ -165,6 +170,7 @@ def label(h: pd.DataFrame, th: dict, p: Params) -> pd.DataFrame:
     out = h[["t", "hour"]].copy()
     out["label"] = lab
     out["up"] = net > 0
+    out["shock_up"] = h["shock_up"].to_numpy() if "shock_up" in h else np.nan
     out["window"] = np.where(out["t"] >= TEST_START, "test", "dev")
     return out
 
@@ -260,14 +266,23 @@ def add_counts(a: dict, b: dict) -> dict:
 
 # ---------------------------------------------------------------- per-asset driver
 
-def run_asset(df: pd.DataFrame, p: Params, rng: np.random.Generator) -> dict:
+def null_signs(p: Params, draw: int, t0: pd.Timestamp, n: int) -> np.ndarray:
+    """Sign per UTC minute for null draw `draw`, identical for every asset at the same minute."""
+    off = int((t0 - NULL_EPOCH) / pd.Timedelta(minutes=1))
+    if off < 0:
+        raise ValueError("data start before NULL_EPOCH")
+    rng = np.random.default_rng([p.seed, draw])
+    return rng.choice(np.array([-1.0, 1.0]), size=off + n)[off:]
+
+
+def run_asset(df: pd.DataFrame, p: Params, rng: np.random.Generator | None = None) -> dict:
     m = prepare_minutes(df)
     h = hourly(m, p)
     th = finalize_thresholds(thresholds(h, p), p)
     lab = label(h, th, p)
     null_counts, null_trans, null_runs = [], [], []
-    for _ in range(p.n_null):
-        s = rng.choice(np.array([-1.0, 1.0]), size=len(m.r1))
+    for j in range(p.n_null):
+        s = null_signs(p, j, m.t0, len(m.r1))
         ln = label(hourly(m, p, s), th, p)
         null_counts.append(counts(ln))
         null_trans.append(transition_matrix(ln, "test"))
