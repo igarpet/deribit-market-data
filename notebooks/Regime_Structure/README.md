@@ -9,6 +9,7 @@ Pre-registration: `discussions/Regime_Structure/001_claude_branch_preregistratio
 | `03_big_move_days.ipynb` | Big-move days vs normal days: what happens during them (descriptive), what precedes them (PRE at 08:00, EARLY 08:00–10:00; dev screen, test confirmation), clustering across days and assets | Run 5a93dbf (RS 008): confirmed only `pre_rv_prev_vs_fcst`; big days market-wide, US-session, clustered |
 | `04_implied_underreaction.ipynb` | Slope of log(realised/implied move) of the 12:00 UTC ATM straddle on yesterday's RV vs forecast; R_net by predictor tercile | Run 9e6db93 (RS 010): NO_EVIDENCE, β −0.59 [−1.49, +0.21]; implied rises with x |
 | `05_trend_day_null.ipynb` | Real vs shared-sign 5m null: daily variance ratio, big-day efficiency/giveback/top-hour, big-day clustering | Run 9e6db93 (RS 010): VR 0.75× null; big-day giveback 1.76×, top-hour 1.22×; clustering = vol |
+| `06_gamma_scalp.ipynb` | Delta-hedged long 0DTE straddle on the perpetual: H 5/15/30/60 min, fee scenarios, hedged vs unhedged; Binance variance ratio by sampling | Built, synthetic-validated, awaiting run |
 
 ## Run (PC, Windows CMD)
 
@@ -18,6 +19,7 @@ jupyter nbconvert --to notebook --execute --inplace notebooks\Regime_Structure\0
 jupyter nbconvert --to notebook --execute --inplace notebooks\Regime_Structure\03_big_move_days.ipynb
 jupyter nbconvert --to notebook --execute --inplace notebooks\Regime_Structure\04_implied_underreaction.ipynb
 jupyter nbconvert --to notebook --execute --inplace notebooks\Regime_Structure\05_trend_day_null.ipynb
+jupyter nbconvert --to notebook --execute --inplace notebooks\Regime_Structure\06_gamma_scalp.ipynb
 ```
 
 RS 02 also reads the research DuckDB (`DERIBIT_DATA_ROOT/database/research.duckdb`) and fetches Deribit delivery prices (cached in `02/`; `RS02_OFFLINE=1` uses the cache).
