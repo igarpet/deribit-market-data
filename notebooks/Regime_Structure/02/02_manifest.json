@@ -1,0 +1,105 @@
+{
+  "registration": {
+    "scale": 3,
+    "entry_grid_min": 5,
+    "entry_tolerance_min": 10,
+    "exit_after_min": 60,
+    "horizon_short_min": 60,
+    "n_boot": 4000,
+    "seed": 20261013,
+    "alpha_a": 0.05,
+    "version": "regime_c3_options v1.0",
+    "signal": "RS 01 v1.2 label DISP with net>0 at the 15-minute scale",
+    "test_start": "2026-04-01 00:00:00+00:00",
+    "vrp_conventions": {
+      "version": "0.1.0",
+      "confirmation_start_excluded": "2026-11-07",
+      "tte_min": [
+        120,
+        1200
+      ],
+      "entry_grid_min": 60,
+      "fee_rate": 0.0003,
+      "fee_cap": 0.125,
+      "delivery_fee_rate_sensitivity": 0.00015,
+      "n_boot": 4000,
+      "seed": 7007,
+      "primary_unit": "R_net = payoff/(ask+fee) - 1",
+      "primary_statistic": "mean over sessions of session-pooled mean R_net",
+      "decision": "CI>0 LONG_EDGE_CANDIDATE; CI<0 NO_LONG_EDGE; else INCONCLUSIVE"
+    },
+    "part_a": "ratio of matched mean normalised |move| (60 min, to settlement); 97.5% day-bootstrap CI; test window",
+    "part_b": "M_signal (session mean R_net of signal straddles), 95% session-bootstrap CI; VRP verdict labels"
+  },
+  "synthetic": false,
+  "assets": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "part_a": [
+    {
+      "window": "dev",
+      "horizon": "z60",
+      "n_signal": 15059,
+      "n_other": 194841,
+      "days": 547,
+      "mean_z_signal": 0.7966161303826546,
+      "ratio": 1.0426549787971717,
+      "lo": 1.016651199913376,
+      "hi": 1.0698252926669252
+    },
+    {
+      "window": "dev",
+      "horizon": "zsettle",
+      "n_signal": 11462,
+      "n_other": 148148,
+      "days": 547,
+      "mean_z_signal": 0.7738559511791324,
+      "ratio": 1.0473211908355502,
+      "lo": 1.0171461831081845,
+      "hi": 1.07809221973046
+    },
+    {
+      "window": "test",
+      "horizon": "z60",
+      "n_signal": 4602,
+      "n_other": 69858,
+      "days": 195,
+      "mean_z_signal": 0.8162081501708824,
+      "ratio": 1.0676409881466808,
+      "lo": 1.0114486678497312,
+      "hi": 1.1314213504064827
+    },
+    {
+      "window": "test",
+      "horizon": "zsettle",
+      "n_signal": 3473,
+      "n_other": 52976,
+      "days": 194,
+      "mean_z_signal": 0.7601505421535022,
+      "ratio": 1.1066796874719598,
+      "lo": 1.0579873088784255,
+      "hi": 1.1554159687777859
+    }
+  ],
+  "part_b_primary": {
+    "n_sessions": 20,
+    "M": -0.21040642029027898,
+    "ci_low": -0.4069902906282826,
+    "ci_high": 0.03883546939445254,
+    "loso_min": -0.29258854163495934,
+    "loso_max": -0.18875721298374687,
+    "share_sessions_positive": 0.2,
+    "verdict": "INCONCLUSIVE",
+    "n_signal_straddles": 329,
+    "n_all_straddles": 16717,
+    "n_sessions_with_signal": 20
+  },
+  "sessions": [
+    "2026-09-21",
+    "2026-10-10"
+  ],
+  "run_utc": "2026-10-13 03:16:49.360002+00:00"
+}
