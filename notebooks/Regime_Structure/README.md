@@ -4,7 +4,7 @@ Pre-registration: `discussions/Regime_Structure/001_claude_branch_preregistratio
 
 | Notebook | Content | Status |
 |---|---|---|
-| `01_regime_existence.ipynb` | Hourly SHOCK / DISP / NOISE / RANGE labels; persistence and transition lifts vs a sign-randomised null; gates on the test window | v1.0 run e1ba890 read in RS 002. **v1.2 (shared null signs + 15m–4h scale sweep, RS 003) must be run — binding** |
+| `01_regime_existence.ipynb` | Hourly SHOCK / DISP / NOISE / RANGE labels; persistence and transition lifts vs a sign-randomised null; gates on the test window | v1.2 run 6854f48 (binding, RS 004): no persistent regime states 15m–4h; C3 up-DISP→SHOCK passes (1h, 15m); 4h E2 passes test only |
 
 ## Run (PC, Windows CMD)
 
