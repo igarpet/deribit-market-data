@@ -212,3 +212,42 @@ def test_no_future_return_leak_through_prepared_predictors():
     cols=['sign','length','flow_5m','flow_30m','log_rv24h','log_fastslow','log_quote_volume','log_trades']
     pd.testing.assert_frame_equal(before.loc[:8,cols],after.loc[:8,cols])
     assert before.loc[8,'next_sign']!=after.loc[8,'next_sign']
+
+
+def test_rare_zero_outcomes_and_correlated_trade_flow_converge():
+    """Realistic small zero-return class plus correlated flow/volume features.
+
+    Regression for the repository run whose L-BFGS fit exhausted 300 steps.
+    No change to fixed C=.25 or the feature families is permitted.
+    """
+    g=sample_fit_dataset(n=12000)
+    rng=np.random.default_rng(2614)
+    g['next_sign']=np.where(rng.random(len(g))<.002,0,
+                            np.where(rng.random(len(g))<.5,-1,1))
+    g['flow_30m']=.98*g.flow_5m+.005*rng.normal(size=len(g))
+    g['log_trades']=.97*g.log_quote_volume+.02*rng.normal(size=len(g))
+    fit=tf.fit_models(g,C=.25)
+    assert len(fit['models'])==5
+    for terms,scaler,model in fit['models'].values():
+        assert model.solver=='newton-cholesky'
+        assert model.C==.25
+        assert model.n_iter_[0]<model.max_iter
+        pp=model.predict_proba(scaler.transform(tf.raw_design(g.iloc[:100])[list(terms)].to_numpy(float)))
+        assert pp.shape==(100,3) and np.isfinite(pp).all()
+        assert np.allclose(pp.sum(axis=1),1)
+
+
+def test_solver_matches_converged_lbfgs_fixed_objective():
+    """The correction changes numerical optimization, not the L2 loss surface."""
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.preprocessing import StandardScaler
+    g=sample_fit_dataset(n=6000)
+    y=g.next_sign.to_numpy(int)
+    terms=tf.BASE_FEATURES['sign_streak_vol_flow']
+    X=StandardScaler().fit_transform(tf.raw_design(g)[list(terms)].to_numpy(float))
+    baseline=LogisticRegression(C=.25,max_iter=2500,tol=1e-8,solver='lbfgs').fit(X,y)
+    fixed=LogisticRegression(C=.25,max_iter=120,tol=1e-7,solver='newton-cholesky').fit(X,y)
+    assert baseline.n_iter_[0]<baseline.max_iter
+    assert fixed.n_iter_[0]<fixed.max_iter
+    np.testing.assert_allclose(baseline.predict_proba(X[:300]),
+                               fixed.predict_proba(X[:300]),atol=1e-3,rtol=0)

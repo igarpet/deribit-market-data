@@ -11,12 +11,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from sklearn.exceptions import ConvergenceWarning
+import warnings
 from sklearn.preprocessing import StandardScaler
 
 STEP = pd.Timedelta(minutes=5)
 MINUTE = pd.Timedelta(minutes=1)
 CLASSES = np.array([-1, 0, 1], dtype=int)
-VERSION = 'CS03-0.1.0'
+VERSION = 'CS03-0.1.1'
 MODELS = ('iid', 'sign', 'sign_streak', 'sign_streak_vol',
           'sign_streak_flow', 'sign_streak_vol_flow')
 
@@ -232,9 +234,22 @@ def fit_models(train:pd.DataFrame,*,C=.25) -> dict:
     for name,terms in BASE_FEATURES.items():
         scaler=StandardScaler()
         X=scaler.fit_transform(designs[list(terms)].to_numpy(float))
-        model=LogisticRegression(C=C,max_iter=300,tol=1e-7,solver='lbfgs')
-        model.fit(X,y)
-        if not model.n_iter_[0]<300:raise RuntimeError(f'{name} logistic did not converge')
+        # With rare zero-return targets and correlated flow features, L-BFGS can
+        # exhaust 300 steps before meeting the strict 1e-7 gradient tolerance.
+        # Newton-Cholesky targets exactly the same multinomial L2 objective and C,
+        # but is better suited to this small dense design (~12 columns).
+        # Multinomial support requires scikit-learn >= 1.6.
+        model=LogisticRegression(C=C,max_iter=120,tol=1e-7,solver='newton-cholesky')
+        with warnings.catch_warnings(record=True) as seen:
+            warnings.simplefilter('always',ConvergenceWarning)
+            model.fit(X,y)
+        convergence=[str(w.message) for w in seen
+                     if issubclass(w.category,ConvergenceWarning)]
+        if convergence or int(model.n_iter_[0])>=model.max_iter:
+            raise RuntimeError(
+                f'{name} logistic did not converge with {model.solver}: '
+                f'iterations={int(model.n_iter_[0])}/{model.max_iter}; '
+                f'warnings={convergence}')
         fits['models'][name]=(terms,scaler,model)
     return fits
 
