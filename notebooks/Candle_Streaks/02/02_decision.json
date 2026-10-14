@@ -1,0 +1,57 @@
+{
+  "status": "HISTORICAL_EXPLORATORY",
+  "verdict": "NO_CONFIRMED_INCREMENTAL_VOLATILITY_CONDITIONING",
+  "primary_assets": [
+    {
+      "asset": "BTC",
+      "comparisons": [
+        {
+          "reference": "streak_3class",
+          "delta": -0.0018124996368256016,
+          "upper95": -0.0003445621018405965,
+          "passes": true
+        },
+        {
+          "reference": "sign_vol_3class",
+          "delta": 0.0006583015974011412,
+          "upper95": 0.0010345831624229542,
+          "passes": false
+        },
+        {
+          "reference": "additive_3class",
+          "delta": 0.00024781811577630333,
+          "upper95": 0.0008288905226304549,
+          "passes": false
+        }
+      ],
+      "passes_all": false
+    },
+    {
+      "asset": "ETH",
+      "comparisons": [
+        {
+          "reference": "streak_3class",
+          "delta": -0.0003477731222162227,
+          "upper95": 0.00015529238480546548,
+          "passes": false
+        },
+        {
+          "reference": "sign_vol_3class",
+          "delta": 0.0009654550868235602,
+          "upper95": 0.0014564749117103731,
+          "passes": false
+        },
+        {
+          "reference": "additive_3class",
+          "delta": 0.000620168991087896,
+          "upper95": 0.00102580981338443,
+          "passes": false
+        }
+      ],
+      "passes_all": false
+    }
+  ],
+  "AM_T_HAR_Blend_modified": false,
+  "prospective_confirmation": false,
+  "note": "Observed trailing 1h/24h RV is NOT an AM-T-HAR-Blend fitted forecast; TEST is historically reused."
+}

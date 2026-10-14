@@ -1,0 +1,261 @@
+{
+  "module": "Candle_Streaks_02",
+  "specification": {
+    "version": "CS02-0.1.0",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "cutoff_utc": "2026-10-14T00:00:00Z",
+    "train_fraction": 0.6,
+    "valid_fraction": 0.2,
+    "fast_bars": 12,
+    "slow_bars": 288,
+    "n_bins": 3,
+    "shrink_sign": 20.0,
+    "shrink_streak": 80.0,
+    "shrink_sign_vol": 100.0,
+    "shrink_joint": 125.0,
+    "boot": 1000,
+    "seed": 2602,
+    "status": "HISTORICAL_EXPLORATORY"
+  },
+  "source": "Binance spot 5m returns via VD14 loader",
+  "actual_source_last_timestamp": "2026-10-11 00:05:00+00:00",
+  "excluded_assets": {},
+  "complete_day_splits": {
+    "BTC": {
+      "fit_before": "2025-12-07 00:00:00+00:00",
+      "test_from": "2026-05-10 00:00:00+00:00",
+      "full_utc_days": 769,
+      "excluded_incomplete_or_invalid_days": 2
+    },
+    "ETH": {
+      "fit_before": "2025-12-07 00:00:00+00:00",
+      "test_from": "2026-05-10 00:00:00+00:00",
+      "full_utc_days": 769,
+      "excluded_incomplete_or_invalid_days": 2
+    },
+    "SOL": {
+      "fit_before": "2025-12-07 00:00:00+00:00",
+      "test_from": "2026-05-10 00:00:00+00:00",
+      "full_utc_days": 769,
+      "excluded_incomplete_or_invalid_days": 2
+    },
+    "XRP": {
+      "fit_before": "2025-12-07 00:00:00+00:00",
+      "test_from": "2026-05-10 00:00:00+00:00",
+      "full_utc_days": 769,
+      "excluded_incomplete_or_invalid_days": 2
+    }
+  },
+  "quality": [
+    {
+      "asset": "BTC",
+      "rows": 221761,
+      "valid_returns": 221760,
+      "up": 110525,
+      "down": 110589,
+      "zero": 646,
+      "missing": 1,
+      "discontinuities": 0,
+      "first_date": "2024-09-01 00:05:00+00:00",
+      "last_date": "2026-10-11 00:05:00+00:00"
+    },
+    {
+      "asset": "ETH",
+      "rows": 221761,
+      "valid_returns": 221760,
+      "up": 111076,
+      "down": 110180,
+      "zero": 504,
+      "missing": 1,
+      "discontinuities": 0,
+      "first_date": "2024-09-01 00:05:00+00:00",
+      "last_date": "2026-10-11 00:05:00+00:00"
+    },
+    {
+      "asset": "SOL",
+      "rows": 221761,
+      "valid_returns": 221760,
+      "up": 108459,
+      "down": 108065,
+      "zero": 5236,
+      "missing": 1,
+      "discontinuities": 0,
+      "first_date": "2024-09-01 00:05:00+00:00",
+      "last_date": "2026-10-11 00:05:00+00:00"
+    },
+    {
+      "asset": "XRP",
+      "rows": 221761,
+      "valid_returns": 221760,
+      "up": 108045,
+      "down": 108715,
+      "zero": 5000,
+      "missing": 1,
+      "discontinuities": 0,
+      "first_date": "2024-09-01 00:05:00+00:00",
+      "last_date": "2026-10-11 00:05:00+00:00"
+    }
+  ],
+  "registered_models": [
+    "iid_3class",
+    "sign_3class",
+    "streak_3class",
+    "sign_vol_3class",
+    "additive_3class",
+    "streak_vol_matrix_3class"
+  ],
+  "train_volatility_bins": {
+    "BTC": {
+      "level_cut": [
+        -13.802258218435535,
+        -13.117983468576533
+      ],
+      "trend_cut": [
+        -0.8136335827343837,
+        -0.016017292546530993
+      ],
+      "fit_n": 132445
+    },
+    "ETH": {
+      "level_cut": [
+        -12.865895429581911,
+        -12.268630679827895
+      ],
+      "trend_cut": [
+        -0.7892031761976155,
+        -0.04273687802035519
+      ],
+      "fit_n": 132547
+    },
+    "SOL": {
+      "level_cut": [
+        -12.476980001803721,
+        -11.941817506123163
+      ],
+      "trend_cut": [
+        -0.662537598383627,
+        0.01280817879167934
+      ],
+      "fit_n": 130988
+    },
+    "XRP": {
+      "level_cut": [
+        -12.770225322734268,
+        -11.915423590246245
+      ],
+      "trend_cut": [
+        -0.7247216951841683,
+        -0.016813051758793114
+      ],
+      "fit_n": 130315
+    }
+  },
+  "model_fit_summary": {
+    "BTC": {
+      "n_train_scored": 132445,
+      "train_matrix_cells": 215,
+      "max_streak_length_fit": 18,
+      "max_streak_length_all": 18,
+      "unconditional_train_probabilities": [
+        0.49885425435930736,
+        0.0023594432468959166,
+        0.49878630239379673
+      ]
+    },
+    "ETH": {
+      "n_train_scored": 132547,
+      "train_matrix_cells": 202,
+      "max_streak_length_fit": 15,
+      "max_streak_length_all": 15,
+      "unconditional_train_probabilities": [
+        0.4959958053090001,
+        0.0016559976159669857,
+        0.5023481970750329
+      ]
+    },
+    "SOL": {
+      "n_train_scored": 130988,
+      "train_matrix_cells": 214,
+      "max_streak_length_fit": 16,
+      "max_streak_length_all": 16,
+      "unconditional_train_probabilities": [
+        0.49110424881383624,
+        0.013386569152489322,
+        0.49550918203367444
+      ]
+    },
+    "XRP": {
+      "n_train_scored": 130315,
+      "train_matrix_cells": 201,
+      "max_streak_length_fit": 13,
+      "max_streak_length_all": 14,
+      "unconditional_train_probabilities": [
+        0.48932790552232447,
+        0.017737585033361085,
+        0.49293450944431444
+      ]
+    }
+  },
+  "decision": {
+    "status": "HISTORICAL_EXPLORATORY",
+    "verdict": "NO_CONFIRMED_INCREMENTAL_VOLATILITY_CONDITIONING",
+    "primary_assets": [
+      {
+        "asset": "BTC",
+        "comparisons": [
+          {
+            "reference": "streak_3class",
+            "delta": -0.0018124996368256016,
+            "upper95": -0.0003445621018405965,
+            "passes": true
+          },
+          {
+            "reference": "sign_vol_3class",
+            "delta": 0.0006583015974011412,
+            "upper95": 0.0010345831624229542,
+            "passes": false
+          },
+          {
+            "reference": "additive_3class",
+            "delta": 0.00024781811577630333,
+            "upper95": 0.0008288905226304549,
+            "passes": false
+          }
+        ],
+        "passes_all": false
+      },
+      {
+        "asset": "ETH",
+        "comparisons": [
+          {
+            "reference": "streak_3class",
+            "delta": -0.0003477731222162227,
+            "upper95": 0.00015529238480546548,
+            "passes": false
+          },
+          {
+            "reference": "sign_vol_3class",
+            "delta": 0.0009654550868235602,
+            "upper95": 0.0014564749117103731,
+            "passes": false
+          },
+          {
+            "reference": "additive_3class",
+            "delta": 0.000620168991087896,
+            "upper95": 0.00102580981338443,
+            "passes": false
+          }
+        ],
+        "passes_all": false
+      }
+    ],
+    "AM_T_HAR_Blend_modified": false,
+    "prospective_confirmation": false,
+    "note": "Observed trailing 1h/24h RV is NOT an AM-T-HAR-Blend fitted forecast; TEST is historically reused."
+  }
+}
