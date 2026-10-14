@@ -1,0 +1,16 @@
+{
+  "status": "HISTORICAL_EXPLORATORY",
+  "n_test_days": 150,
+  "primary_horizon_min": 60,
+  "flags": {
+    "t_better_than_gaussian": true,
+    "constant_mix_better_than_gaussian": true,
+    "constant_mix_better_than_t": false,
+    "conditional_mix_better_than_constant": true,
+    "markov_better_than_conditional": false,
+    "markov_better_than_t": false
+  },
+  "strong_markov_candidate": false,
+  "not_prospective": true,
+  "interpretation": "Historical 2024-2026 data was previously examined. All positive flags require fresh prospective confirmation."
+}

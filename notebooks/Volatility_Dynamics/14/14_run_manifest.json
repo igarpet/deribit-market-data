@@ -1,0 +1,831 @@
+{
+  "module": "Volatility_Dynamics_14",
+  "version": "VD14-0.1.0",
+  "registration": {
+    "version": "VD14-0.1.0",
+    "horizons": [
+      5,
+      10,
+      15,
+      30,
+      60,
+      120,
+      240
+    ],
+    "primary_horizon_min": 60,
+    "bar_min": 5,
+    "fast_halflife_min": 30,
+    "slow_halflife_min": 240,
+    "train_fraction": 0.6,
+    "validation_fraction": 0.2,
+    "min_history_bars": 288,
+    "min_history_coverage": 0.8,
+    "student_df_grid": [
+      4.0,
+      6.0,
+      10.0,
+      20.0,
+      40.0
+    ],
+    "shock_scale_grid": [
+      3.0,
+      5.0,
+      8.0
+    ],
+    "tail_quantile": 0.95,
+    "historical_window_exclusive_end": "2026-09-19 00:00:00+00:00",
+    "historical_test_is_exploratory": true,
+    "note": "Fixed historical period was previously inspected in VD12/VD13; not fresh confirmation."
+  },
+  "source_dir": "D:\\MarketData\\Deribit\\history\\price_5m",
+  "assets": [
+    "AVAX",
+    "BTC",
+    "ETH",
+    "SOL",
+    "TRX",
+    "XRP"
+  ],
+  "excluded_assets": {
+    "HYPE": "insufficient history"
+  },
+  "earliest_date": "2024-09-01 00:05:00+00:00",
+  "latest_date": "2026-09-18 23:55:00+00:00",
+  "day_splits": {
+    "test": 150,
+    "train": 448,
+    "valid": 150
+  },
+  "bootstrap_draws": 1000,
+  "models": [
+    "M1_gaussian",
+    "M2_student_t",
+    "M3_constant_mix",
+    "M4_conditional_mix",
+    "AM_markov_lift"
+  ],
+  "parameter_fits": {
+    "markov_state": {
+      "AVAX": {
+        "mean": [
+          -0.4423216899507963,
+          -0.0007579020745492587
+        ],
+        "phi": [
+          0.9988499440193441,
+          0.9211087114350088
+        ],
+        "innovation_cov": [
+          [
+            0.001145596700807253,
+            0.007525185709776818
+          ],
+          [
+            0.007525185709776818,
+            0.04977944593855708
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "BTC": {
+        "mean": [
+          -0.32271074227665725,
+          -8.633650034423578e-05
+        ],
+        "phi": [
+          0.9994006585825235,
+          0.9366414130369449
+        ],
+        "innovation_cov": [
+          [
+            0.0009534122505232012,
+            0.006194890310922128
+          ],
+          [
+            0.006194890310922128,
+            0.04096825617918993
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "ETH": {
+        "mean": [
+          -0.30238985167414056,
+          -0.0001788466368806479
+        ],
+        "phi": [
+          0.9991273401714508,
+          0.9304008279746738
+        ],
+        "innovation_cov": [
+          [
+            0.000930725180372712,
+            0.0060797812787745115
+          ],
+          [
+            0.0060797812787745115,
+            0.0402137836084137
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "SOL": {
+        "mean": [
+          -0.3332954359317836,
+          -0.00020756908288563158
+        ],
+        "phi": [
+          0.9990192871185316,
+          0.9240045336440609
+        ],
+        "innovation_cov": [
+          [
+            0.0009199509268659386,
+            0.0060341801691023165
+          ],
+          [
+            0.0060341801691023165,
+            0.03991294319449972
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "TRX": {
+        "mean": [
+          -0.9533047663019568,
+          0.00017550581381568426
+        ],
+        "phi": [
+          0.9991618119122702,
+          0.9180447907637129
+        ],
+        "innovation_cov": [
+          [
+            0.0018632874998010657,
+            0.01225677330883201
+          ],
+          [
+            0.01225677330883201,
+            0.08105997804777637
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "XRP": {
+        "mean": [
+          -0.2685153163068013,
+          0.00029913723494248175
+        ],
+        "phi": [
+          0.9995588572777795,
+          0.934193097282082
+        ],
+        "innovation_cov": [
+          [
+            0.0009377861459483369,
+            0.0061077343011427246
+          ],
+          [
+            0.0061077343011427246,
+            0.040385773150524815
+          ]
+        ],
+        "transition_rows": 128734
+      }
+    },
+    "AM_fitted_5m_hazard": {
+      "ratio_5m": 3.0,
+      "p0_5m": 0.03112219464908499,
+      "models": {
+        "AVAX": {
+          "beta": [
+            -3.863500901828628,
+            0.010445950627476198,
+            -0.009858533849016903
+          ],
+          "center": [
+            -0.4423357934120319,
+            -0.0009496228781319789
+          ],
+          "std": [
+            0.7025465122908925,
+            0.5727756915557309
+          ],
+          "features": [
+            "slow",
+            "gap"
+          ],
+          "train_loss": -4.514657176612121,
+          "converged": true
+        },
+        "BTC": {
+          "beta": [
+            -3.145904753220504,
+            -0.0058954112691266556,
+            0.17018409807312831
+          ],
+          "center": [
+            -0.32272439396464225,
+            -0.000244850908303914
+          ],
+          "std": [
+            0.8923365178911384,
+            0.5777617608223152
+          ],
+          "features": [
+            "slow",
+            "gap"
+          ],
+          "train_loss": -5.371579539324139,
+          "converged": true
+        },
+        "ETH": {
+          "beta": [
+            -3.097163015852026,
+            0.05760082500872208,
+            0.23508961246125526
+          ],
+          "center": [
+            -0.3023897192960482,
+            -0.00019166172040816117
+          ],
+          "std": [
+            0.7307233244326415,
+            0.5470211957246823
+          ],
+          "features": [
+            "slow",
+            "gap"
+          ],
+          "train_loss": -4.913666557271773,
+          "converged": true
+        },
+        "SOL": {
+          "beta": [
+            -3.6132450560168587,
+            0.05284816054286885,
+            0.19464469228199452
+          ],
+          "center": [
+            -0.33331844804594357,
+            -0.00037946293835145194
+          ],
+          "std": [
+            0.6855820607186454,
+            0.5220003550551111
+          ],
+          "features": [
+            "slow",
+            "gap"
+          ],
+          "train_loss": -4.676305301861545,
+          "converged": true
+        },
+        "TRX": {
+          "beta": [
+            -3.3266007275049088,
+            -0.19964524650768828,
+            -0.18861416515678534
+          ],
+          "center": [
+            -0.953298775198849,
+            0.0002019681643783656
+          ],
+          "std": [
+            1.055818135720563,
+            0.7188266919638526
+          ],
+          "features": [
+            "slow",
+            "gap"
+          ],
+          "train_loss": -5.268896074369415,
+          "converged": true
+        },
+        "XRP": {
+          "beta": [
+            -3.6578380394583223,
+            0.037258903762919876,
+            0.12913349220361142
+          ],
+          "center": [
+            -0.2685474463081625,
+            6.0053744266912114e-05
+          ],
+          "std": [
+            1.031902259468912,
+            0.5634202160599016
+          ],
+          "features": [
+            "slow",
+            "gap"
+          ],
+          "train_loss": -4.731869390304361,
+          "converged": true
+        }
+      }
+    },
+    "fits": {
+      "5": {
+        "horizon_min": 5,
+        "student_df": 4.0,
+        "selected_shock_ratio": 3.0,
+        "M3_constant_probability": 0.03863071583071671,
+        "M4_phase_fit": {
+          "beta": [
+            -3.422473528036603,
+            -0.17281074142602645,
+            0.0058779721061950835,
+            -0.058038482739624676
+          ],
+          "center": [
+            -0.4370037879481456,
+            0.00037321797581040195,
+            0.0006690543164250042
+          ],
+          "std": [
+            0.8953629508315818,
+            0.5870323614450332,
+            0.4321820527495141
+          ],
+          "features": [
+            "slow",
+            "gap",
+            "slope15"
+          ],
+          "train_loss": -4.766226971741325,
+          "converged": true
+        },
+        "markov_variance_calibration": {
+          "AVAX": {
+            "net_variance_scale": 7.3748630253593846e-06,
+            "log_rv_offset": -14.429641346754195
+          },
+          "BTC": {
+            "net_variance_scale": 1.334544418543936e-06,
+            "log_rv_offset": -14.919480816187352
+          },
+          "ETH": {
+            "net_variance_scale": 3.3839610433082496e-06,
+            "log_rv_offset": -13.938566967260124
+          },
+          "SOL": {
+            "net_variance_scale": 5.378609580841552e-06,
+            "log_rv_offset": -13.565879980599659
+          },
+          "TRX": {
+            "net_variance_scale": 1.048053235661391e-06,
+            "log_rv_offset": -18.203851927566063
+          },
+          "XRP": {
+            "net_variance_scale": 4.239088671842949e-06,
+            "log_rv_offset": -13.860987261523693
+          }
+        },
+        "AM_shock_sd_ratio_for_horizon": 3.0,
+        "q95_train_by_asset": {
+          "AVAX": 0.005804913699368796,
+          "BTC": 0.002821105091144715,
+          "ETH": 0.0042367312919068595,
+          "SOL": 0.005172337607158582,
+          "TRX": 0.002528446353358693,
+          "XRP": 0.0057284966826428455
+        },
+        "train_origins": 772404,
+        "validation_origins": 259194,
+        "test_origins": 259194
+      },
+      "10": {
+        "horizon_min": 10,
+        "student_df": 6.0,
+        "selected_shock_ratio": 3.0,
+        "M3_constant_probability": 0.02921337422471974,
+        "M4_phase_fit": {
+          "beta": [
+            -3.4441249712758855,
+            0.0659729338346053,
+            0.030091211444764523,
+            0.022074749987143823
+          ],
+          "center": [
+            -0.4370382499955518,
+            0.00019825375153366677,
+            0.00037402981420508693
+          ],
+          "std": [
+            0.8953727392676856,
+            0.5870975468215398,
+            0.4326470231068768
+          ],
+          "features": [
+            "slow",
+            "gap",
+            "slope15"
+          ],
+          "train_loss": -4.611385466458081,
+          "converged": true
+        },
+        "markov_variance_calibration": {
+          "AVAX": {
+            "net_variance_scale": 7.431486911564901e-06,
+            "log_rv_offset": -12.481356574215676
+          },
+          "BTC": {
+            "net_variance_scale": 1.3315490862840534e-06,
+            "log_rv_offset": -14.164596701283052
+          },
+          "ETH": {
+            "net_variance_scale": 3.408734614211169e-06,
+            "log_rv_offset": -13.231391001442493
+          },
+          "SOL": {
+            "net_variance_scale": 5.391430054495129e-06,
+            "log_rv_offset": -12.694222723583223
+          },
+          "TRX": {
+            "net_variance_scale": 1.099697982105085e-06,
+            "log_rv_offset": -14.836760319505181
+          },
+          "XRP": {
+            "net_variance_scale": 4.230088551310271e-06,
+            "log_rv_offset": -12.917577553236686
+          }
+        },
+        "AM_shock_sd_ratio_for_horizon": 2.23606797749979,
+        "q95_train_by_asset": {
+          "AVAX": 0.008248214502946213,
+          "BTC": 0.003970723806879697,
+          "ETH": 0.006013481291159194,
+          "SOL": 0.007298179706913255,
+          "TRX": 0.0036710760758676742,
+          "XRP": 0.008127585892767228
+        },
+        "train_origins": 772398,
+        "validation_origins": 259188,
+        "test_origins": 259188
+      },
+      "15": {
+        "horizon_min": 15,
+        "student_df": 6.0,
+        "selected_shock_ratio": 3.0,
+        "M3_constant_probability": 0.04135080324063767,
+        "M4_phase_fit": {
+          "beta": [
+            -3.1929919486388494,
+            0.06154158786657991,
+            0.02247881560234183,
+            -0.016413697047586613
+          ],
+          "center": [
+            -0.43711887531586624,
+            -0.0004864717048755217,
+            -0.00035178862397320103
+          ],
+          "std": [
+            0.8954489564589891,
+            0.5877327607836966,
+            0.4320644894470755
+          ],
+          "features": [
+            "slow",
+            "gap",
+            "slope15"
+          ],
+          "train_loss": -4.427981165226692,
+          "converged": true
+        },
+        "markov_variance_calibration": {
+          "AVAX": {
+            "net_variance_scale": 7.414316354779675e-06,
+            "log_rv_offset": -12.139949174579646
+          },
+          "BTC": {
+            "net_variance_scale": 1.3224769051419015e-06,
+            "log_rv_offset": -13.951709083389941
+          },
+          "ETH": {
+            "net_variance_scale": 3.3971556513216057e-06,
+            "log_rv_offset": -13.026341625981193
+          },
+          "SOL": {
+            "net_variance_scale": 5.3695160989942496e-06,
+            "log_rv_offset": -12.490120656128742
+          },
+          "TRX": {
+            "net_variance_scale": 1.147303533871902e-06,
+            "log_rv_offset": -13.90176741835579
+          },
+          "XRP": {
+            "net_variance_scale": 4.233219098454523e-06,
+            "log_rv_offset": -12.698229392765702
+          }
+        },
+        "AM_shock_sd_ratio_for_horizon": 1.9148542155126762,
+        "q95_train_by_asset": {
+          "AVAX": 0.010058097029675432,
+          "BTC": 0.004844631640093225,
+          "ETH": 0.0073766139355770964,
+          "SOL": 0.008913076986125073,
+          "TRX": 0.004567260739204027,
+          "XRP": 0.009932560378862835
+        },
+        "train_origins": 772392,
+        "validation_origins": 259182,
+        "test_origins": 259182
+      },
+      "30": {
+        "horizon_min": 30,
+        "student_df": 4.0,
+        "selected_shock_ratio": 3.0,
+        "M3_constant_probability": 0.061128506245142905,
+        "M4_phase_fit": {
+          "beta": [
+            -2.747048580925392,
+            -0.03048506830528042,
+            0.0004129502849459343,
+            0.07061186247700482
+          ],
+          "center": [
+            -0.43704675746793686,
+            1.9504868331228713e-05,
+            0.0009720250414025183
+          ],
+          "std": [
+            0.8953285476012589,
+            0.5872334269249191,
+            0.43155437897130594
+          ],
+          "features": [
+            "slow",
+            "gap",
+            "slope15"
+          ],
+          "train_loss": -4.080495323779756,
+          "converged": true
+        },
+        "markov_variance_calibration": {
+          "AVAX": {
+            "net_variance_scale": 7.441534754351287e-06,
+            "log_rv_offset": -11.946449692790646
+          },
+          "BTC": {
+            "net_variance_scale": 1.3306171767611098e-06,
+            "log_rv_offset": -13.766202448906014
+          },
+          "ETH": {
+            "net_variance_scale": 3.423457205342896e-06,
+            "log_rv_offset": -12.841858041636042
+          },
+          "SOL": {
+            "net_variance_scale": 5.3636000490260635e-06,
+            "log_rv_offset": -12.314606225166012
+          },
+          "TRX": {
+            "net_variance_scale": 1.2409157323213314e-06,
+            "log_rv_offset": -13.405709450928644
+          },
+          "XRP": {
+            "net_variance_scale": 4.19377116363797e-06,
+            "log_rv_offset": -12.520713508847473
+          }
+        },
+        "AM_shock_sd_ratio_for_horizon": 1.5275252316519465,
+        "q95_train_by_asset": {
+          "AVAX": 0.014216143459859784,
+          "BTC": 0.006883513647505166,
+          "ETH": 0.010538909286451527,
+          "SOL": 0.01269872646660816,
+          "TRX": 0.006752890665789616,
+          "XRP": 0.013917559426935278
+        },
+        "train_origins": 772374,
+        "validation_origins": 259164,
+        "test_origins": 259164
+      },
+      "60": {
+        "horizon_min": 60,
+        "student_df": 4.0,
+        "selected_shock_ratio": 3.0,
+        "M3_constant_probability": 0.07513137832548229,
+        "M4_phase_fit": {
+          "beta": [
+            -2.543530871939857,
+            -0.05026199009628943,
+            -0.02084975263506681,
+            0.024749590576895117
+          ],
+          "center": [
+            -0.436992617103017,
+            0.0003695926852547387,
+            0.0007860145445001135
+          ],
+          "std": [
+            0.8953889873175861,
+            0.5868519138468788,
+            0.4313284655462613
+          ],
+          "features": [
+            "slow",
+            "gap",
+            "slope15"
+          ],
+          "train_loss": -3.7301724259777576,
+          "converged": true
+        },
+        "markov_variance_calibration": {
+          "AVAX": {
+            "net_variance_scale": 7.403901753947533e-06,
+            "log_rv_offset": -11.881422635602345
+          },
+          "BTC": {
+            "net_variance_scale": 1.3178039856666044e-06,
+            "log_rv_offset": -13.688359905814297
+          },
+          "ETH": {
+            "net_variance_scale": 3.426329589163943e-06,
+            "log_rv_offset": -12.75656385054558
+          },
+          "SOL": {
+            "net_variance_scale": 5.273077945153164e-06,
+            "log_rv_offset": -12.240688240442232
+          },
+          "TRX": {
+            "net_variance_scale": 1.3662144897535742e-06,
+            "log_rv_offset": -13.333017119505532
+          },
+          "XRP": {
+            "net_variance_scale": 4.122860031364755e-06,
+            "log_rv_offset": -12.44884151078141
+          }
+        },
+        "AM_shock_sd_ratio_for_horizon": 1.2909944487358056,
+        "q95_train_by_asset": {
+          "AVAX": 0.020045330310807376,
+          "BTC": 0.009762362919512005,
+          "ETH": 0.014940304752682265,
+          "SOL": 0.017732306453636833,
+          "TRX": 0.009863359751588058,
+          "XRP": 0.019413902807271424
+        },
+        "train_origins": 772338,
+        "validation_origins": 259128,
+        "test_origins": 259128
+      },
+      "120": {
+        "horizon_min": 120,
+        "student_df": 4.0,
+        "selected_shock_ratio": 3.0,
+        "M3_constant_probability": 0.07821803157182575,
+        "M4_phase_fit": {
+          "beta": [
+            -2.428653385889577,
+            -0.06003996058595963,
+            0.008939851432605969,
+            -0.013943527963295496
+          ],
+          "center": [
+            -0.43712835617755075,
+            -0.0009038444375901234,
+            -0.0010869751161173855
+          ],
+          "std": [
+            0.8954087061005017,
+            0.5867408395810181,
+            0.43135623611451573
+          ],
+          "features": [
+            "slow",
+            "gap",
+            "slope15"
+          ],
+          "train_loss": -3.3670971147049342,
+          "converged": true
+        },
+        "markov_variance_calibration": {
+          "AVAX": {
+            "net_variance_scale": 7.348313617412019e-06,
+            "log_rv_offset": -11.860356771719324
+          },
+          "BTC": {
+            "net_variance_scale": 1.2961375745312515e-06,
+            "log_rv_offset": -13.654812016451551
+          },
+          "ETH": {
+            "net_variance_scale": 3.4577496628725256e-06,
+            "log_rv_offset": -12.712129303114624
+          },
+          "SOL": {
+            "net_variance_scale": 5.172958120554649e-06,
+            "log_rv_offset": -12.208425953139546
+          },
+          "TRX": {
+            "net_variance_scale": 1.4390721535249347e-06,
+            "log_rv_offset": -13.330955600440328
+          },
+          "XRP": {
+            "net_variance_scale": 3.974149578647331e-06,
+            "log_rv_offset": -12.420148874644541
+          }
+        },
+        "AM_shock_sd_ratio_for_horizon": 1.1547005383792515,
+        "q95_train_by_asset": {
+          "AVAX": 0.028423576668768394,
+          "BTC": 0.014032660474728259,
+          "ETH": 0.021338993984098886,
+          "SOL": 0.02503018512068647,
+          "TRX": 0.014248815569578882,
+          "XRP": 0.02731625861136633
+        },
+        "train_origins": 772266,
+        "validation_origins": 259056,
+        "test_origins": 259056
+      },
+      "240": {
+        "horizon_min": 240,
+        "student_df": 4.0,
+        "selected_shock_ratio": 3.0,
+        "M3_constant_probability": 0.08220350955949843,
+        "M4_phase_fit": {
+          "beta": [
+            -2.44018616861146,
+            -0.08822408708093597,
+            0.019830801867880197,
+            0.009776045895131681
+          ],
+          "center": [
+            -0.4369246066878441,
+            -8.483413914395701e-05,
+            0.0007286804719824396
+          ],
+          "std": [
+            0.8954278680013767,
+            0.5867455657693473,
+            0.43102421525996515
+          ],
+          "features": [
+            "slow",
+            "gap",
+            "slope15"
+          ],
+          "train_loss": -2.9934394479350064,
+          "converged": true
+        },
+        "markov_variance_calibration": {
+          "AVAX": {
+            "net_variance_scale": 7.36836020574303e-06,
+            "log_rv_offset": -11.83940391174623
+          },
+          "BTC": {
+            "net_variance_scale": 1.3039663503054981e-06,
+            "log_rv_offset": -13.621691376390123
+          },
+          "ETH": {
+            "net_variance_scale": 3.5517090752633114e-06,
+            "log_rv_offset": -12.66991138409435
+          },
+          "SOL": {
+            "net_variance_scale": 5.191091697276106e-06,
+            "log_rv_offset": -12.178677242044179
+          },
+          "TRX": {
+            "net_variance_scale": 1.511434292521549e-06,
+            "log_rv_offset": -13.329517196586638
+          },
+          "XRP": {
+            "net_variance_scale": 3.918097625067914e-06,
+            "log_rv_offset": -12.391102892083254
+          }
+        },
+        "AM_shock_sd_ratio_for_horizon": 1.0801234497346435,
+        "q95_train_by_asset": {
+          "AVAX": 0.04078660969144329,
+          "BTC": 0.020174920305236047,
+          "ETH": 0.030645433951626687,
+          "SOL": 0.035493687875201727,
+          "TRX": 0.020397639591533633,
+          "XRP": 0.0385623841920275
+        },
+        "train_origins": 772122,
+        "validation_origins": 258912,
+        "test_origins": 258912
+      }
+    }
+  },
+  "decision": {
+    "status": "HISTORICAL_EXPLORATORY",
+    "n_test_days": 150,
+    "primary_horizon_min": 60,
+    "flags": {
+      "t_better_than_gaussian": true,
+      "constant_mix_better_than_gaussian": true,
+      "constant_mix_better_than_t": false,
+      "conditional_mix_better_than_constant": true,
+      "markov_better_than_conditional": false,
+      "markov_better_than_t": false
+    },
+    "strong_markov_candidate": false,
+    "not_prospective": true,
+    "interpretation": "Historical 2024-2026 data was previously examined. All positive flags require fresh prospective confirmation."
+  },
+  "scientific_caveat": "Observational Markov-proxy transitions and statistical tail mixtures; previous data exposure prevents prospective inference."
+}
