@@ -1,0 +1,68 @@
+{
+  "module": "Return_State_Discovery_01",
+  "version": "RSD01-0.1.0",
+  "research_status": "HISTORICAL_EXPLORATORY",
+  "assets": [
+    "BTC",
+    "ETH"
+  ],
+  "original_VD18_test_dates": 150,
+  "HSMM_fit_before": "2026-07-21 00:00:00+00:00",
+  "HSMM_evaluation_from": "2026-08-20 00:00:00+00:00",
+  "baseline": {
+    "har_family": "HAR_4",
+    "blend_weight": 0.8395717427385103,
+    "base_scale": 1.4756492057728403,
+    "base_shape": 1.826083232241286,
+    "historical_test_origin_count": 14398
+  },
+  "features": [
+    "return_surprise",
+    "signed_path_efficiency",
+    "within_block_dependence"
+  ],
+  "spec": {
+    "kcap": 12,
+    "dmax": 96,
+    "alpha": 3.0,
+    "gamma": 0.7,
+    "duration_shape": 2,
+    "duration_a": 2.0,
+    "duration_b": 8.0,
+    "df": 6.0,
+    "n_iter": 140,
+    "burn": 80,
+    "thin": 4,
+    "seed": 1801,
+    "beta_proposal_concentration": 250.0
+  },
+  "warnings": [
+    {
+      "asset": "BTC",
+      "real_gain_vs_recent_t": -0.00410432714736997,
+      "max_null_gain": 0.03240490123345804,
+      "Kcap_warning": false,
+      "low_beta_MH_accept": false,
+      "chain_K_median_disagreement": 1.0,
+      "duration_cap_rate": 0.0,
+      "exploratory_candidate": false
+    },
+    {
+      "asset": "ETH",
+      "real_gain_vs_recent_t": -0.01607808629681982,
+      "max_null_gain": 0.0317461671350786,
+      "Kcap_warning": false,
+      "low_beta_MH_accept": false,
+      "chain_K_median_disagreement": 0.0,
+      "duration_cap_rate": 0.0,
+      "exploratory_candidate": false
+    }
+  ],
+  "notes": [
+    "Posterior occupied K is not confirmed number of economic regimes.",
+    "Prior sensitivity and future uncensored-duration inference remain required.",
+    "Null controls condition on empirical forecast variance; they are not a fully refitted HAR no-regime null.",
+    "State predictions are causal; all constructed path features are known only after block end.",
+    "No new options signals, returns trading edge, or independent holdout proof."
+  ]
+}

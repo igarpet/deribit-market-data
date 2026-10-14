@@ -1,0 +1,5 @@
+asset,seed,null_K_median,null_K_histogram,null_ret_nll_gain_HSMM_vs_single_t,null_prob_at_Kcap,null_beta_mh_acceptance
+BTC,311,4,"{""4"": 9, ""5"": 1}",0.0111210119,0,0.72
+BTC,719,4,"{""4"": 9, ""5"": 1}",0.0324049012,0,0.7
+ETH,311,4,"{""4"": 10}",0.0144432075,0,0.74
+ETH,719,4,"{""4"": 9, ""5"": 1}",0.0317461671,0,0.66
