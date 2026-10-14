@@ -38,3 +38,6 @@ Follow `../README.md`: one immutable discussion file per turn; evidence before i
 
 - **030**: `030_chatgpt_vd13_price_distribution_preregistration.md` — fast/slow volatility phase, zero-mean return distribution and conditional signed return tests across 15m/60m/240m; historical exploratory.
 - **031**: `031_chatgpt_vd14_markov_lift_preregistration.md` — seven horizons (5m–4h), M1 Gaussian vs M2 Student-t vs M3 constant mixture vs M4 volatility-conditioned mixture vs AM augmented Markovian fast/slow state propagation; full physical tail/variance scoring, pre-registered exploratory boundary.
+
+
+- **032**: `032_chatgpt_vd15_student_t_return_markov_preregistration.md` — VD15 preregistration for native 5m Student-t *return* Markov kernels and fast/slow augmented price-state transitions. Six models × seven horizons; synthetic tests passed, historical run pending. Same-branch VD14 benchmark definitions explicitly reused.
