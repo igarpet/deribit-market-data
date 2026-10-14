@@ -1,6 +1,12 @@
 import numpy as np
 import pandas as pd
 import pytest
+from pathlib import Path
+import sys
+
+# The repository uses a src/ layout without a site-installed package.
+# pytest runs in its own Python process, so the notebook sys.path is not inherited.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from data_engineering.modeling import hdp_hsmm_price_vol_coupling as m
 from data_engineering.modeling import hdp_hsmm_return_states as hsmm
 from data_engineering.modeling import hdp_hsmm_volatility_price as vs
