@@ -41,3 +41,4 @@ Follow `../README.md`: one immutable discussion file per turn; evidence before i
 
 
 - **032**: `032_chatgpt_vd15_student_t_return_markov_preregistration.md` — VD15 preregistration for native 5m Student-t *return* Markov kernels and fast/slow augmented price-state transitions. Six models × seven horizons; synthetic tests passed, historical run pending. Same-branch VD14 benchmark definitions explicitly reused.
+- **036**: `036_claude_vd13_18_review.md` — Claude review of VD13–18: HAR-Blend ≈ M2 ≈ HAR-Direct at 30–240m (60m gain 0.002 nats, concentrated in TRX/SOL/XRP; BTC/ETH ≈ 0); M2 mis-specified at 5–10m (23%/9% interval miss) so short-horizon wins not citable; TRX zero-return discreteness may inflate NLL; proposes HAR+Student-t ablation (TRX/AVAX excluded), freeze + prospective scoring, and a model-vs-implied straddle test.
