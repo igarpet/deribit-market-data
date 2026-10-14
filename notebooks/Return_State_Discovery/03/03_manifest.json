@@ -1,0 +1,91 @@
+{
+  "module": "Return_State_Discovery_03",
+  "version": "RSD03-0.1.0",
+  "registration": {
+    "version": "RSD03-0.1.0",
+    "primary_assets": [
+      "BTC",
+      "ETH"
+    ],
+    "secondary_assets": [
+      "SOL",
+      "XRP"
+    ],
+    "horizon_min": 30,
+    "kcap": 16,
+    "dmax": 96,
+    "seeds": [
+      1801,
+      2909
+    ],
+    "n_iter": 160,
+    "burn": 80,
+    "thin": 4,
+    "posterior_draws_per_chain": 4,
+    "boot": 1000,
+    "sign_permutations": 100,
+    "null_seeds": [
+      311,
+      719
+    ],
+    "status": "HISTORICAL_EXPLORATORY"
+  },
+  "assets": [
+    "BTC",
+    "ETH"
+  ],
+  "original_VD18_TEST_days": 150,
+  "hsmm_fit_before": "2026-07-21 00:00:00+00:00",
+  "evaluation_from": "2026-08-20 00:00:00+00:00",
+  "baseline": {
+    "har_family": "HAR_4",
+    "blend_weight": 0.8395717427385103,
+    "base_scale": 1.4756492057728403,
+    "base_shape": 1.826083232241286,
+    "historical_test_origin_count": 14398
+  },
+  "har_family_for_logRV": "HAR_4",
+  "har_logRV_scales_training_only": true,
+  "rv_floors_train_only": {
+    "BTC": 3.8445727259596426e-09,
+    "ETH": 6.042432556461763e-09
+  },
+  "decision": {
+    "status": "HISTORICAL_EXPLORATORY",
+    "verdict": "NO_INCREMENTAL_RETURN_STATE",
+    "prospective_confirmation": false,
+    "options_trade_approved": false,
+    "notes": [
+      "Occupied HDP state count is not proof of economic regimes.",
+      "Joint-feature likelihood and signed-return likelihood have DIFFERENT dimensions.",
+      "Historical VD18 test reused; no pristine independent holdout.",
+      "Conditional Student-t null does not recursively refit HAR.",
+      "Prior/convergence sensitivity and genuine prospective testing remain required."
+    ]
+  },
+  "checks": [
+    {
+      "asset": "BTC",
+      "HDP_minus_cont_return_NLL": 0.00690670066881992,
+      "HDP_minus_cont_upper_CI": 0.013181206295730934,
+      "HDP_minus_VD18_return_NLL": 0.0029756794058543616,
+      "HDP_minus_VD18_upper_CI": 0.012355003014601719,
+      "HDP_minus_static_JOINT_NLL": 0.0007643324711444943,
+      "HDP_minus_static_joint_upper_CI": 0.011492860940967405,
+      "chain_or_truncation_warning": false,
+      "historical_return_candidate": false
+    },
+    {
+      "asset": "ETH",
+      "HDP_minus_cont_return_NLL": 0.015598908021670684,
+      "HDP_minus_cont_upper_CI": 0.024347440066886918,
+      "HDP_minus_VD18_return_NLL": 0.017130117834058423,
+      "HDP_minus_VD18_upper_CI": 0.034607845221711606,
+      "HDP_minus_static_JOINT_NLL": 0.003578504466829213,
+      "HDP_minus_static_joint_upper_CI": 0.013827224352373466,
+      "chain_or_truncation_warning": true,
+      "historical_return_candidate": false
+    }
+  ],
+  "note": "Ex ante terminal-return variance and HAR log-RV scale are different. Raw returns / posterior paths are NOT saved."
+}

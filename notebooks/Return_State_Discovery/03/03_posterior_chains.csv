@@ -1,0 +1,5 @@
+asset,chain,n_draws,K_occupied_median,K_occupied_05_95,at_Kcap_probability,at_duration_cap_mean,beta_mh_acceptance,warning,K_histogram
+BTC,1,20,6,"[6.0, 6.050000000000001]",0,0,0.71875,NONE,"{""6"": 19, ""7"": 1}"
+BTC,2,20,6,"[6.0, 7.0]",0,0,0.58125,NONE,"{""6"": 13, ""7"": 7}"
+ETH,1,20,5,"[5.0, 6.050000000000001]",0,0,0.6875,NONE,"{""5"": 15, ""6"": 4, ""7"": 1}"
+ETH,2,20,7,"[7.0, 8.0]",0,0,0.6125,NONE,"{""7"": 11, ""8"": 9}"

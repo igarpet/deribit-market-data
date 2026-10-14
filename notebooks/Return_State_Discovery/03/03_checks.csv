@@ -1,0 +1,3 @@
+asset,HDP_minus_cont_return_NLL,HDP_minus_cont_upper_CI,HDP_minus_VD18_return_NLL,HDP_minus_VD18_upper_CI,HDP_minus_static_JOINT_NLL,HDP_minus_static_joint_upper_CI,chain_or_truncation_warning,historical_return_candidate
+BTC,0.006906700669,0.0131812063,0.002975679406,0.01235500301,0.0007643324711,0.01149286094,False,False
+ETH,0.01559890802,0.02434744007,0.01713011783,0.03460784522,0.003578504467,0.01382722435,True,False

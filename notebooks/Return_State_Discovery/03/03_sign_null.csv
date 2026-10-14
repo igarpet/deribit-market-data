@@ -1,0 +1,3 @@
+asset,actual_HDP_minus_cont_Brier,null_5pct,null_95pct,null_fraction_le_actual,n_permutations
+BTC,0.0002484668412,-0.000859164116,0.0002731851271,0.94,100
+ETH,0.001117819268,-0.0009057205589,0.0005791524603,1,100

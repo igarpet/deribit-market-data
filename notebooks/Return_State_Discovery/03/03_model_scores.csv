@@ -1,0 +1,3 @@
+asset,eval_blocks,eval_days,AM_T_HAR_Blend_nll,HDP_joint_state_nll,HDP_scale_only_nll,order_ablated_state_nll,continuous_coupling_t_nll,recent_t_nll,HDP_sign_brier,continuous_sign_brier,HDP_joint_observation_nll,order_ablated_joint_nll,single_joint_t_nll
+BTC,1439,30,-4.609073009,-4.606059723,-4.606103246,-4.605955451,-4.612965452,-4.612567786,0.2501019401,0.2498534733,2.870942443,2.870179383,3.016619472
+ETH,1439,30,-4.337505443,-4.320365504,-4.320418223,-4.320217314,-4.335974438,-4.333722051,0.2504991295,0.2493813102,2.962125865,2.95859654,3.111314795

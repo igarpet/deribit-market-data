@@ -1,0 +1,17 @@
+a,b,delta,ci025,ci975,days,asset
+HDP_joint_state_nll,continuous_coupling_t_nll,0.006906700669,-0.0004349773582,0.0131812063,30,BTC
+HDP_joint_state_nll,AM_T_HAR_Blend_nll,0.002975679406,-0.00649662534,0.01235500301,30,BTC
+HDP_joint_state_nll,recent_t_nll,0.006506119118,-7.306779216e-05,0.01271300418,30,BTC
+HDP_joint_state_nll,HDP_scale_only_nll,4.243245146e-05,-0.0001682399148,0.000252037898,30,BTC
+HDP_joint_state_nll,order_ablated_state_nll,-0.0001055033103,-0.0004015230692,0.0001554090013,30,BTC
+HDP_joint_observation_nll,order_ablated_joint_nll,0.0007643324711,-0.01174982163,0.01149286094,30,BTC
+HDP_joint_observation_nll,single_joint_t_nll,-0.1456503406,-0.1720315132,-0.1224737189,30,BTC
+HDP_sign_brier,continuous_sign_brier,0.0002474411421,-0.0002307261997,0.0006932964611,30,BTC
+HDP_joint_state_nll,continuous_coupling_t_nll,0.01559890802,0.007592944016,0.02434744007,30,ETH
+HDP_joint_state_nll,AM_T_HAR_Blend_nll,0.01713011783,-0.0002505495416,0.03460784522,30,ETH
+HDP_joint_state_nll,recent_t_nll,0.01334806174,0.003712358833,0.02274960195,30,ETH
+HDP_joint_state_nll,HDP_scale_only_nll,5.240774023e-05,-1.963572007e-05,0.0001217446618,30,ETH
+HDP_joint_state_nll,order_ablated_state_nll,-0.0001480395519,-0.0002971419175,2.345056681e-05,30,ETH
+HDP_joint_observation_nll,order_ablated_joint_nll,0.003578504467,-0.008409222585,0.01382722435,30,ETH
+HDP_joint_observation_nll,single_joint_t_nll,-0.1490751382,-0.1789859198,-0.1222388396,30,ETH
+HDP_sign_brier,continuous_sign_brier,0.001113571079,0.0001431061339,0.002047835306,30,ETH

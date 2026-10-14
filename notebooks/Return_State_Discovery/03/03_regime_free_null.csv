@@ -1,0 +1,5 @@
+asset,null_seed,null_median_K,K_histogram,at_Kcap,warning
+BTC,311,5,"{""5"": 6, ""6"": 4}",0,NONE
+BTC,719,5,"{""5"": 8, ""6"": 2}",0,NONE
+ETH,311,4,"{""4"": 9, ""5"": 1}",0,NONE
+ETH,719,6,"{""6"": 10}",0,NONE

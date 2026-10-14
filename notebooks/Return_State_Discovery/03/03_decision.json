@@ -1,0 +1,13 @@
+{
+  "status": "HISTORICAL_EXPLORATORY",
+  "verdict": "NO_INCREMENTAL_RETURN_STATE",
+  "prospective_confirmation": false,
+  "options_trade_approved": false,
+  "notes": [
+    "Occupied HDP state count is not proof of economic regimes.",
+    "Joint-feature likelihood and signed-return likelihood have DIFFERENT dimensions.",
+    "Historical VD18 test reused; no pristine independent holdout.",
+    "Conditional Student-t null does not recursively refit HAR.",
+    "Prior/convergence sensitivity and genuine prospective testing remain required."
+  ]
+}
