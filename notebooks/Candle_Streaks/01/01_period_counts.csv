@@ -1,0 +1,9 @@
+period,n_eval,asset
+valid,44101,BTC
+test,43978,BTC
+valid,44089,ETH
+test,44054,ETH
+valid,41255,SOL
+test,40687,SOL
+valid,42232,XRP
+test,41510,XRP

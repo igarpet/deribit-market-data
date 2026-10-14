@@ -1,0 +1,17 @@
+asset,metric,tail_min,observed,null_05,null_median,null_95,null_fraction_gte_observed,permutations
+BTC,max_run,8,18,16,18,21.1,0.54,100
+BTC,completed_or_censored_runs_ge_tail,8,638,798.95,844,894.15,1,100
+BTC,up_runs_ge_tail,8,321,395.95,424,457,1,100
+BTC,down_runs_ge_tail,8,317,396.95,424,451.05,1,100
+ETH,max_run,8,15,16,18,21.05,1,100
+ETH,completed_or_censored_runs_ge_tail,8,531,799.75,839,893,1,100
+ETH,up_runs_ge_tail,8,261,399.75,433,463.3,1,100
+ETH,down_runs_ge_tail,8,270,379,411,439.05,1,100
+SOL,max_run,8,16,15,17,21,0.9,100
+SOL,completed_or_censored_runs_ge_tail,8,515,702,741.5,785.25,1,100
+SOL,up_runs_ge_tail,8,256,343,372.5,404.05,1,100
+SOL,down_runs_ge_tail,8,259,336.95,371,395.1,1,100
+XRP,max_run,8,14,16,17,20.05,1,100
+XRP,completed_or_censored_runs_ge_tail,8,485,702.75,742,783,1,100
+XRP,up_runs_ge_tail,8,226,335,361,394.05,1,100
+XRP,down_runs_ge_tail,8,259,348.95,380.5,412.15,1,100

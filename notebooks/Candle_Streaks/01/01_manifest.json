@@ -1,0 +1,122 @@
+{
+  "module": "Candle_Streaks_01",
+  "specification": {
+    "version": "CS01-0.1.0",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "cutoff_utc": "2026-10-14T00:00:00Z",
+    "train_fraction": 0.6,
+    "valid_fraction": 0.2,
+    "length_prior": 40.0,
+    "logistic_l2": 0.015,
+    "bootstrap_reps": 1000,
+    "permutation_reps": 100,
+    "seed": 2601,
+    "status": "HISTORICAL_EXPLORATORY"
+  },
+  "source": "Binance spot five-minute close-to-close returns via VD14 load_returns",
+  "excluded": {},
+  "date_splits": {
+    "train_before": "2025-12-07 00:00:00+00:00",
+    "valid_before": "2026-05-10 00:00:00+00:00",
+    "n_dates": 771
+  },
+  "asset_span": [
+    {
+      "asset": "BTC",
+      "rows": 221761,
+      "valid_returns": 221760,
+      "up": 110525,
+      "down": 110589,
+      "zero": 646,
+      "missing": 1,
+      "discontinuities": 0,
+      "first_date": "2024-09-01 00:05:00+00:00",
+      "last_date": "2026-10-11 00:05:00+00:00"
+    },
+    {
+      "asset": "ETH",
+      "rows": 221761,
+      "valid_returns": 221760,
+      "up": 111076,
+      "down": 110180,
+      "zero": 504,
+      "missing": 1,
+      "discontinuities": 0,
+      "first_date": "2024-09-01 00:05:00+00:00",
+      "last_date": "2026-10-11 00:05:00+00:00"
+    },
+    {
+      "asset": "SOL",
+      "rows": 221761,
+      "valid_returns": 221760,
+      "up": 108459,
+      "down": 108065,
+      "zero": 5236,
+      "missing": 1,
+      "discontinuities": 0,
+      "first_date": "2024-09-01 00:05:00+00:00",
+      "last_date": "2026-10-11 00:05:00+00:00"
+    },
+    {
+      "asset": "XRP",
+      "rows": 221761,
+      "valid_returns": 221760,
+      "up": 108045,
+      "down": 108715,
+      "zero": 5000,
+      "missing": 1,
+      "discontinuities": 0,
+      "first_date": "2024-09-01 00:05:00+00:00",
+      "last_date": "2026-10-11 00:05:00+00:00"
+    }
+  ],
+  "verdict": "NO_CONFIRMED_INCREMENTAL_STREAK_SIGNAL",
+  "decisions": [
+    {
+      "asset": "BTC",
+      "candidate_models": [
+        {
+          "model": "streak_exact_shrunk",
+          "beats_both_benchmarks": false,
+          "upper95_v_markov": 0.0006900319314441971,
+          "upper95_v_iid": 0.0006637760156682934
+        },
+        {
+          "model": "streak_log_duration",
+          "beats_both_benchmarks": false,
+          "upper95_v_markov": 0.0002614610945519188,
+          "upper95_v_iid": 0.00023194328852201826
+        }
+      ]
+    },
+    {
+      "asset": "ETH",
+      "candidate_models": [
+        {
+          "model": "streak_exact_shrunk",
+          "beats_both_benchmarks": false,
+          "upper95_v_markov": 0.0009938207619606147,
+          "upper95_v_iid": 0.0008790984916827537
+        },
+        {
+          "model": "streak_log_duration",
+          "beats_both_benchmarks": false,
+          "upper95_v_markov": 0.0005385082253415338,
+          "upper95_v_iid": 0.00042724468731611756
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "All observed streak lengths retained; no fixed number of candles per sample.",
+    "Zero returns break runs; binary forecast conditional on next nonzero.",
+    "Gap/file-end right censor, not reversed streaks.",
+    "All models trained on earlier full UTC dates and never refit on evaluation.",
+    "Historical exploratory only; no AM-T-HAR-Blend changes or options trading edge."
+  ]
+}
