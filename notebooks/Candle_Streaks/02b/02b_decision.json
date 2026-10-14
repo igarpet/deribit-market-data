@@ -1,0 +1,99 @@
+{
+  "verdict": "NO_CONFIRMED_BINARY_VOLATILITY_GAIN",
+  "volatility_binary_candidate": false,
+  "full_matrix_binary_candidate": false,
+  "primary_assets": [
+    {
+      "asset": "BTC",
+      "volatility_adds_binary_directional_information": false,
+      "full_matrix_adds_beyond_simple_models": false,
+      "volatility_checks": [
+        {
+          "reference": "sign_binary",
+          "delta": 3.406843988667508e-05,
+          "ci025": -0.00010832046909096916,
+          "ci975": 0.00016980042823968228,
+          "passes": false
+        },
+        {
+          "reference": "iid_binary",
+          "delta": 8.352001158811214e-06,
+          "ci025": -0.00013652040120729715,
+          "ci975": 0.000146518526834359,
+          "passes": false
+        }
+      ],
+      "matrix_checks": [
+        {
+          "reference": "streak_binary",
+          "delta": 0.00012721477929392047,
+          "ci025": -0.00011079629363951173,
+          "ci975": 0.0003696524925259876,
+          "passes": false
+        },
+        {
+          "reference": "sign_vol_binary",
+          "delta": 0.0004926171220876953,
+          "ci025": 0.00018929538222588912,
+          "ci975": 0.0008225427893292055,
+          "passes": false
+        },
+        {
+          "reference": "additive_binary",
+          "delta": 0.0004666590858142387,
+          "ci025": 0.0002553026544785356,
+          "ci975": 0.0006770672454247334,
+          "passes": false
+        }
+      ]
+    },
+    {
+      "asset": "ETH",
+      "volatility_adds_binary_directional_information": false,
+      "full_matrix_adds_beyond_simple_models": false,
+      "volatility_checks": [
+        {
+          "reference": "sign_binary",
+          "delta": 2.840907773769199e-06,
+          "ci025": -9.430161732627813e-05,
+          "ci975": 9.805050919309148e-05,
+          "passes": false
+        },
+        {
+          "reference": "iid_binary",
+          "delta": -0.0003468398311127197,
+          "ci025": -0.0004972977801230553,
+          "ci975": -0.0002042227493094142,
+          "passes": true
+        }
+      ],
+      "matrix_checks": [
+        {
+          "reference": "streak_binary",
+          "delta": 0.000281984691795873,
+          "ci025": 6.376486914812418e-05,
+          "ci975": 0.0005035850346744044,
+          "passes": false
+        },
+        {
+          "reference": "sign_vol_binary",
+          "delta": 0.0007473210779279469,
+          "ci025": 0.0003372244852212031,
+          "ci975": 0.0011581917796535835,
+          "passes": false
+        },
+        {
+          "reference": "additive_binary",
+          "delta": 0.0007215528042811249,
+          "ci025": 0.00045686533182642396,
+          "ci975": 0.0009750365310041258,
+          "passes": false
+        }
+      ]
+    }
+  ],
+  "status": "HISTORICAL_EXPLORATORY",
+  "prospective_confirmation": false,
+  "actionable_unconditional_next_up_probability": false,
+  "AM_T_HAR_Blend_modified": false
+}

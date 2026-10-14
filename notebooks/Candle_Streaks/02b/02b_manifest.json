@@ -1,0 +1,411 @@
+{
+  "module": "Candle_Streaks_02b",
+  "registration": {
+    "version": "CS02b-0.1.0",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "cutoff_utc": "2026-10-14T00:00:00Z",
+    "train_fraction": 0.6,
+    "valid_fraction": 0.2,
+    "fast_bars": 12,
+    "slow_bars": 288,
+    "shrink_sign": 20.0,
+    "shrink_streak": 80.0,
+    "shrink_sign_vol": 100.0,
+    "shrink_joint": 125.0,
+    "boot": 1000,
+    "permutation_reps": 100,
+    "seed": 2603,
+    "status": "HISTORICAL_EXPLORATORY"
+  },
+  "source": "Binance five-minute close-to-close returns via existing VD14 loader",
+  "actual_source_last_timestamp": "2026-10-11 00:05:00+00:00",
+  "excluded": {},
+  "quality": [
+    {
+      "asset": "BTC",
+      "rows": 221761,
+      "valid_returns": 221760,
+      "up": 110525,
+      "down": 110589,
+      "zero": 646,
+      "missing": 1,
+      "discontinuities": 0,
+      "first_date": "2024-09-01 00:05:00+00:00",
+      "last_date": "2026-10-11 00:05:00+00:00"
+    },
+    {
+      "asset": "ETH",
+      "rows": 221761,
+      "valid_returns": 221760,
+      "up": 111076,
+      "down": 110180,
+      "zero": 504,
+      "missing": 1,
+      "discontinuities": 0,
+      "first_date": "2024-09-01 00:05:00+00:00",
+      "last_date": "2026-10-11 00:05:00+00:00"
+    },
+    {
+      "asset": "SOL",
+      "rows": 221761,
+      "valid_returns": 221760,
+      "up": 108459,
+      "down": 108065,
+      "zero": 5236,
+      "missing": 1,
+      "discontinuities": 0,
+      "first_date": "2024-09-01 00:05:00+00:00",
+      "last_date": "2026-10-11 00:05:00+00:00"
+    },
+    {
+      "asset": "XRP",
+      "rows": 221761,
+      "valid_returns": 221760,
+      "up": 108045,
+      "down": 108715,
+      "zero": 5000,
+      "missing": 1,
+      "discontinuities": 0,
+      "first_date": "2024-09-01 00:05:00+00:00",
+      "last_date": "2026-10-11 00:05:00+00:00"
+    }
+  ],
+  "complete_day_splits": {
+    "BTC": {
+      "fit_before": "2025-12-07 00:00:00+00:00",
+      "test_from": "2026-05-10 00:00:00+00:00",
+      "full_utc_days": 769,
+      "excluded_incomplete_or_invalid_days": 2
+    },
+    "ETH": {
+      "fit_before": "2025-12-07 00:00:00+00:00",
+      "test_from": "2026-05-10 00:00:00+00:00",
+      "full_utc_days": 769,
+      "excluded_incomplete_or_invalid_days": 2
+    },
+    "SOL": {
+      "fit_before": "2025-12-07 00:00:00+00:00",
+      "test_from": "2026-05-10 00:00:00+00:00",
+      "full_utc_days": 769,
+      "excluded_incomplete_or_invalid_days": 2
+    },
+    "XRP": {
+      "fit_before": "2025-12-07 00:00:00+00:00",
+      "test_from": "2026-05-10 00:00:00+00:00",
+      "full_utc_days": 769,
+      "excluded_incomplete_or_invalid_days": 2
+    }
+  },
+  "eligibility": [
+    {
+      "asset": "BTC",
+      "period": "test",
+      "observed_current_nonzero": 44158,
+      "scorable_threeclass": 44157,
+      "excluded_next_zero": 181,
+      "binary_next_nonzero_events": 43976,
+      "complete_utc_days": 154
+    },
+    {
+      "asset": "BTC",
+      "period": "train",
+      "observed_current_nonzero": 132446,
+      "scorable_threeclass": 132445,
+      "excluded_next_zero": 312,
+      "binary_next_nonzero_events": 132133,
+      "complete_utc_days": 461
+    },
+    {
+      "asset": "BTC",
+      "period": "valid",
+      "observed_current_nonzero": 44221,
+      "scorable_threeclass": 44220,
+      "excluded_next_zero": 119,
+      "binary_next_nonzero_events": 44101,
+      "complete_utc_days": 154
+    },
+    {
+      "asset": "ETH",
+      "period": "test",
+      "observed_current_nonzero": 44200,
+      "scorable_threeclass": 44199,
+      "excluded_next_zero": 147,
+      "binary_next_nonzero_events": 44052,
+      "complete_utc_days": 154
+    },
+    {
+      "asset": "ETH",
+      "period": "train",
+      "observed_current_nonzero": 132548,
+      "scorable_threeclass": 132547,
+      "excluded_next_zero": 219,
+      "binary_next_nonzero_events": 132328,
+      "complete_utc_days": 461
+    },
+    {
+      "asset": "ETH",
+      "period": "valid",
+      "observed_current_nonzero": 44220,
+      "scorable_threeclass": 44219,
+      "excluded_next_zero": 130,
+      "binary_next_nonzero_events": 44089,
+      "complete_utc_days": 154
+    },
+    {
+      "asset": "SOL",
+      "period": "test",
+      "observed_current_nonzero": 42478,
+      "scorable_threeclass": 42477,
+      "excluded_next_zero": 1790,
+      "binary_next_nonzero_events": 40687,
+      "complete_utc_days": 154
+    },
+    {
+      "asset": "SOL",
+      "period": "train",
+      "observed_current_nonzero": 130989,
+      "scorable_threeclass": 130988,
+      "excluded_next_zero": 1753,
+      "binary_next_nonzero_events": 129235,
+      "complete_utc_days": 461
+    },
+    {
+      "asset": "SOL",
+      "period": "valid",
+      "observed_current_nonzero": 42773,
+      "scorable_threeclass": 42772,
+      "excluded_next_zero": 1517,
+      "binary_next_nonzero_events": 41255,
+      "complete_utc_days": 154
+    },
+    {
+      "asset": "XRP",
+      "period": "test",
+      "observed_current_nonzero": 42899,
+      "scorable_threeclass": 42898,
+      "excluded_next_zero": 1390,
+      "binary_next_nonzero_events": 41508,
+      "complete_utc_days": 154
+    },
+    {
+      "asset": "XRP",
+      "period": "train",
+      "observed_current_nonzero": 130316,
+      "scorable_threeclass": 130315,
+      "excluded_next_zero": 2311,
+      "binary_next_nonzero_events": 128004,
+      "complete_utc_days": 461
+    },
+    {
+      "asset": "XRP",
+      "period": "valid",
+      "observed_current_nonzero": 43279,
+      "scorable_threeclass": 43278,
+      "excluded_next_zero": 1046,
+      "binary_next_nonzero_events": 42232,
+      "complete_utc_days": 154
+    }
+  ],
+  "train_fitted_volatility_bins": {
+    "BTC": {
+      "level_cut": [
+        -13.802258218435535,
+        -13.117983468576533
+      ],
+      "trend_cut": [
+        -0.8136335827343837,
+        -0.016017292546530993
+      ],
+      "fit_n": 132445
+    },
+    "ETH": {
+      "level_cut": [
+        -12.865895429581911,
+        -12.268630679827895
+      ],
+      "trend_cut": [
+        -0.7892031761976155,
+        -0.04273687802035519
+      ],
+      "fit_n": 132547
+    },
+    "SOL": {
+      "level_cut": [
+        -12.476980001803721,
+        -11.941817506123163
+      ],
+      "trend_cut": [
+        -0.662537598383627,
+        0.01280817879167934
+      ],
+      "fit_n": 130988
+    },
+    "XRP": {
+      "level_cut": [
+        -12.770225322734268,
+        -11.915423590246245
+      ],
+      "trend_cut": [
+        -0.7247216951841683,
+        -0.016813051758793114
+      ],
+      "fit_n": 130315
+    }
+  },
+  "model_fit": {
+    "BTC": {
+      "binary_train_n": 132133,
+      "cs02_train_n": 132445,
+      "fitted_cells": 215,
+      "max_k_train": 18,
+      "max_k_all": 18,
+      "binary_unconditional_p_up": 0.4999659436632509
+    },
+    "ETH": {
+      "binary_train_n": 132328,
+      "cs02_train_n": 132547,
+      "fitted_cells": 202,
+      "max_k_train": 15,
+      "max_k_all": 15,
+      "binary_unconditional_p_up": 0.5031814643804458
+    },
+    "SOL": {
+      "binary_train_n": 129235,
+      "cs02_train_n": 130988,
+      "fitted_cells": 214,
+      "max_k_train": 16,
+      "max_k_all": 16,
+      "binary_unconditional_p_up": 0.5022323501191619
+    },
+    "XRP": {
+      "binary_train_n": 128004,
+      "cs02_train_n": 130315,
+      "fitted_cells": 200,
+      "max_k_train": 13,
+      "max_k_all": 14,
+      "binary_unconditional_p_up": 0.5018358657864928
+    }
+  },
+  "models": [
+    "random_50",
+    "iid_binary",
+    "sign_binary",
+    "streak_binary",
+    "sign_vol_binary",
+    "additive_binary",
+    "streak_vol_matrix_binary"
+  ],
+  "CS02_threeclass_renormalized_diagnostics": [
+    "cs02_normalized_iid_3class",
+    "cs02_normalized_sign_3class",
+    "cs02_normalized_streak_3class",
+    "cs02_normalized_sign_vol_3class",
+    "cs02_normalized_additive_3class",
+    "cs02_normalized_streak_vol_matrix_3class"
+  ],
+  "decision": {
+    "verdict": "NO_CONFIRMED_BINARY_VOLATILITY_GAIN",
+    "volatility_binary_candidate": false,
+    "full_matrix_binary_candidate": false,
+    "primary_assets": [
+      {
+        "asset": "BTC",
+        "volatility_adds_binary_directional_information": false,
+        "full_matrix_adds_beyond_simple_models": false,
+        "volatility_checks": [
+          {
+            "reference": "sign_binary",
+            "delta": 3.406843988667508e-05,
+            "ci025": -0.00010832046909096916,
+            "ci975": 0.00016980042823968228,
+            "passes": false
+          },
+          {
+            "reference": "iid_binary",
+            "delta": 8.352001158811214e-06,
+            "ci025": -0.00013652040120729715,
+            "ci975": 0.000146518526834359,
+            "passes": false
+          }
+        ],
+        "matrix_checks": [
+          {
+            "reference": "streak_binary",
+            "delta": 0.00012721477929392047,
+            "ci025": -0.00011079629363951173,
+            "ci975": 0.0003696524925259876,
+            "passes": false
+          },
+          {
+            "reference": "sign_vol_binary",
+            "delta": 0.0004926171220876953,
+            "ci025": 0.00018929538222588912,
+            "ci975": 0.0008225427893292055,
+            "passes": false
+          },
+          {
+            "reference": "additive_binary",
+            "delta": 0.0004666590858142387,
+            "ci025": 0.0002553026544785356,
+            "ci975": 0.0006770672454247334,
+            "passes": false
+          }
+        ]
+      },
+      {
+        "asset": "ETH",
+        "volatility_adds_binary_directional_information": false,
+        "full_matrix_adds_beyond_simple_models": false,
+        "volatility_checks": [
+          {
+            "reference": "sign_binary",
+            "delta": 2.840907773769199e-06,
+            "ci025": -9.430161732627813e-05,
+            "ci975": 9.805050919309148e-05,
+            "passes": false
+          },
+          {
+            "reference": "iid_binary",
+            "delta": -0.0003468398311127197,
+            "ci025": -0.0004972977801230553,
+            "ci975": -0.0002042227493094142,
+            "passes": true
+          }
+        ],
+        "matrix_checks": [
+          {
+            "reference": "streak_binary",
+            "delta": 0.000281984691795873,
+            "ci025": 6.376486914812418e-05,
+            "ci975": 0.0005035850346744044,
+            "passes": false
+          },
+          {
+            "reference": "sign_vol_binary",
+            "delta": 0.0007473210779279469,
+            "ci025": 0.0003372244852212031,
+            "ci975": 0.0011581917796535835,
+            "passes": false
+          },
+          {
+            "reference": "additive_binary",
+            "delta": 0.0007215528042811249,
+            "ci025": 0.00045686533182642396,
+            "ci975": 0.0009750365310041258,
+            "passes": false
+          }
+        ]
+      }
+    ],
+    "status": "HISTORICAL_EXPLORATORY",
+    "prospective_confirmation": false,
+    "actionable_unconditional_next_up_probability": false,
+    "AM_T_HAR_Blend_modified": false
+  },
+  "note": "Zero next returns excluded without jumping ahead; current zero breaks streak. Binary forecasts are conditional on future next-bar nonzero."
+}
