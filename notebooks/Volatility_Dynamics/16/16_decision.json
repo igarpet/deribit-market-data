@@ -1,0 +1,23 @@
+{
+  "status": "HISTORICAL_EXPLORATORY",
+  "primary_horizon_min": 60,
+  "n_test_days": 150,
+  "flags": {
+    "scale_beats_AM_T": true,
+    "shape_beats_AM_T": true,
+    "both_beats_AM_T": true,
+    "both_beats_M2": false
+  },
+  "selected_using_validation_only": {
+    "5": "AM_T_BOTH",
+    "10": "AM_T_BOTH",
+    "15": "AM_T_BOTH",
+    "30": "AM_T_BOTH",
+    "60": "AM_T_BOTH",
+    "120": "AM_T_BOTH",
+    "240": "AM_T_BOTH"
+  },
+  "prospective_confirmation": false,
+  "trading_approved": false,
+  "warning": "TEST segment previously viewed in VD13-15. No inferential novelty/confirmation."
+}

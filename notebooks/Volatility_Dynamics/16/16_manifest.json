@@ -1,0 +1,660 @@
+{
+  "module": "Volatility_Dynamics_16",
+  "version": "VD16-0.1.0",
+  "registration": {
+    "version": "VD16-0.1.0",
+    "horizons": [
+      5,
+      10,
+      15,
+      30,
+      60,
+      120,
+      240
+    ],
+    "primary_horizon_min": 60,
+    "source": "VD15 native 5m Student-t RETURN transition and two-factor VAR state",
+    "particle_count": 256,
+    "max_calibration_origins_per_asset": 512,
+    "max_selection_origins_per_asset": 512,
+    "validation_calibration_fraction": 0.6,
+    "min_horizon_embargo_min": 5,
+    "log_scale_bounds": [
+      -0.7,
+      0.7
+    ],
+    "shape_bounds": [
+      0.45,
+      2.0
+    ],
+    "small_shrinkage_penalty": 0.002,
+    "bootstrap_draws": 1000,
+    "status": "HISTORICAL_EXPLORATORY",
+    "confirmation": "Prior branches examined historical test period; requires fresh post-2026-10-14 data"
+  },
+  "history_directory": "D:\\MarketData\\Deribit\\history\\price_5m",
+  "sample_start": "2024-09-01 00:05:00+00:00",
+  "sample_end": "2026-09-18 23:55:00+00:00",
+  "assets": [
+    "AVAX",
+    "BTC",
+    "ETH",
+    "SOL",
+    "TRX",
+    "XRP"
+  ],
+  "excluded_assets": {
+    "HYPE": "insufficient history"
+  },
+  "split_days": {
+    "test": 150,
+    "train": 448,
+    "valid": 150
+  },
+  "parameters_and_selection": {
+    "calibrations": {
+      "5": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -5.111329199284394,
+            "success": true,
+            "select_nll": -5.1361729602711925
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.502514228755438,
+            "shape": 1.0,
+            "fit_nll": -5.161295450419952,
+            "penalized_fit_objective": -5.157172665928496,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -5.198289969702163
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.0502901308128743,
+            "fit_nll": -5.111808934181301,
+            "penalized_fit_objective": -5.111788701403244,
+            "success": true,
+            "iterations": 3,
+            "select_nll": -5.136183456892712
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.5991433254350957,
+            "shape": 1.2468543205727207,
+            "fit_nll": -5.168715389683883,
+            "penalized_fit_objective": -5.162367114065103,
+            "success": true,
+            "iterations": 6,
+            "select_nll": -5.204327795074918
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "10": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -4.7092062741589595,
+            "success": true,
+            "select_nll": -4.741322950899268
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.5252566850087835,
+            "shape": 1.0,
+            "fit_nll": -4.7680298573253515,
+            "penalized_fit_objective": -4.763525455935206,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -4.809452207096912
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.2550037193931463,
+            "fit_nll": -4.718951635883735,
+            "penalized_fit_objective": -4.7184314207085,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -4.749848605674642
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.6291340267805814,
+            "shape": 1.4615132120456251,
+            "fit_nll": -4.785221611160195,
+            "penalized_fit_objective": -4.7770554576638595,
+            "success": true,
+            "iterations": 6,
+            "select_nll": -4.823522509312995
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "15": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -4.529274716552988,
+            "success": true,
+            "select_nll": -4.431328641281907
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.4749554259000775,
+            "shape": 1.0,
+            "fit_nll": -4.580615695315708,
+            "penalized_fit_objective": -4.576932713167269,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -4.531806996787683
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.499427438415309,
+            "fit_nll": -4.561144379064095,
+            "penalized_fit_objective": -4.559148956934159,
+            "success": true,
+            "iterations": 5,
+            "select_nll": -4.488914429477879
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.558867548659687,
+            "shape": 1.673684500890277,
+            "fit_nll": -4.614586969358778,
+            "penalized_fit_objective": -4.6058568496486165,
+            "success": true,
+            "iterations": 7,
+            "select_nll": -4.58140032548128
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "30": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -4.172138563597861,
+            "success": true,
+            "select_nll": -4.062249633045059
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.4713128255575138,
+            "shape": 1.0,
+            "fit_nll": -4.225134591885296,
+            "penalized_fit_objective": -4.2215078852806425,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -4.166549962628056
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.6495785704648132,
+            "fit_nll": -4.217144301833127,
+            "penalized_fit_objective": -4.213768683279469,
+            "success": true,
+            "iterations": 5,
+            "select_nll": -4.132388532932166
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.5220369280356764,
+            "shape": 1.7972308413432194,
+            "fit_nll": -4.2660167203558865,
+            "penalized_fit_objective": -4.256482756416565,
+            "success": true,
+            "iterations": 6,
+            "select_nll": -4.21912719279172
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "60": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -3.856697838642655,
+            "success": true,
+            "select_nll": -3.8217344452976625
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.39327319337754835,
+            "shape": 1.0,
+            "fit_nll": -3.8926130603595532,
+            "penalized_fit_objective": -3.8900879370186656,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -3.8789401883885937
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.5812912567899833,
+            "fit_nll": -3.88970562409467,
+            "penalized_fit_objective": -3.8870024278929063,
+            "success": true,
+            "iterations": 5,
+            "select_nll": -3.8472931874354046
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.4505715317856658,
+            "shape": 1.7352342495683426,
+            "fit_nll": -3.9259808678250465,
+            "penalized_fit_objective": -3.9183417868110473,
+            "success": true,
+            "iterations": 6,
+            "select_nll": -3.9020185177176168
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "120": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -3.5066561731151773,
+            "success": true,
+            "select_nll": -3.466543494008903
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.34008451428400394,
+            "shape": 1.0,
+            "fit_nll": -3.5324958547898926,
+            "penalized_fit_objective": -3.5306075694534718,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -3.513404055076231
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.526306223949185,
+            "fit_nll": -3.5312049710443483,
+            "penalized_fit_objective": -3.528988985113407,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -3.4967883496080696
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.3968057909299478,
+            "shape": 1.6684913097240195,
+            "fit_nll": -3.559094955895141,
+            "penalized_fit_objective": -3.552949219650373,
+            "success": true,
+            "iterations": 6,
+            "select_nll": -3.5423767284938994
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "240": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -3.036780079183527,
+            "success": true,
+            "select_nll": -3.1032727118880943
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.4708508306233356,
+            "shape": 1.0,
+            "fit_nll": -3.0891543863368796,
+            "penalized_fit_objective": -3.0855347862601663,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -3.1520105385125667
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.8301402965522124,
+            "fit_nll": -3.099626854161326,
+            "penalized_fit_objective": -3.0941137908656473,
+            "success": true,
+            "iterations": 5,
+            "select_nll": -3.148868277788384
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.5170684783368568,
+            "shape": 2.0,
+            "fit_nll": -3.144930833401489,
+            "penalized_fit_objective": -3.1325657752579854,
+            "success": true,
+            "iterations": 7,
+            "select_nll": -3.1936248540973526
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      }
+    },
+    "native_return_kernels": {
+      "T_RW": {
+        "AVAX": {
+          "phi": 0.0,
+          "scale": 7.832179182572924e-06,
+          "nu": 3.0,
+          "validation_nll": -4.809148711904386
+        },
+        "BTC": {
+          "phi": 0.0,
+          "scale": 1.7908577853719586e-06,
+          "nu": 3.0,
+          "validation_nll": -5.226223800441722
+        },
+        "ETH": {
+          "phi": 0.0,
+          "scale": 4.116283953248318e-06,
+          "nu": 3.0,
+          "validation_nll": -4.9699332068014765
+        },
+        "SOL": {
+          "phi": 0.0,
+          "scale": 6.258758175411739e-06,
+          "nu": 3.0,
+          "validation_nll": -4.8569236442543335
+        },
+        "TRX": {
+          "phi": 0.0,
+          "scale": 1.5681034050339214e-06,
+          "nu": 3.0,
+          "validation_nll": -5.871234410701655
+        },
+        "XRP": {
+          "phi": 0.0,
+          "scale": 7.6110346879631245e-06,
+          "nu": 3.0,
+          "validation_nll": -4.899147042419275
+        }
+      },
+      "T_MC": {
+        "AVAX": {
+          "phi": -0.3529028767020707,
+          "scale": 8.821001133509303e-06,
+          "nu": 3.0,
+          "validation_nll": -4.76208360494015
+        },
+        "BTC": {
+          "phi": -0.01264048439334271,
+          "scale": 1.7893954776331556e-06,
+          "nu": 3.0,
+          "validation_nll": -5.2268907203745885
+        },
+        "ETH": {
+          "phi": -0.008476746583087696,
+          "scale": 4.116645505814928e-06,
+          "nu": 3.0,
+          "validation_nll": -4.970457946378085
+        },
+        "SOL": {
+          "phi": -0.009647675097274025,
+          "scale": 6.2599031811819964e-06,
+          "nu": 3.0,
+          "validation_nll": -4.857309518656612
+        },
+        "TRX": {
+          "phi": 0.03359533744702336,
+          "scale": 1.566874904764059e-06,
+          "nu": 3.0,
+          "validation_nll": -5.8693000121922605
+        },
+        "XRP": {
+          "phi": 8.074561532678215e-06,
+          "scale": 7.611035066652392e-06,
+          "nu": 3.0,
+          "validation_nll": -4.899146913116513
+        }
+      },
+      "AM_T": {
+        "AVAX": {
+          "phi": 0.0,
+          "scale": 7.3748630253593846e-06,
+          "nu": 6.0,
+          "validation_nll": -4.66366084310061
+        },
+        "BTC": {
+          "phi": 0.0,
+          "scale": 1.334544418543936e-06,
+          "nu": 6.0,
+          "validation_nll": -5.301810681127779
+        },
+        "ETH": {
+          "phi": 0.0,
+          "scale": 3.3839610433082496e-06,
+          "nu": 4.0,
+          "validation_nll": -5.04077112451488
+        },
+        "SOL": {
+          "phi": 0.0,
+          "scale": 5.378609580841552e-06,
+          "nu": 6.0,
+          "validation_nll": -4.902547272947916
+        },
+        "TRX": {
+          "phi": 0.0,
+          "scale": 1.048053235661391e-06,
+          "nu": 6.0,
+          "validation_nll": -5.795862940347893
+        },
+        "XRP": {
+          "phi": 0.0,
+          "scale": 4.239088671842949e-06,
+          "nu": 6.0,
+          "validation_nll": -4.992284478110228
+        }
+      },
+      "AM_T_AR": {
+        "AVAX": {
+          "phi": -0.3529028767020707,
+          "scale": 8.30594826672497e-06,
+          "nu": 6.0,
+          "validation_nll": -4.652069299170396
+        },
+        "BTC": {
+          "phi": -0.01264048439334271,
+          "scale": 1.333454709105837e-06,
+          "nu": 4.0,
+          "validation_nll": -5.302225119897331
+        },
+        "ETH": {
+          "phi": -0.008476746583087696,
+          "scale": 3.3842582725116792e-06,
+          "nu": 4.0,
+          "validation_nll": -5.0413682140535565
+        },
+        "SOL": {
+          "phi": -0.009647675097274025,
+          "scale": 5.379593568213075e-06,
+          "nu": 6.0,
+          "validation_nll": -4.9029826875732505
+        },
+        "TRX": {
+          "phi": 0.03359533744702336,
+          "scale": 1.0472321586337493e-06,
+          "nu": 6.0,
+          "validation_nll": -5.787995990025579
+        },
+        "XRP": {
+          "phi": 8.074561532678215e-06,
+          "scale": 4.239088882760052e-06,
+          "nu": 6.0,
+          "validation_nll": -4.992284291788859
+        }
+      }
+    },
+    "state_transitions": {
+      "AVAX": {
+        "mean": [
+          -0.4423216899507963,
+          -0.0007579020745492587
+        ],
+        "phi": [
+          0.9988499440193441,
+          0.9211087114350088
+        ],
+        "innovation_cov": [
+          [
+            0.001145596700807253,
+            0.007525185709776818
+          ],
+          [
+            0.007525185709776818,
+            0.04977944593855708
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "BTC": {
+        "mean": [
+          -0.32271074227665725,
+          -8.633650034423578e-05
+        ],
+        "phi": [
+          0.9994006585825235,
+          0.9366414130369449
+        ],
+        "innovation_cov": [
+          [
+            0.0009534122505232012,
+            0.006194890310922128
+          ],
+          [
+            0.006194890310922128,
+            0.04096825617918993
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "ETH": {
+        "mean": [
+          -0.30238985167414056,
+          -0.0001788466368806479
+        ],
+        "phi": [
+          0.9991273401714508,
+          0.9304008279746738
+        ],
+        "innovation_cov": [
+          [
+            0.000930725180372712,
+            0.0060797812787745115
+          ],
+          [
+            0.0060797812787745115,
+            0.0402137836084137
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "SOL": {
+        "mean": [
+          -0.3332954359317836,
+          -0.00020756908288563158
+        ],
+        "phi": [
+          0.9990192871185316,
+          0.9240045336440609
+        ],
+        "innovation_cov": [
+          [
+            0.0009199509268659386,
+            0.0060341801691023165
+          ],
+          [
+            0.0060341801691023165,
+            0.03991294319449972
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "TRX": {
+        "mean": [
+          -0.9533047663019568,
+          0.00017550581381568426
+        ],
+        "phi": [
+          0.9991618119122702,
+          0.9180447907637129
+        ],
+        "innovation_cov": [
+          [
+            0.0018632874998010657,
+            0.01225677330883201
+          ],
+          [
+            0.01225677330883201,
+            0.08105997804777637
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "XRP": {
+        "mean": [
+          -0.2685153163068013,
+          0.00029913723494248175
+        ],
+        "phi": [
+          0.9995588572777795,
+          0.934193097282082
+        ],
+        "innovation_cov": [
+          [
+            0.0009377861459483369,
+            0.0061077343011427246
+          ],
+          [
+            0.0061077343011427246,
+            0.040385773150524815
+          ]
+        ],
+        "transition_rows": 128734
+      }
+    },
+    "particle_count": 256,
+    "version": "VD16-0.1.0"
+  },
+  "decision": {
+    "status": "HISTORICAL_EXPLORATORY",
+    "primary_horizon_min": 60,
+    "n_test_days": 150,
+    "flags": {
+      "scale_beats_AM_T": true,
+      "shape_beats_AM_T": true,
+      "both_beats_AM_T": true,
+      "both_beats_M2": false
+    },
+    "selected_using_validation_only": {
+      "5": "AM_T_BOTH",
+      "10": "AM_T_BOTH",
+      "15": "AM_T_BOTH",
+      "30": "AM_T_BOTH",
+      "60": "AM_T_BOTH",
+      "120": "AM_T_BOTH",
+      "240": "AM_T_BOTH"
+    },
+    "prospective_confirmation": false,
+    "trading_approved": false,
+    "warning": "TEST segment previously viewed in VD13-15. No inferential novelty/confirmation."
+  },
+  "scientific_caveat": "Already inspected historical test; no new confirmation or trading claim."
+}
