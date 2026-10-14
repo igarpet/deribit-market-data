@@ -1,0 +1,46 @@
+{
+  "primary": {
+    "asset": "POOLED",
+    "window": "test",
+    "pnl_pct": -135.27224499175276,
+    "sharpe": -1.6641969510246466,
+    "null_sharpe_median": -0.8805018477492643,
+    "null_sharpe_q95": 0.2604051597783126,
+    "null_share_ge": 0.895,
+    "null_pnl_median_pct": -69.29800390597285,
+    "verdict": "NO_EDGE"
+  },
+  "registration": {
+    "version": "0.1.0",
+    "params": {
+      "anchor_h": 100,
+      "band_k": 1.5,
+      "range_h": 100,
+      "fast_h": 3,
+      "w_price": 0.5,
+      "stop_k": 1.5,
+      "trail_trigger_k": 1.0,
+      "trail_h": 14,
+      "reentry": "cross",
+      "min_bars_per_hour": 10,
+      "max_hour_age_h": 2.0
+    },
+    "perp_taker_fee": 0.0005,
+    "perp_slippage": 0.0001,
+    "funding": "ignored",
+    "opt_fee_rate": 0.0003,
+    "opt_fee_cap": 0.125,
+    "dev": [
+      "2024-09-01 00:00:00+00:00",
+      "2026-01-01 00:00:00+00:00"
+    ],
+    "test_start": "2026-01-01 00:00:00+00:00",
+    "option_min_tte_h": 24,
+    "calib_min_tte_h": 12,
+    "ewma_halflife_bars": 288,
+    "n_null": 200,
+    "null_seed": 1201,
+    "null_alpha": 0.05,
+    "decision": "per window: EDGE_CANDIDATE iff net perp P&L > 0 and coin-flip null share < alpha; primary = pooled equal-weight portfolio of all assets on the TEST window; options reported, no decision"
+  }
+}
