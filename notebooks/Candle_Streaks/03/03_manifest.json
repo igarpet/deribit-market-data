@@ -1,0 +1,85 @@
+{
+  "module": "CS03",
+  "registration": {
+    "version": "CS03-0.1.1",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "train_fraction": 0.6,
+    "valid_fraction": 0.2,
+    "fast_bars": 12,
+    "slow_bars": 288,
+    "flow_bars": 6,
+    "logistic_C": 0.25,
+    "bootstrap_reps": 1000,
+    "shuffle_reps": 100,
+    "seed": 2604,
+    "historical_status": "HISTORICAL_EXPLORATORY"
+  },
+  "source": "Existing local spot 5m and Binance USD-M futures 1m files",
+  "spot_source": "Binance spot 5m price closes",
+  "flow_source": "Binance USD-M perpetual 1m taker-buy quote volume (NOT L2 OBI)",
+  "assets_evaluated": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "excluded": {},
+  "split": {
+    "BTC": {
+      "train_before": "2025-12-20 00:00:00+00:00",
+      "test_from": "2026-05-16 00:00:00+00:00",
+      "complete_intersection_days": 736,
+      "train_days": 441,
+      "valid_days": 147,
+      "test_days": 148
+    },
+    "ETH": {
+      "train_before": "2025-12-20 00:00:00+00:00",
+      "test_from": "2026-05-16 00:00:00+00:00",
+      "complete_intersection_days": 736,
+      "train_days": 441,
+      "valid_days": 147,
+      "test_days": 148
+    },
+    "SOL": {
+      "train_before": "2025-12-20 00:00:00+00:00",
+      "test_from": "2026-05-16 00:00:00+00:00",
+      "complete_intersection_days": 736,
+      "train_days": 441,
+      "valid_days": 147,
+      "test_days": 148
+    },
+    "XRP": {
+      "train_before": "2025-12-20 00:00:00+00:00",
+      "test_from": "2026-05-16 00:00:00+00:00",
+      "complete_intersection_days": 736,
+      "train_days": 441,
+      "valid_days": 147,
+      "test_days": 148
+    }
+  },
+  "flow_tertiles_train": {
+    "BTC": [
+      -0.1257240265707173,
+      0.10127571311533531
+    ],
+    "ETH": [
+      -0.11231213856591744,
+      0.0904738628842851
+    ],
+    "SOL": [
+      -0.10746775977091667,
+      0.07986807183401529
+    ],
+    "XRP": [
+      -0.10197969353585612,
+      0.06510882796798242
+    ]
+  },
+  "synthetic": false
+}

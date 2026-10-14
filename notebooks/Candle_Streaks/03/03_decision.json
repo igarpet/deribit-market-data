@@ -1,0 +1,23 @@
+{
+  "status": "HISTORICAL_EXPLORATORY",
+  "verdict": "POTENTIAL_THREECLASS_FLOW_GAIN",
+  "primary": [
+    {
+      "asset": "BTC",
+      "available": true,
+      "delta": -0.0010262223977352068,
+      "upper95": -0.0005368130157550163,
+      "passed": true
+    },
+    {
+      "asset": "ETH",
+      "available": true,
+      "delta": -0.0007185791200024726,
+      "upper95": -0.0004053682337263981,
+      "passed": true
+    }
+  ],
+  "directional_gain_claimed": false,
+  "AM_T_HAR_Blend_modified": false,
+  "note": "Separate conditional binary scoring required before direction claims. Futures USD-M flow vs spot returns."
+}
