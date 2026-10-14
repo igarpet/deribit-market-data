@@ -1,0 +1,19 @@
+{
+  "status": "HISTORICAL_EXPLORATORY",
+  "primary_horizon_min": 60,
+  "primary_test_days": 150,
+  "har_blend_beats_state": true,
+  "har_blend_beats_m2": false,
+  "har_state_beats_m2": false,
+  "selected_har_by_horizon": {
+    "5": "HAR_2",
+    "10": "HAR_4",
+    "15": "HAR_4",
+    "30": "HAR_4",
+    "60": "HAR_4",
+    "120": "HAR_4",
+    "240": "HAR_4"
+  },
+  "prospective_confirmation": false,
+  "options_trade_approved": false
+}
