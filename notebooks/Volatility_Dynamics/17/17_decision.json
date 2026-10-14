@@ -1,0 +1,22 @@
+{
+  "status": "HISTORICAL_EXPLORATORY",
+  "primary_horizon_min": 60,
+  "test_days": 150,
+  "primary_flags": {
+    "STATE_beats_BASE": true,
+    "ANCHOR_beats_BASE": true,
+    "COMBO_beats_BASE": true,
+    "COMBO_beats_M2": false
+  },
+  "late_valid_selected": {
+    "5": "AM_T_VAR_COMBO",
+    "10": "AM_T_VAR_COMBO",
+    "15": "AM_T_VAR_STATE",
+    "30": "AM_T_VAR_STATE",
+    "60": "AM_T_VAR_STATE",
+    "120": "AM_T_VAR_STATE",
+    "240": "AM_T_VAR_STATE"
+  },
+  "historical_confirmation_permitted": false,
+  "trading_approved": false
+}

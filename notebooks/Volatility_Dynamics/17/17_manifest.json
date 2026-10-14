@@ -1,0 +1,1349 @@
+{
+  "module": "Volatility_Dynamics_17",
+  "version": "VD17-0.1.0",
+  "registration": {
+    "version": "VD17-0.1.0",
+    "horizons": [
+      5,
+      10,
+      15,
+      30,
+      60,
+      120,
+      240
+    ],
+    "primary_horizon": 60,
+    "source": "VD14 state and TRAIN two-EMA variance, VD15 5m Student-t return kernel, VD16 shape/scale overlay",
+    "test_status": "HISTORICAL_EXPLORATORY (test previously viewed)",
+    "early_valid_fraction": 0.6,
+    "per_asset_early_valid_origins": 512,
+    "per_asset_late_valid_origins": 512,
+    "particles": 256,
+    "bootstrap": 1000,
+    "state_predictors": [
+      "slow",
+      "gap",
+      "now",
+      "slope15"
+    ],
+    "state_log_variance_clip": 0.85,
+    "m2_log_variance_ratio_clip": 1.5,
+    "state_l2_penalty": 0.025,
+    "anchor_l2_penalty": 0.003,
+    "primary_metric": "return_nll",
+    "additional_variance_metric": "return_qlike (predictive net-return variance proper score)",
+    "native_kernel_unchanged": true,
+    "note": "No future price observations in features. Validation sample overlap with native t df selection; no untouched inference."
+  },
+  "source": "D:\\MarketData\\Deribit\\history\\price_5m",
+  "sample_first": "2024-09-01 00:05:00+00:00",
+  "sample_last": "2026-09-18 23:55:00+00:00",
+  "assets": [
+    "AVAX",
+    "BTC",
+    "ETH",
+    "SOL",
+    "TRX",
+    "XRP"
+  ],
+  "excluded_assets": {
+    "HYPE": "insufficient history"
+  },
+  "days_by_split": {
+    "test": 150,
+    "train": 448,
+    "valid": 150
+  },
+  "fitted_parameters": {
+    "calibrations": {
+      "5": {
+        "baseline": {
+          "log_scale": 0.5991433254350957,
+          "shape": 1.2468543205727207,
+          "fit_nll": -5.168715389683883,
+          "penalized_fit_objective": -5.162367114065103,
+          "success": true,
+          "iterations": 6,
+          "select_nll": -5.204327795074918
+        },
+        "design": {
+          "names": [
+            "AVAX",
+            "BTC",
+            "ETH",
+            "SOL",
+            "TRX",
+            "XRP"
+          ],
+          "center": [
+            -1.0248252069498236,
+            0.011160841571852606,
+            -0.9163640943041235,
+            0.022934670556636005
+          ],
+          "std": [
+            1.0251586857701986,
+            0.6502063960702318,
+            2.678119958204904,
+            0.46603446341747057
+          ]
+        },
+        "dynamic": {
+          "AM_T_VAR_STATE": {
+            "beta": [
+              0.03501210859658868,
+              -0.18837812843198778,
+              -0.2139576881537692,
+              -0.002459277899142174,
+              -0.013924830473332223,
+              -0.19395131041028746,
+              -0.11641779383750576,
+              -0.07915304310180614,
+              0.06386868052070661,
+              -0.06073002308242063,
+              0.08770048797031399,
+              -0.06312173802176525
+            ],
+            "anchor_weight": 0.0,
+            "objective": -5.190306436985062,
+            "converged": true,
+            "iterations": 14
+          },
+          "AM_T_VAR_ANCHOR": {
+            "beta": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "anchor_weight": 4.9300367130880844e-05,
+            "objective": -5.168714475544147,
+            "converged": true
+          },
+          "AM_T_VAR_COMBO": {
+            "beta": [
+              0.09422437708377836,
+              -0.20373105334866423,
+              -0.20492666813818228,
+              -0.008319743667003644,
+              -0.010055162403429792,
+              -0.18390630242382386,
+              -0.11337581464264576,
+              -0.07473775689045828,
+              0.06541669509734233,
+              -0.055718135585455734,
+              0.10099560372632178,
+              -0.049388698865971976
+            ],
+            "anchor_weight": 0.06790509842327767,
+            "objective": -5.190456685416843,
+            "converged": true,
+            "iterations": 17
+          }
+        },
+        "selected_late_valid": "AM_T_VAR_COMBO",
+        "boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "10": {
+        "baseline": {
+          "log_scale": 0.6291340267805814,
+          "shape": 1.4615132120456251,
+          "fit_nll": -4.785221611160195,
+          "penalized_fit_objective": -4.7770554576638595,
+          "success": true,
+          "iterations": 6,
+          "select_nll": -4.823522509312995
+        },
+        "design": {
+          "names": [
+            "AVAX",
+            "BTC",
+            "ETH",
+            "SOL",
+            "TRX",
+            "XRP"
+          ],
+          "center": [
+            -1.0253472681523954,
+            0.007596692558580695,
+            -0.9590660033355741,
+            0.024567164709457
+          ],
+          "std": [
+            1.0250800524550607,
+            0.6446507752113643,
+            2.5999110703886696,
+            0.46092277200614223
+          ]
+        },
+        "dynamic": {
+          "AM_T_VAR_STATE": {
+            "beta": [
+              0.034022849888010895,
+              -0.23555240517475592,
+              -0.20128236777612646,
+              0.030020209456522038,
+              0.002863058694203926,
+              -0.319572377195893,
+              -0.2208665902513354,
+              -0.06479459142669555,
+              0.005845588688480859,
+              -0.067356662155582,
+              0.049477580857756776,
+              -0.04159122608602677
+            ],
+            "anchor_weight": 0.0,
+            "objective": -4.814111499705033,
+            "converged": true,
+            "iterations": 14
+          },
+          "AM_T_VAR_ANCHOR": {
+            "beta": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "anchor_weight": 0.1839631809535678,
+            "objective": -4.787297456542565,
+            "converged": true
+          },
+          "AM_T_VAR_COMBO": {
+            "beta": [
+              0.15940994835752625,
+              -0.24526394165635837,
+              -0.1309670370557748,
+              0.030610896145480977,
+              0.008143686985487784,
+              -0.26293956144465686,
+              -0.2039087802966305,
+              -0.04155175022114475,
+              0.016734986401488162,
+              -0.04702397939533568,
+              0.0547296074246916,
+              -0.024479683957603176
+            ],
+            "anchor_weight": 0.2758787243278542,
+            "objective": -4.815115772493209,
+            "converged": true,
+            "iterations": 18
+          }
+        },
+        "selected_late_valid": "AM_T_VAR_COMBO",
+        "boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "15": {
+        "baseline": {
+          "log_scale": 0.558867548659687,
+          "shape": 1.673684500890277,
+          "fit_nll": -4.614586969358778,
+          "penalized_fit_objective": -4.6058568496486165,
+          "success": true,
+          "iterations": 7,
+          "select_nll": -4.58140032548128
+        },
+        "design": {
+          "names": [
+            "AVAX",
+            "BTC",
+            "ETH",
+            "SOL",
+            "TRX",
+            "XRP"
+          ],
+          "center": [
+            -1.0258385364575153,
+            0.004950404764757415,
+            -0.949484996462413,
+            0.017760274658725445
+          ],
+          "std": [
+            1.0256960647387527,
+            0.6409133093677413,
+            2.6627215448669475,
+            0.4664900340696109
+          ]
+        },
+        "dynamic": {
+          "AM_T_VAR_STATE": {
+            "beta": [
+              0.01677239149080082,
+              -0.18109880367800757,
+              -0.22889278052942263,
+              0.004031149290200542,
+              0.014956401967312696,
+              -0.24388518528438613,
+              -0.2458255105087661,
+              -0.06420575954845302,
+              0.03501276968108519,
+              -0.06160348760053148,
+              0.11329372016590343,
+              -0.05908522096662754
+            ],
+            "anchor_weight": 0.0,
+            "objective": -4.641826170251546,
+            "converged": true,
+            "iterations": 10
+          },
+          "AM_T_VAR_ANCHOR": {
+            "beta": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "anchor_weight": 0.6499865138588001,
+            "objective": -4.627758324619054,
+            "converged": true
+          },
+          "AM_T_VAR_COMBO": {
+            "beta": [
+              0.1420001338153909,
+              -0.1456878092409226,
+              -0.09398032447310252,
+              0.01924042124990478,
+              0.009424904259399007,
+              -0.14789506875389505,
+              -0.21996144514866797,
+              -0.030886571382921772,
+              0.05444751103106979,
+              -0.032993072386157105,
+              0.08676508602080604,
+              -0.04905098510471163
+            ],
+            "anchor_weight": 0.5455405434027388,
+            "objective": -4.644425430623705,
+            "converged": true,
+            "iterations": 15
+          }
+        },
+        "selected_late_valid": "AM_T_VAR_STATE",
+        "boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "30": {
+        "baseline": {
+          "log_scale": 0.5220369280356764,
+          "shape": 1.7972308413432194,
+          "fit_nll": -4.2660167203558865,
+          "penalized_fit_objective": -4.256482756416565,
+          "success": true,
+          "iterations": 6,
+          "select_nll": -4.21912719279172
+        },
+        "design": {
+          "names": [
+            "AVAX",
+            "BTC",
+            "ETH",
+            "SOL",
+            "TRX",
+            "XRP"
+          ],
+          "center": [
+            -1.0284528866735643,
+            -0.01455069985292515,
+            -1.044744810042248,
+            -0.011514714760233793
+          ],
+          "std": [
+            1.0244710340583356,
+            0.6348621188564768,
+            2.666067248152914,
+            0.4568663781848187
+          ]
+        },
+        "dynamic": {
+          "AM_T_VAR_STATE": {
+            "beta": [
+              0.012901391278016644,
+              -0.2033710992442568,
+              -0.2886126841597108,
+              0.06465304936840388,
+              -0.04792991727917696,
+              -0.3447860187541668,
+              -0.23324843806570947,
+              -0.038390801052358835,
+              -0.01618317538129457,
+              -0.06811255592079142,
+              0.12045269070570572,
+              -0.08804652328438095
+            ],
+            "anchor_weight": 0.0,
+            "objective": -4.304272039341377,
+            "converged": true,
+            "iterations": 13
+          },
+          "AM_T_VAR_ANCHOR": {
+            "beta": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "anchor_weight": 0.9930509375347757,
+            "objective": -4.297855976070966,
+            "converged": true
+          },
+          "AM_T_VAR_COMBO": {
+            "beta": [
+              0.10387360870905137,
+              -0.09970568817755937,
+              -0.1261035807249976,
+              0.09520077704823197,
+              -0.05798280228890747,
+              -0.21418375791312858,
+              -0.1829754416956165,
+              -0.020009445470845787,
+              0.00771349012075829,
+              -0.02223491787529703,
+              0.025893068718665847,
+              -0.08717225477820334
+            ],
+            "anchor_weight": 0.7206719135162647,
+            "objective": -4.308657191392795,
+            "converged": true,
+            "iterations": 18
+          }
+        },
+        "selected_late_valid": "AM_T_VAR_STATE",
+        "boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "60": {
+        "baseline": {
+          "log_scale": 0.4505715317856658,
+          "shape": 1.7352342495683426,
+          "fit_nll": -3.9259808678250465,
+          "penalized_fit_objective": -3.9183417868110473,
+          "success": true,
+          "iterations": 6,
+          "select_nll": -3.9020185177176168
+        },
+        "design": {
+          "names": [
+            "AVAX",
+            "BTC",
+            "ETH",
+            "SOL",
+            "TRX",
+            "XRP"
+          ],
+          "center": [
+            -1.0273472275936155,
+            -0.011385931887027417,
+            -0.9978550727907313,
+            -0.006144725673471723
+          ],
+          "std": [
+            1.0245666736133383,
+            0.6374537799504745,
+            2.6414868743350683,
+            0.46659090507250833
+          ]
+        },
+        "dynamic": {
+          "AM_T_VAR_STATE": {
+            "beta": [
+              0.026071101254599233,
+              -0.08645011555861687,
+              -0.13486434884695384,
+              -0.023557778017978197,
+              -0.036671004709517244,
+              -0.27650206119280035,
+              -0.23947438799558762,
+              -0.09445266209817374,
+              -0.030396469358822405,
+              -0.06468323724848352,
+              0.21456730179628536,
+              -0.09259474333539718
+            ],
+            "anchor_weight": 0.0,
+            "objective": -3.9505735404115883,
+            "converged": true,
+            "iterations": 10
+          },
+          "AM_T_VAR_ANCHOR": {
+            "beta": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "anchor_weight": 0.8229525406005133,
+            "objective": -3.9460882092868705,
+            "converged": true
+          },
+          "AM_T_VAR_COMBO": {
+            "beta": [
+              0.08447976959561278,
+              0.01743803023541083,
+              -0.028827169762015263,
+              -0.007025013524317344,
+              -0.04432886065934878,
+              -0.1682655879779699,
+              -0.19066810961595948,
+              -0.08043069895747988,
+              -0.010021269532447028,
+              -0.026489212934208993,
+              0.10876043023428186,
+              -0.0941960525740573
+            ],
+            "anchor_weight": 0.618588605322468,
+            "objective": -3.953838064817014,
+            "converged": true,
+            "iterations": 18
+          }
+        },
+        "selected_late_valid": "AM_T_VAR_STATE",
+        "boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "120": {
+        "baseline": {
+          "log_scale": 0.3968057909299478,
+          "shape": 1.6684913097240195,
+          "fit_nll": -3.559094955895141,
+          "penalized_fit_objective": -3.552949219650373,
+          "success": true,
+          "iterations": 6,
+          "select_nll": -3.5423767284938994
+        },
+        "design": {
+          "names": [
+            "AVAX",
+            "BTC",
+            "ETH",
+            "SOL",
+            "TRX",
+            "XRP"
+          ],
+          "center": [
+            -1.0246700124761592,
+            -0.0031649339805389157,
+            -1.0717540682539701,
+            -0.005319263380171046
+          ],
+          "std": [
+            1.0244675515589983,
+            0.6301449921484967,
+            2.681869365284778,
+            0.4474319800859621
+          ]
+        },
+        "dynamic": {
+          "AM_T_VAR_STATE": {
+            "beta": [
+              0.01585284209385769,
+              -0.1444883389998739,
+              0.015635134102016553,
+              -0.01245422287632757,
+              -0.03529847843230478,
+              -0.25118245891044644,
+              -0.3613380398230769,
+              -0.08173572139025886,
+              -0.057406247054726856,
+              -0.0678998522182377,
+              0.23827451943668185,
+              -0.07058830777226477
+            ],
+            "anchor_weight": 0.0,
+            "objective": -3.587617598256606,
+            "converged": true,
+            "iterations": 12
+          },
+          "AM_T_VAR_ANCHOR": {
+            "beta": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "anchor_weight": 0.8899206182799368,
+            "objective": -3.5791916726112194,
+            "converged": true
+          },
+          "AM_T_VAR_COMBO": {
+            "beta": [
+              0.07236797753320168,
+              -0.035905490517273084,
+              0.0930408326166729,
+              -0.002708976405952998,
+              -0.028817674746293303,
+              -0.1388896123688343,
+              -0.29771047643771614,
+              -0.06140247561735501,
+              -0.04460828544735845,
+              -0.031028168256742622,
+              0.12182366943684686,
+              -0.06288951647929024
+            ],
+            "anchor_weight": 0.6916766669933302,
+            "objective": -3.5913419450393165,
+            "converged": true,
+            "iterations": 16
+          }
+        },
+        "selected_late_valid": "AM_T_VAR_STATE",
+        "boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "240": {
+        "baseline": {
+          "log_scale": 0.5170684783368568,
+          "shape": 2.0,
+          "fit_nll": -3.144930833401489,
+          "penalized_fit_objective": -3.1325657752579854,
+          "success": true,
+          "iterations": 7,
+          "select_nll": -3.1936248540973526
+        },
+        "design": {
+          "names": [
+            "AVAX",
+            "BTC",
+            "ETH",
+            "SOL",
+            "TRX",
+            "XRP"
+          ],
+          "center": [
+            -1.025479337754114,
+            -0.00425841706125685,
+            -1.0326813263755856,
+            -0.009849337083748596
+          ],
+          "std": [
+            1.02752997987091,
+            0.6183853685582236,
+            2.6373901873979064,
+            0.46190242825954286
+          ]
+        },
+        "dynamic": {
+          "AM_T_VAR_STATE": {
+            "beta": [
+              0.0028565865190159283,
+              -0.20518252959346667,
+              0.025713623478616828,
+              -0.12364358507345923,
+              0.022624550972423507,
+              -0.2089988683697337,
+              -0.3810930806792679,
+              -0.01711037000182751,
+              -0.011261804393136303,
+              -0.047944390419073495,
+              0.15082226277303076,
+              -0.01560478262891497
+            ],
+            "anchor_weight": 0.0,
+            "objective": -3.18231061125313,
+            "converged": true,
+            "iterations": 13
+          },
+          "AM_T_VAR_ANCHOR": {
+            "beta": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "anchor_weight": 0.9418548682184479,
+            "objective": -3.170619456681585,
+            "converged": true
+          },
+          "AM_T_VAR_COMBO": {
+            "beta": [
+              0.11111071895709738,
+              -0.09399799405892674,
+              0.04259992267097938,
+              -0.11158468027390807,
+              0.009416718411449676,
+              -0.12622230487358274,
+              -0.2983680656321815,
+              0.022574901670684808,
+              0.013166696844793761,
+              0.0028127949603915714,
+              0.04144273361617505,
+              -0.005277837620139997
+            ],
+            "anchor_weight": 0.6317091120928676,
+            "objective": -3.185786253859172,
+            "converged": true,
+            "iterations": 18
+          }
+        },
+        "selected_late_valid": "AM_T_VAR_STATE",
+        "boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      }
+    },
+    "native_kernels": {
+      "T_RW": {
+        "AVAX": {
+          "phi": 0.0,
+          "scale": 7.832179182572924e-06,
+          "nu": 3.0,
+          "validation_nll": -4.809148711904386
+        },
+        "BTC": {
+          "phi": 0.0,
+          "scale": 1.7908577853719586e-06,
+          "nu": 3.0,
+          "validation_nll": -5.226223800441722
+        },
+        "ETH": {
+          "phi": 0.0,
+          "scale": 4.116283953248318e-06,
+          "nu": 3.0,
+          "validation_nll": -4.9699332068014765
+        },
+        "SOL": {
+          "phi": 0.0,
+          "scale": 6.258758175411739e-06,
+          "nu": 3.0,
+          "validation_nll": -4.8569236442543335
+        },
+        "TRX": {
+          "phi": 0.0,
+          "scale": 1.5681034050339214e-06,
+          "nu": 3.0,
+          "validation_nll": -5.871234410701655
+        },
+        "XRP": {
+          "phi": 0.0,
+          "scale": 7.6110346879631245e-06,
+          "nu": 3.0,
+          "validation_nll": -4.899147042419275
+        }
+      },
+      "T_MC": {
+        "AVAX": {
+          "phi": -0.3529028767020707,
+          "scale": 8.821001133509303e-06,
+          "nu": 3.0,
+          "validation_nll": -4.76208360494015
+        },
+        "BTC": {
+          "phi": -0.01264048439334271,
+          "scale": 1.7893954776331556e-06,
+          "nu": 3.0,
+          "validation_nll": -5.2268907203745885
+        },
+        "ETH": {
+          "phi": -0.008476746583087696,
+          "scale": 4.116645505814928e-06,
+          "nu": 3.0,
+          "validation_nll": -4.970457946378085
+        },
+        "SOL": {
+          "phi": -0.009647675097274025,
+          "scale": 6.2599031811819964e-06,
+          "nu": 3.0,
+          "validation_nll": -4.857309518656612
+        },
+        "TRX": {
+          "phi": 0.03359533744702336,
+          "scale": 1.566874904764059e-06,
+          "nu": 3.0,
+          "validation_nll": -5.8693000121922605
+        },
+        "XRP": {
+          "phi": 8.074561532678215e-06,
+          "scale": 7.611035066652392e-06,
+          "nu": 3.0,
+          "validation_nll": -4.899146913116513
+        }
+      },
+      "AM_T": {
+        "AVAX": {
+          "phi": 0.0,
+          "scale": 7.3748630253593846e-06,
+          "nu": 6.0,
+          "validation_nll": -4.66366084310061
+        },
+        "BTC": {
+          "phi": 0.0,
+          "scale": 1.334544418543936e-06,
+          "nu": 6.0,
+          "validation_nll": -5.301810681127779
+        },
+        "ETH": {
+          "phi": 0.0,
+          "scale": 3.3839610433082496e-06,
+          "nu": 4.0,
+          "validation_nll": -5.04077112451488
+        },
+        "SOL": {
+          "phi": 0.0,
+          "scale": 5.378609580841552e-06,
+          "nu": 6.0,
+          "validation_nll": -4.902547272947916
+        },
+        "TRX": {
+          "phi": 0.0,
+          "scale": 1.048053235661391e-06,
+          "nu": 6.0,
+          "validation_nll": -5.795862940347893
+        },
+        "XRP": {
+          "phi": 0.0,
+          "scale": 4.239088671842949e-06,
+          "nu": 6.0,
+          "validation_nll": -4.992284478110228
+        }
+      },
+      "AM_T_AR": {
+        "AVAX": {
+          "phi": -0.3529028767020707,
+          "scale": 8.30594826672497e-06,
+          "nu": 6.0,
+          "validation_nll": -4.652069299170396
+        },
+        "BTC": {
+          "phi": -0.01264048439334271,
+          "scale": 1.333454709105837e-06,
+          "nu": 4.0,
+          "validation_nll": -5.302225119897331
+        },
+        "ETH": {
+          "phi": -0.008476746583087696,
+          "scale": 3.3842582725116792e-06,
+          "nu": 4.0,
+          "validation_nll": -5.0413682140535565
+        },
+        "SOL": {
+          "phi": -0.009647675097274025,
+          "scale": 5.379593568213075e-06,
+          "nu": 6.0,
+          "validation_nll": -4.9029826875732505
+        },
+        "TRX": {
+          "phi": 0.03359533744702336,
+          "scale": 1.0472321586337493e-06,
+          "nu": 6.0,
+          "validation_nll": -5.787995990025579
+        },
+        "XRP": {
+          "phi": 8.074561532678215e-06,
+          "scale": 4.239088882760052e-06,
+          "nu": 6.0,
+          "validation_nll": -4.992284291788859
+        }
+      }
+    },
+    "markov_transitions": {
+      "AVAX": {
+        "mean": [
+          -0.4423216899507963,
+          -0.0007579020745492587
+        ],
+        "phi": [
+          0.9988499440193441,
+          0.9211087114350088
+        ],
+        "innovation_cov": [
+          [
+            0.001145596700807253,
+            0.007525185709776818
+          ],
+          [
+            0.007525185709776818,
+            0.04977944593855708
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "BTC": {
+        "mean": [
+          -0.32271074227665725,
+          -8.633650034423578e-05
+        ],
+        "phi": [
+          0.9994006585825235,
+          0.9366414130369449
+        ],
+        "innovation_cov": [
+          [
+            0.0009534122505232012,
+            0.006194890310922128
+          ],
+          [
+            0.006194890310922128,
+            0.04096825617918993
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "ETH": {
+        "mean": [
+          -0.30238985167414056,
+          -0.0001788466368806479
+        ],
+        "phi": [
+          0.9991273401714508,
+          0.9304008279746738
+        ],
+        "innovation_cov": [
+          [
+            0.000930725180372712,
+            0.0060797812787745115
+          ],
+          [
+            0.0060797812787745115,
+            0.0402137836084137
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "SOL": {
+        "mean": [
+          -0.3332954359317836,
+          -0.00020756908288563158
+        ],
+        "phi": [
+          0.9990192871185316,
+          0.9240045336440609
+        ],
+        "innovation_cov": [
+          [
+            0.0009199509268659386,
+            0.0060341801691023165
+          ],
+          [
+            0.0060341801691023165,
+            0.03991294319449972
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "TRX": {
+        "mean": [
+          -0.9533047663019568,
+          0.00017550581381568426
+        ],
+        "phi": [
+          0.9991618119122702,
+          0.9180447907637129
+        ],
+        "innovation_cov": [
+          [
+            0.0018632874998010657,
+            0.01225677330883201
+          ],
+          [
+            0.01225677330883201,
+            0.08105997804777637
+          ]
+        ],
+        "transition_rows": 128734
+      },
+      "XRP": {
+        "mean": [
+          -0.2685153163068013,
+          0.00029913723494248175
+        ],
+        "phi": [
+          0.9995588572777795,
+          0.934193097282082
+        ],
+        "innovation_cov": [
+          [
+            0.0009377861459483369,
+            0.0061077343011427246
+          ],
+          [
+            0.0061077343011427246,
+            0.040385773150524815
+          ]
+        ],
+        "transition_rows": 128734
+      }
+    },
+    "base_calibration": {
+      "5": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -5.111329199284394,
+            "success": true,
+            "select_nll": -5.1361729602711925
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.502514228755438,
+            "shape": 1.0,
+            "fit_nll": -5.161295450419952,
+            "penalized_fit_objective": -5.157172665928496,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -5.198289969702163
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.0502901308128743,
+            "fit_nll": -5.111808934181301,
+            "penalized_fit_objective": -5.111788701403244,
+            "success": true,
+            "iterations": 3,
+            "select_nll": -5.136183456892712
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.5991433254350957,
+            "shape": 1.2468543205727207,
+            "fit_nll": -5.168715389683883,
+            "penalized_fit_objective": -5.162367114065103,
+            "success": true,
+            "iterations": 6,
+            "select_nll": -5.204327795074918
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "10": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -4.7092062741589595,
+            "success": true,
+            "select_nll": -4.741322950899268
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.5252566850087835,
+            "shape": 1.0,
+            "fit_nll": -4.7680298573253515,
+            "penalized_fit_objective": -4.763525455935206,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -4.809452207096912
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.2550037193931463,
+            "fit_nll": -4.718951635883735,
+            "penalized_fit_objective": -4.7184314207085,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -4.749848605674642
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.6291340267805814,
+            "shape": 1.4615132120456251,
+            "fit_nll": -4.785221611160195,
+            "penalized_fit_objective": -4.7770554576638595,
+            "success": true,
+            "iterations": 6,
+            "select_nll": -4.823522509312995
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "15": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -4.529274716552988,
+            "success": true,
+            "select_nll": -4.431328641281907
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.4749554259000775,
+            "shape": 1.0,
+            "fit_nll": -4.580615695315708,
+            "penalized_fit_objective": -4.576932713167269,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -4.531806996787683
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.499427438415309,
+            "fit_nll": -4.561144379064095,
+            "penalized_fit_objective": -4.559148956934159,
+            "success": true,
+            "iterations": 5,
+            "select_nll": -4.488914429477879
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.558867548659687,
+            "shape": 1.673684500890277,
+            "fit_nll": -4.614586969358778,
+            "penalized_fit_objective": -4.6058568496486165,
+            "success": true,
+            "iterations": 7,
+            "select_nll": -4.58140032548128
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "30": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -4.172138563597861,
+            "success": true,
+            "select_nll": -4.062249633045059
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.4713128255575138,
+            "shape": 1.0,
+            "fit_nll": -4.225134591885296,
+            "penalized_fit_objective": -4.2215078852806425,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -4.166549962628056
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.6495785704648132,
+            "fit_nll": -4.217144301833127,
+            "penalized_fit_objective": -4.213768683279469,
+            "success": true,
+            "iterations": 5,
+            "select_nll": -4.132388532932166
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.5220369280356764,
+            "shape": 1.7972308413432194,
+            "fit_nll": -4.2660167203558865,
+            "penalized_fit_objective": -4.256482756416565,
+            "success": true,
+            "iterations": 6,
+            "select_nll": -4.21912719279172
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "60": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -3.856697838642655,
+            "success": true,
+            "select_nll": -3.8217344452976625
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.39327319337754835,
+            "shape": 1.0,
+            "fit_nll": -3.8926130603595532,
+            "penalized_fit_objective": -3.8900879370186656,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -3.8789401883885937
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.5812912567899833,
+            "fit_nll": -3.88970562409467,
+            "penalized_fit_objective": -3.8870024278929063,
+            "success": true,
+            "iterations": 5,
+            "select_nll": -3.8472931874354046
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.4505715317856658,
+            "shape": 1.7352342495683426,
+            "fit_nll": -3.9259808678250465,
+            "penalized_fit_objective": -3.9183417868110473,
+            "success": true,
+            "iterations": 6,
+            "select_nll": -3.9020185177176168
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "120": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -3.5066561731151773,
+            "success": true,
+            "select_nll": -3.466543494008903
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.34008451428400394,
+            "shape": 1.0,
+            "fit_nll": -3.5324958547898926,
+            "penalized_fit_objective": -3.5306075694534718,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -3.513404055076231
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.526306223949185,
+            "fit_nll": -3.5312049710443483,
+            "penalized_fit_objective": -3.528988985113407,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -3.4967883496080696
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.3968057909299478,
+            "shape": 1.6684913097240195,
+            "fit_nll": -3.559094955895141,
+            "penalized_fit_objective": -3.552949219650373,
+            "success": true,
+            "iterations": 6,
+            "select_nll": -3.5423767284938994
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      },
+      "240": {
+        "families": {
+          "AM_T": {
+            "log_scale": 0.0,
+            "shape": 1.0,
+            "fit_nll": -3.036780079183527,
+            "success": true,
+            "select_nll": -3.1032727118880943
+          },
+          "AM_T_SCALE": {
+            "log_scale": 0.4708508306233356,
+            "shape": 1.0,
+            "fit_nll": -3.0891543863368796,
+            "penalized_fit_objective": -3.0855347862601663,
+            "success": true,
+            "iterations": 4,
+            "select_nll": -3.1520105385125667
+          },
+          "AM_T_SHAPE": {
+            "log_scale": 0.0,
+            "shape": 1.8301402965522124,
+            "fit_nll": -3.099626854161326,
+            "penalized_fit_objective": -3.0941137908656473,
+            "success": true,
+            "iterations": 5,
+            "select_nll": -3.148868277788384
+          },
+          "AM_T_BOTH": {
+            "log_scale": 0.5170684783368568,
+            "shape": 2.0,
+            "fit_nll": -3.144930833401489,
+            "penalized_fit_objective": -3.1325657752579854,
+            "success": true,
+            "iterations": 7,
+            "select_nll": -3.1936248540973526
+          }
+        },
+        "validation_selected_family": "AM_T_BOTH",
+        "validation_selection_boundary": "2026-02-21 00:00:00+00:00",
+        "cal_origins": 3072,
+        "select_origins": 3072
+      }
+    },
+    "version": "VD17-0.1.0"
+  },
+  "decision": {
+    "status": "HISTORICAL_EXPLORATORY",
+    "primary_horizon_min": 60,
+    "test_days": 150,
+    "primary_flags": {
+      "STATE_beats_BASE": true,
+      "ANCHOR_beats_BASE": true,
+      "COMBO_beats_BASE": true,
+      "COMBO_beats_M2": false
+    },
+    "late_valid_selected": {
+      "5": "AM_T_VAR_COMBO",
+      "10": "AM_T_VAR_COMBO",
+      "15": "AM_T_VAR_STATE",
+      "30": "AM_T_VAR_STATE",
+      "60": "AM_T_VAR_STATE",
+      "120": "AM_T_VAR_STATE",
+      "240": "AM_T_VAR_STATE"
+    },
+    "historical_confirmation_permitted": false,
+    "trading_approved": false
+  },
+  "warning": "Historical period already inspected; conditional forecasting overlays not a path-consistent Markov process."
+}
