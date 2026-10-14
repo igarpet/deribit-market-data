@@ -1,0 +1,141 @@
+{
+  "module": "CS03b",
+  "registration": {
+    "version": "CS03b-0.1.0",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "train_fraction": 0.6,
+    "valid_fraction": 0.2,
+    "fast_bars": 12,
+    "slow_bars": 288,
+    "flow_bars": 6,
+    "logistic_C": 0.25,
+    "max_iter": 120,
+    "tol": 1e-07,
+    "bootstrap_reps": 1000,
+    "shuffle_reps": 100,
+    "min_days_ci": 20,
+    "min_events_ci": 200,
+    "seed": 2605,
+    "status": "HISTORICAL_EXPLORATORY"
+  },
+  "cs03_base_version": "CS03-0.1.1",
+  "source": "LOCAL Binance spot 5m and USD-M futures 1m",
+  "historical_test_reused": true,
+  "synthetic": false,
+  "assets_evaluated": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "excluded": {},
+  "split": {
+    "BTC": {
+      "train_before": "2025-12-20 00:00:00+00:00",
+      "test_from": "2026-05-16 00:00:00+00:00",
+      "complete_intersection_days": 736,
+      "train_days": 441,
+      "valid_days": 147,
+      "test_days": 148
+    },
+    "ETH": {
+      "train_before": "2025-12-20 00:00:00+00:00",
+      "test_from": "2026-05-16 00:00:00+00:00",
+      "complete_intersection_days": 736,
+      "train_days": 441,
+      "valid_days": 147,
+      "test_days": 148
+    },
+    "SOL": {
+      "train_before": "2025-12-20 00:00:00+00:00",
+      "test_from": "2026-05-16 00:00:00+00:00",
+      "complete_intersection_days": 736,
+      "train_days": 441,
+      "valid_days": 147,
+      "test_days": 148
+    },
+    "XRP": {
+      "train_before": "2025-12-20 00:00:00+00:00",
+      "test_from": "2026-05-16 00:00:00+00:00",
+      "complete_intersection_days": 736,
+      "train_days": 441,
+      "valid_days": 147,
+      "test_days": 148
+    }
+  },
+  "flow_tertiles_train": {
+    "BTC": [
+      -0.1257240265707173,
+      0.10127571311533531
+    ],
+    "ETH": [
+      -0.11231213856591744,
+      0.0904738628842851
+    ],
+    "SOL": [
+      -0.10746775977091667,
+      0.07986807183401529
+    ],
+    "XRP": [
+      -0.10197969353585612,
+      0.06510882796798242
+    ]
+  },
+  "models": {
+    "price_vol": [
+      "s_down",
+      "s_up",
+      "age_signed",
+      "age_abs",
+      "log_rv24h",
+      "log_fastslow"
+    ],
+    "price_vol_signed": [
+      "s_down",
+      "s_up",
+      "age_signed",
+      "age_abs",
+      "log_rv24h",
+      "log_fastslow",
+      "flow5",
+      "flow30",
+      "flow5_by_sign",
+      "flow30_by_sign"
+    ],
+    "price_vol_activity": [
+      "s_down",
+      "s_up",
+      "age_signed",
+      "age_abs",
+      "log_rv24h",
+      "log_fastslow",
+      "log_quote_volume",
+      "log_trades"
+    ],
+    "price_vol_both": [
+      "s_down",
+      "s_up",
+      "age_signed",
+      "age_abs",
+      "log_rv24h",
+      "log_fastslow",
+      "flow5",
+      "flow30",
+      "flow5_by_sign",
+      "flow30_by_sign",
+      "log_quote_volume",
+      "log_trades"
+    ]
+  },
+  "forecast_targets": [
+    "DOWN",
+    "ZERO",
+    "UP"
+  ],
+  "conditional_binary_targets_not_actionable_alone": true
+}

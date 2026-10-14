@@ -1,0 +1,140 @@
+{
+  "verdict": "HISTORICAL_SIGNED_FLOW_CANDIDATE",
+  "status": "HISTORICAL_EXPLORATORY",
+  "signed_threeclass_gate": true,
+  "signed_binary_gate": true,
+  "activity_threeclass_gate": false,
+  "primary": [
+    {
+      "asset": "BTC",
+      "component": "signed_vs_price",
+      "metric": "threeclass_logloss",
+      "delta": -0.00027224909033589335,
+      "upper95": -4.3563364185440474e-05,
+      "pass": true
+    },
+    {
+      "asset": "BTC",
+      "component": "signed_vs_price",
+      "metric": "binary_logloss",
+      "delta": -0.0002756363984719644,
+      "upper95": -7.059940176788452e-05,
+      "pass": true
+    },
+    {
+      "asset": "BTC",
+      "component": "activity_vs_price",
+      "metric": "threeclass_logloss",
+      "delta": -0.0007830018824290256,
+      "upper95": -0.0003529383127538363,
+      "pass": true
+    },
+    {
+      "asset": "BTC",
+      "component": "activity_vs_price",
+      "metric": "binary_logloss",
+      "delta": 3.2119631677186654e-05,
+      "upper95": 0.00011552131798864973,
+      "pass": false
+    },
+    {
+      "asset": "BTC",
+      "component": "signed_given_activity",
+      "metric": "threeclass_logloss",
+      "delta": -0.00024322051530618105,
+      "upper95": -1.6096674094073973e-05,
+      "pass": true
+    },
+    {
+      "asset": "BTC",
+      "component": "signed_given_activity",
+      "metric": "binary_logloss",
+      "delta": -0.00027735300173825937,
+      "upper95": -7.935756405812428e-05,
+      "pass": true
+    },
+    {
+      "asset": "BTC",
+      "component": "activity_given_signed",
+      "metric": "threeclass_logloss",
+      "delta": -0.0007539733073993134,
+      "upper95": -0.0003207105185472416,
+      "pass": true
+    },
+    {
+      "asset": "BTC",
+      "component": "activity_given_signed",
+      "metric": "binary_logloss",
+      "delta": 3.0403028410891675e-05,
+      "upper95": 0.00011137428353638303,
+      "pass": false
+    },
+    {
+      "asset": "ETH",
+      "component": "signed_vs_price",
+      "metric": "threeclass_logloss",
+      "delta": -0.0005997929624484406,
+      "upper95": -0.0002999739301978941,
+      "pass": true
+    },
+    {
+      "asset": "ETH",
+      "component": "signed_vs_price",
+      "metric": "binary_logloss",
+      "delta": -0.0006926524093930068,
+      "upper95": -0.0004085882859712406,
+      "pass": true
+    },
+    {
+      "asset": "ETH",
+      "component": "activity_vs_price",
+      "metric": "threeclass_logloss",
+      "delta": -0.0001438035033287227,
+      "upper95": 1.9229826916346688e-05,
+      "pass": false
+    },
+    {
+      "asset": "ETH",
+      "component": "activity_vs_price",
+      "metric": "binary_logloss",
+      "delta": 4.158328563456599e-05,
+      "upper95": 0.00017766699800579721,
+      "pass": false
+    },
+    {
+      "asset": "ETH",
+      "component": "signed_given_activity",
+      "metric": "threeclass_logloss",
+      "delta": -0.00057477561667375,
+      "upper95": -0.000263434631205421,
+      "pass": true
+    },
+    {
+      "asset": "ETH",
+      "component": "signed_given_activity",
+      "metric": "binary_logloss",
+      "delta": -0.0006774905038631035,
+      "upper95": -0.0003964524718334188,
+      "pass": true
+    },
+    {
+      "asset": "ETH",
+      "component": "activity_given_signed",
+      "metric": "threeclass_logloss",
+      "delta": -0.00011878615755403199,
+      "upper95": 3.757755820313101e-05,
+      "pass": false
+    },
+    {
+      "asset": "ETH",
+      "component": "activity_given_signed",
+      "metric": "binary_logloss",
+      "delta": 5.6745191164469325e-05,
+      "upper95": 0.00018771339144564732,
+      "pass": false
+    }
+  ],
+  "prospective_confirmation": false,
+  "AM_T_HAR_Blend_modified": false,
+  "note": "Previously inspected CS03 TEST period; no independent confirmation. Binary scores condition on immediate next return being nonzero."
+}
