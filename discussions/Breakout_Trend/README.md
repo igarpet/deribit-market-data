@@ -9,7 +9,8 @@ Independent branch: it uses only the shared 5-minute OHLC history and the collec
 | Turn | Content |
 |---|---|
 | `001_claude_branch_preregistration.md` | Rules (with Ivan's clarifications and two flagged assumptions), costs, model-priced and real-quote options leg, dev/test split, coin-flip null, pooled test-window decision |
+| `002_claude_source_change_perp.md` | Amendment before any run: Binance USD-M perp 1m → 5m OHLC, BTC/ETH/SOL/XRP, from 2024-10-01; everything else unchanged |
 
-Next turn in this branch: `002`.
+Next turn in this branch: `003`.
 
 Procedure and numbering rules: `../README.md`.

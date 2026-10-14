@@ -103,6 +103,26 @@ class Params:
 # Data preparation
 # --------------------------------------------------------------------------
 
+def ohlc5_from_um_1m(df1: pd.DataFrame, symbol: str = "") -> pd.DataFrame:
+    """5-minute OHLC from Binance USD-M perpetual 1-minute klines (BT 002 source change).
+    Input: open_time (bar OPEN, UTC), open, high, low, close[, volume]. Output in the
+    download_ohlc_history format: state_time = 5-minute bar END (UTC), source, symbol, OHLC, volume.
+    A 5-minute bar is kept only if all five of its minutes are present."""
+    x = df1.copy()
+    x["open_time"] = pd.to_datetime(x["open_time"], utc=True)
+    x = x.drop_duplicates("open_time").set_index("open_time").sort_index()
+    if "volume" not in x:
+        x["volume"] = np.nan
+    g = x.resample("5min", label="left", closed="left").agg(
+        {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"})
+    n = x["close"].resample("5min", label="left", closed="left").count()
+    g = g[n.reindex(g.index).fillna(0).to_numpy() == 5].dropna(subset=["close"])
+    out = g.reset_index().rename(columns={"open_time": "state_time"})
+    out["state_time"] = out["state_time"] + pd.Timedelta(minutes=5)
+    out["source"], out["symbol"] = "binance_um_perp", symbol
+    return out[["state_time", "source", "symbol", "open", "high", "low", "close", "volume"]]
+
+
 def clean_5m(df: pd.DataFrame) -> pd.DataFrame:
     """Sorted, de-duplicated 5-minute OHLC with state_time = bar END (UTC)."""
     x = df.copy()

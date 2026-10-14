@@ -198,5 +198,21 @@ class NullTests(unittest.TestCase):
         self.assertEqual(bt.verdict(-1.0, 0.01), "NO_EDGE")
 
 
+class TestUmSource(unittest.TestCase):
+    def test_ohlc5_from_um_1m(self):
+        t = pd.date_range("2026-01-05 00:00", periods=15, freq="1min", tz="UTC")
+        c = np.arange(15, dtype=float) + 100
+        df1 = pd.DataFrame({"open_time": t, "open": c - 0.5, "high": c + 1, "low": c - 1, "close": c, "volume": 1.0})
+        df1 = df1.drop(index=[12])                       # third 5m bar incomplete -> dropped
+        o = bt.ohlc5_from_um_1m(df1, "BTCUSDT")
+        self.assertEqual(len(o), 2)
+        self.assertEqual(o["state_time"].iloc[0], pd.Timestamp("2026-01-05 00:05", tz="UTC"))   # bar END
+        self.assertEqual(o["open"].iloc[0], 99.5)
+        self.assertEqual(o["close"].iloc[0], 104.0)
+        self.assertEqual(o["high"].iloc[1], 110.0)
+        self.assertEqual(o["low"].iloc[1], 104.0)
+        self.assertEqual(o["volume"].iloc[1], 5.0)
+
+
 if __name__ == "__main__":
     unittest.main()

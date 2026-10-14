@@ -8,7 +8,7 @@
 
 Code: `src/data_engineering/modeling/breakout_trend.py`. Tests: `tests/test_breakout_trend.py`. Outputs: `01/01_*`.
 
-Data: `DERIBIT_DATA_ROOT/history/ohlc_5m/<ASSET>.csv.gz` (from `tools/download_ohlc_history.py`; the close-only `history/price_5m` files are not used) and the collector's `daily/option_grid*` parquet files.
+Data (BT 002): Binance USD-M perpetual 1m parquet (`tools/download_binance_um_klines.py`, `<parent of DERIBIT_DATA_ROOT>/Binance` or `BINANCE_UM_DIR`) aggregated to 5m, BTC/ETH/SOL/XRP; plus the collector's `daily/option_grid*` parquet files. The registered spot source is still available with `set BT01_SOURCE=ohlc_5m` (needs `tools/download_ohlc_history.py --start 2024-08-25`).
 
 ## Running 01 (PC, Windows CMD)
 
@@ -18,7 +18,6 @@ Close the notebook in Jupyter first.
 cd /d D:\Projects\deribit_market_data
 git pull
 python -m unittest discover -s tests -p "test_breakout_trend.py" -v
-python tools\download_ohlc_history.py --start 2024-08-25
 jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=7200 notebooks\Breakout_Trend\01_breakout_backtest.ipynb
 git add notebooks\Breakout_Trend
 git commit -m "Breakout Trend 01: run"
