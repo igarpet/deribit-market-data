@@ -1,0 +1,15 @@
+{
+  "status": "HISTORICAL_EXPLORATORY",
+  "n_test_days": 150,
+  "primary_horizon_min": 60,
+  "flags": {
+    "AM_T_beats_AM_G": true,
+    "AM_T_beats_M2": false,
+    "AM_T_AR_beats_AM_T": false,
+    "AM_T_AR_beats_M2": false,
+    "T_MC_beats_T_RW": true
+  },
+  "strong_candidate": false,
+  "historical_confirmation_permitted": false,
+  "note": "Tail calibration, particle sensitivity, per-asset stability and prospective sample required."
+}
