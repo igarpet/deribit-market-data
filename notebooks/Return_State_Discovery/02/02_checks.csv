@@ -1,0 +1,3 @@
+asset,delta_NLL_state_minus_cont,NLL_upper_day_CI_state_minus_cont,delta_NLL_state_minus_VD18,NLL_upper_day_CI_state_minus_VD18,direction_brier_state_minus_cont,sign_null_percentile,chain_uncertainty_warning,exploratory_candidate
+BTC,0.00345092118,0.0101662452,0.000487735368,0.0102115436,0.000606007747,0.925,True,False
+ETH,0.0122014487,0.0221363536,0.0152033487,0.0323699559,0.000443335829,0.9,False,False

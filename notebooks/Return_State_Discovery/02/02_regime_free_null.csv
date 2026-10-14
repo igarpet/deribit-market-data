@@ -1,0 +1,5 @@
+asset,null_seed,sim_train_blocks,K_occupied_median,K_histogram,at_Kcap_probability,duration_cap_rate,beta_mh_acceptance,warning
+BTC,311,4306,6,"{""6"": 15}",0,0.00279565678,0.742857143,NONE
+BTC,719,4306,9,"{""9"": 8, ""10"": 7}",0,0.00136844114,0.542857143,NONE
+ETH,311,4306,6,"{""6"": 15}",0,0,0.692857143,NONE
+ETH,719,4306,9,"{""9"": 15}",0,0,0.564285714,NONE

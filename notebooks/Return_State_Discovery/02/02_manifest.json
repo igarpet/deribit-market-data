@@ -1,0 +1,81 @@
+{
+  "module": "Return_State_Discovery_02",
+  "spec": {
+    "version": "RSD02-0.1.0",
+    "horizon_min": 30,
+    "primary_assets": [
+      "BTC",
+      "ETH"
+    ],
+    "confirm_assets": [
+      "SOL",
+      "XRP"
+    ],
+    "kcap": 12,
+    "age_cap_blocks": 96,
+    "hsmm_chains": [
+      1801,
+      2909
+    ],
+    "n_iter": 140,
+    "burn": 80,
+    "thin": 4,
+    "posterior_draws_per_chain": 3,
+    "volatility_memory_blocks": 8,
+    "df": 6.0,
+    "n_bootstrap": 1000,
+    "n_sign_null": 40,
+    "status": "HISTORICAL_EXPLORATORY",
+    "note": "Sign-free volatility emission; filtered pre-block probabilities; split after original VD18 train/valid."
+  },
+  "status": "HISTORICAL_EXPLORATORY",
+  "decision": "NO_ESTABLISHED_INCREMENTAL_PRICE_STATE",
+  "assets": [
+    "BTC",
+    "ETH"
+  ],
+  "baseline": {
+    "har_family": "HAR_4",
+    "blend_weight": 0.8395717427385103,
+    "base_scale": 1.4756492057728403,
+    "base_shape": 1.826083232241286,
+    "historical_test_origin_count": 14398
+  },
+  "cut_fit_before": "2026-07-21 00:00:00+00:00",
+  "eval_after": "2026-08-20 00:00:00+00:00",
+  "rv_floor_train_only": {
+    "BTC": 3.8445727259596426e-09,
+    "ETH": 6.042432556461763e-09
+  },
+  "checks": [
+    {
+      "asset": "BTC",
+      "delta_NLL_state_minus_cont": 0.003450921178650985,
+      "NLL_upper_day_CI_state_minus_cont": 0.010166245222960979,
+      "delta_NLL_state_minus_VD18": 0.000487735367713568,
+      "NLL_upper_day_CI_state_minus_VD18": 0.010211543566827403,
+      "direction_brier_state_minus_cont": 0.0006060077471824317,
+      "sign_null_percentile": 0.925,
+      "chain_uncertainty_warning": true,
+      "exploratory_candidate": false
+    },
+    {
+      "asset": "ETH",
+      "delta_NLL_state_minus_cont": 0.012201448687431452,
+      "NLL_upper_day_CI_state_minus_cont": 0.02213635363948413,
+      "delta_NLL_state_minus_VD18": 0.015203348700950603,
+      "NLL_upper_day_CI_state_minus_VD18": 0.03236995589858723,
+      "direction_brier_state_minus_cont": 0.00044333582906054097,
+      "sign_null_percentile": 0.9,
+      "chain_uncertainty_warning": false,
+      "exploratory_candidate": false
+    }
+  ],
+  "note": [
+    "Posterior K is not evidence of economic regimes.",
+    "Only past completed volatility blocks enter conditional return predictions.",
+    "Historical TEST reused after VD14-18 and RSD01; prospective confirmation still required.",
+    "Regime-free null conditioned on actual ex-ante variance; not a complete HAR-refitted DGP.",
+    "No option strategy or executable alpha claim."
+  ]
+}
