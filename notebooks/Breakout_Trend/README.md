@@ -4,7 +4,7 @@
 
 | Notebook | Content | Status |
 |---|---|---|
-| `01_breakout_backtest.ipynb` | Exact rules on 5m Binance OHLC (HYPE: Deribit perp); perpetual leg net of fees and slippage; delta-matched long ATM option leg (model-priced, calibrated on collector quotes; real-quote check in the collector window); dev 2024-09 → 2025-12, test 2026; coin-flip null (200 runs); equity curves per asset (perpetual vs options) | Pre-registered (BT 001); awaiting first run |
+| `01_breakout_backtest.ipynb` | Exact rules on 5m Binance OHLC (HYPE: Deribit perp); perpetual leg net of fees and slippage; delta-matched long ATM option leg (model-priced, calibrated on collector quotes; real-quote check in the collector window); dev 2024-09 → 2025-12, test 2026; coin-flip null (200 runs); equity curves per asset (perpetual vs options) | Run e2cb44e (BT 003): **NO_EDGE**; no gross edge, costs 40–45%/yr per asset |
 
 Code: `src/data_engineering/modeling/breakout_trend.py`. Tests: `tests/test_breakout_trend.py`. Outputs: `01/01_*`.
 
