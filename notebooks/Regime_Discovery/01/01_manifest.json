@@ -1,0 +1,215 @@
+{
+  "module": "RD01",
+  "registration": {
+    "version": "RD01-0.1.0",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "horizons": [
+      5,
+      15,
+      30,
+      60
+    ],
+    "discovery_fraction": 0.8,
+    "fold_positions": [
+      0.5,
+      0.64,
+      0.78
+    ],
+    "validation_days_fraction": 0.08,
+    "embargo_days": 1,
+    "structure_fraction": 0.7,
+    "rule_quantiles": [
+      0.3333333333333333,
+      0.6666666666666666
+    ],
+    "tree_max_leaf_nodes": 8,
+    "tree_max_depth": 3,
+    "tree_min_leaf_fraction": 0.04,
+    "tree_min_leaf_absolute": 120,
+    "tree_anchor_minutes": [
+      0,
+      30
+    ],
+    "ridge_alpha": 100.0,
+    "regime_shrinkage": 350.0,
+    "student_df": 6.0,
+    "minimum_diagnostic_events": 200,
+    "bootstrap_repetitions": 300,
+    "random_state": 2607,
+    "status": "HISTORICAL_DISCOVERY_NOT_CONFIRMATION"
+  },
+  "synthetic": false,
+  "status": "HISTORICAL_DISCOVERY_NOT_CONFIRMATION",
+  "assets_evaluated": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "folds": [
+    {
+      "asset": "BTC",
+      "fold": 1,
+      "structure_end": "2025-04-26 00:00:00+00:00",
+      "calibration_start": "2025-04-27 00:00:00+00:00",
+      "calibration_end": "2025-07-23 00:00:00+00:00",
+      "validation_start": "2025-07-25 00:00:00+00:00",
+      "validation_end": "2025-09-10 00:00:00+00:00",
+      "n_structure_days": 205,
+      "n_calibration_days": 88,
+      "n_validation_days": 47
+    },
+    {
+      "asset": "BTC",
+      "fold": 2,
+      "structure_end": "2025-06-22 00:00:00+00:00",
+      "calibration_start": "2025-06-23 00:00:00+00:00",
+      "calibration_end": "2025-10-14 00:00:00+00:00",
+      "validation_start": "2025-10-16 00:00:00+00:00",
+      "validation_end": "2025-12-01 00:00:00+00:00",
+      "n_structure_days": 262,
+      "n_calibration_days": 113,
+      "n_validation_days": 47
+    },
+    {
+      "asset": "BTC",
+      "fold": 3,
+      "structure_end": "2025-08-18 00:00:00+00:00",
+      "calibration_start": "2025-08-19 00:00:00+00:00",
+      "calibration_end": "2026-01-04 00:00:00+00:00",
+      "validation_start": "2026-01-06 00:00:00+00:00",
+      "validation_end": "2026-02-21 00:00:00+00:00",
+      "n_structure_days": 319,
+      "n_calibration_days": 138,
+      "n_validation_days": 47
+    },
+    {
+      "asset": "ETH",
+      "fold": 1,
+      "structure_end": "2025-04-26 00:00:00+00:00",
+      "calibration_start": "2025-04-27 00:00:00+00:00",
+      "calibration_end": "2025-07-23 00:00:00+00:00",
+      "validation_start": "2025-07-25 00:00:00+00:00",
+      "validation_end": "2025-09-10 00:00:00+00:00",
+      "n_structure_days": 205,
+      "n_calibration_days": 88,
+      "n_validation_days": 47
+    },
+    {
+      "asset": "ETH",
+      "fold": 2,
+      "structure_end": "2025-06-22 00:00:00+00:00",
+      "calibration_start": "2025-06-23 00:00:00+00:00",
+      "calibration_end": "2025-10-14 00:00:00+00:00",
+      "validation_start": "2025-10-16 00:00:00+00:00",
+      "validation_end": "2025-12-01 00:00:00+00:00",
+      "n_structure_days": 262,
+      "n_calibration_days": 113,
+      "n_validation_days": 47
+    },
+    {
+      "asset": "ETH",
+      "fold": 3,
+      "structure_end": "2025-08-18 00:00:00+00:00",
+      "calibration_start": "2025-08-19 00:00:00+00:00",
+      "calibration_end": "2026-01-04 00:00:00+00:00",
+      "validation_start": "2026-01-06 00:00:00+00:00",
+      "validation_end": "2026-02-21 00:00:00+00:00",
+      "n_structure_days": 319,
+      "n_calibration_days": 138,
+      "n_validation_days": 47
+    },
+    {
+      "asset": "SOL",
+      "fold": 1,
+      "structure_end": "2025-04-26 00:00:00+00:00",
+      "calibration_start": "2025-04-27 00:00:00+00:00",
+      "calibration_end": "2025-07-23 00:00:00+00:00",
+      "validation_start": "2025-07-25 00:00:00+00:00",
+      "validation_end": "2025-09-10 00:00:00+00:00",
+      "n_structure_days": 205,
+      "n_calibration_days": 88,
+      "n_validation_days": 47
+    },
+    {
+      "asset": "SOL",
+      "fold": 2,
+      "structure_end": "2025-06-22 00:00:00+00:00",
+      "calibration_start": "2025-06-23 00:00:00+00:00",
+      "calibration_end": "2025-10-14 00:00:00+00:00",
+      "validation_start": "2025-10-16 00:00:00+00:00",
+      "validation_end": "2025-12-01 00:00:00+00:00",
+      "n_structure_days": 262,
+      "n_calibration_days": 113,
+      "n_validation_days": 47
+    },
+    {
+      "asset": "SOL",
+      "fold": 3,
+      "structure_end": "2025-08-18 00:00:00+00:00",
+      "calibration_start": "2025-08-19 00:00:00+00:00",
+      "calibration_end": "2026-01-04 00:00:00+00:00",
+      "validation_start": "2026-01-06 00:00:00+00:00",
+      "validation_end": "2026-02-21 00:00:00+00:00",
+      "n_structure_days": 319,
+      "n_calibration_days": 138,
+      "n_validation_days": 47
+    },
+    {
+      "asset": "XRP",
+      "fold": 1,
+      "structure_end": "2025-04-26 00:00:00+00:00",
+      "calibration_start": "2025-04-27 00:00:00+00:00",
+      "calibration_end": "2025-07-23 00:00:00+00:00",
+      "validation_start": "2025-07-25 00:00:00+00:00",
+      "validation_end": "2025-09-10 00:00:00+00:00",
+      "n_structure_days": 205,
+      "n_calibration_days": 88,
+      "n_validation_days": 47
+    },
+    {
+      "asset": "XRP",
+      "fold": 2,
+      "structure_end": "2025-06-22 00:00:00+00:00",
+      "calibration_start": "2025-06-23 00:00:00+00:00",
+      "calibration_end": "2025-10-14 00:00:00+00:00",
+      "validation_start": "2025-10-16 00:00:00+00:00",
+      "validation_end": "2025-12-01 00:00:00+00:00",
+      "n_structure_days": 262,
+      "n_calibration_days": 113,
+      "n_validation_days": 47
+    },
+    {
+      "asset": "XRP",
+      "fold": 3,
+      "structure_end": "2025-08-18 00:00:00+00:00",
+      "calibration_start": "2025-08-19 00:00:00+00:00",
+      "calibration_end": "2026-01-04 00:00:00+00:00",
+      "validation_start": "2026-01-06 00:00:00+00:00",
+      "validation_end": "2026-02-21 00:00:00+00:00",
+      "n_structure_days": 319,
+      "n_calibration_days": 138,
+      "n_validation_days": 47
+    }
+  ],
+  "n_full_days": {
+    "BTC": 736,
+    "ETH": 736,
+    "SOL": 736,
+    "XRP": 736
+  },
+  "feature_source": "LOCAL CS04-A per-origin historical Parquet",
+  "normalization": "TRAILING_24H_VARIANCE_PROXY_NOT_AM_T_HAR_BLEND",
+  "density": "Student-t(df=6) fixed common per-asset/fold/horizon scale, regime-dependent TRAIN-calibrated location only",
+  "legacy_test_used_for_selection": false,
+  "independent_confirmation": false,
+  "AM_T_HAR_Blend_modified": false,
+  "caution": "Previously inspected project history; do not infer structural regimes merely from CART leaves or sign separation.",
+  "excluded": {},
+  "n_asset_folds": 12
+}
