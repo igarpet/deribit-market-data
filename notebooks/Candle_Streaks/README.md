@@ -36,3 +36,9 @@ Protocol: [`CS03`](../../discussions/Candle_Streaks/003_chatgpt_trade_flow_strea
 ### CS03 v0.1.1 — optimizer convergence correction
 
 The first real-data execution reached the L-BFGS iteration ceiling (300) when fitting `sign_streak_vol_flow` and stopped before any market scores were saved. Version `CS03-0.1.1` switches **only** the multinomial L2 optimizer to `newton-cholesky`, supported for three classes by scikit-learn >= 1.6. The same TRAIN-only standardization, `C=0.25`, `tol=1e-7`, feature sets, split rules and holdout gates are retained; optimizer warnings remain fatal. The replacement uses a maximum of 120 Newton iterations and verifies convergence. Execute notebook 03 from the beginning again, then push its executed outputs; the errored notebook contains no historical inference. Numerical amendment: [CS03 convergence memo](../../discussions/Candle_Streaks/003a_chatgpt_cs03_optimizer_correction.md).
+
+## Module 03c — Signed flow vs the perpetual's own next return
+
+`03c_perp_target_flow.ipynb` reruns the frozen CS03b ablation with the **Binance USD-M perpetual** as the target market (sign, streak, volatility and next return from perp 1m closes). This removes perp→spot lead-lag. The spot target is refitted on the same common days as a reference. It adds an economic test: hold $\operatorname{sign}(P_{up}-P_{down})$ for 5 minutes when $|P_{up}-P_{down}|$ is above the TRAIN 90th percentile, net of 6 / 3 / 0 bp per side. Gates: CS03b statistical gate on the perp target, plus TEST net bp/day lower bound > 0 at taker cost, for BTC and ETH.
+
+Protocol: [`CS03c`](../../discussions/Candle_Streaks/003c_claude_perp_target_preregistration.md). Run `python -m pytest -q tests/test_candle_streak_perp_target.py`, then execute notebook 03c. Results go to `03c/`. `CS03C_SYNTHETIC=1` gives a lead-lag synthetic smoke test only.
