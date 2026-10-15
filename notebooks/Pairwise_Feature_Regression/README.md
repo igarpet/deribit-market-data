@@ -5,6 +5,7 @@
 | Notebook | Description | Status |
 |---|---|---|
 | `01_pairwise_feature_ols_matrices.ipynb` | v1.0: independent simple OLS for every ordered feature pair, per underlying, beta and residual RMSE matrices, heatmaps and sample/scale diagnostics | **Executed**, commit `860b86c`; 9/9 in-kernel tests pass; 46,032 fitted directed regressions; results reviewed in discussion 003 |
+| `03_feature_lead_screen.ipynb` | Lead screen (Claude): partial IC of every catalog feature at t with the Deribit perp return over the next 5/15/60 min, discovery/confirmation split, day bootstrap, cost translation. Protocol: discussion 007 | Built; awaiting local execution |
 | `02_exact_5m_clock_matrices.ipynb` | v2.0: **288 exact five-minute UTC clock groups per asset**; independently regress all feature pairs at 00:00, 00:05, ..., 23:55 across available dates, producing beta/error matrices and sample diagnostics for each slot | Built; awaiting local execution |
 
 **Reusable engines:** `src/data_engineering/modeling/pairwise_feature_regression.py` (v1.0.0), `src/data_engineering/modeling/pairwise_feature_clock.py` (v2.0.0 exact-UTC-clock matrix stacks).
