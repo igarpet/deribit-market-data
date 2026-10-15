@@ -1,0 +1,20 @@
+{
+  "verdict": "MODEL_ADDS_INFORMATION",
+  "primary_entry_utc": 4,
+  "beta": 1.2325176456049465,
+  "beta_ci": [
+    0.39399984784508735,
+    2.15251368543685
+  ],
+  "selected_trades_R_net": {
+    "entry_hour": 4,
+    "subset": "x>=log1.25",
+    "n_sessions": 9,
+    "n": 19,
+    "mean": -0.1468154935159522,
+    "lo": -0.5704926512969825,
+    "hi": 0.36908334236154583
+  },
+  "status": "HISTORICAL_EXPLORATORY_SMALL_SAMPLE",
+  "prospective_confirmation": false
+}
