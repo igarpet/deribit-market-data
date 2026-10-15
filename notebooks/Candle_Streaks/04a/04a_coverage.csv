@@ -1,0 +1,5 @@
+asset,n_overlap_complete_days,n_combinations_including_base,n_fold_fits,n_heldout_days
+BTC,736,176,528,141
+ETH,736,176,528,141
+SOL,736,176,528,141
+XRP,736,176,528,141

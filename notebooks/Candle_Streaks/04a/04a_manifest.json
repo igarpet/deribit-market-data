@@ -1,0 +1,460 @@
+{
+  "module": "CS04-A",
+  "registration": {
+    "version": "CS04A-0.1.0",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "cutoff_utc": "2026-10-14T00:00:00Z",
+    "discovery_fraction": 0.8,
+    "fold_positions": [
+      0.5,
+      0.64,
+      0.78
+    ],
+    "validation_days_fraction": 0.08,
+    "embargo_days": 1,
+    "family_max_order": 3,
+    "C": 0.25,
+    "ridge_alpha": 10.0,
+    "logistic_tol": 1e-06,
+    "logistic_max_iter": 120,
+    "seed": 2606,
+    "status": "HISTORICAL_DISCOVERY_NOT_CONFIRMATION"
+  },
+  "synthetic": false,
+  "quick": false,
+  "assets_evaluated": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "excluded": {},
+  "folds": [
+    {
+      "version": "CS04A-0.1.0",
+      "asset": "BTC",
+      "complete_days": 736,
+      "first_complete": "2024-10-02 00:00:00+00:00",
+      "last_complete": "2026-10-10 00:00:00+00:00",
+      "folds": [
+        {
+          "fold": 1,
+          "n_train_days": 293,
+          "n_validation_days": 47,
+          "train_end_exclusive": "2025-07-24 00:00:00+00:00",
+          "validation_start": "2025-07-25 00:00:00+00:00",
+          "validation_end_inclusive": "2025-09-10 00:00:00+00:00",
+          "embargo_days": 1
+        },
+        {
+          "fold": 2,
+          "n_train_days": 375,
+          "n_validation_days": 47,
+          "train_end_exclusive": "2025-10-15 00:00:00+00:00",
+          "validation_start": "2025-10-16 00:00:00+00:00",
+          "validation_end_inclusive": "2025-12-01 00:00:00+00:00",
+          "embargo_days": 1
+        },
+        {
+          "fold": 3,
+          "n_train_days": 457,
+          "n_validation_days": 47,
+          "train_end_exclusive": "2026-01-05 00:00:00+00:00",
+          "validation_start": "2026-01-06 00:00:00+00:00",
+          "validation_end_inclusive": "2026-02-21 00:00:00+00:00",
+          "embargo_days": 1
+        }
+      ],
+      "features": {
+        "momentum": [
+          "mom_r5",
+          "mom_r15_mean",
+          "mom_r60_mean",
+          "mom_accel"
+        ],
+        "candle_geometry": [
+          "candle_body",
+          "candle_range",
+          "candle_upper_wick",
+          "candle_lower_wick"
+        ],
+        "minute_path": [
+          "last_1m_r",
+          "minute_rv",
+          "minute_accel"
+        ],
+        "signed_flow": [
+          "flow5",
+          "flow30",
+          "flow5_by_sign",
+          "flow30_by_sign"
+        ],
+        "flow_timing": [
+          "flow_early",
+          "flow_late",
+          "flow_accel"
+        ],
+        "trade_activity": [
+          "log_quote_volume",
+          "log_trades",
+          "log_avg_trade"
+        ],
+        "flow_price_impact": [
+          "flow_price_divergence",
+          "flow_return_alignment"
+        ],
+        "spot_futures_basis": [
+          "basis_bps",
+          "basis_change_bps",
+          "futures_spot_return_gap"
+        ],
+        "peer_market": [
+          "peer_ret5",
+          "peer_flow5"
+        ],
+        "utc_calendar": [
+          "clock_sin",
+          "clock_cos",
+          "weekday_sin",
+          "weekday_cos"
+        ]
+      },
+      "target_horizons_minutes": [
+        5,
+        15,
+        30
+      ],
+      "target_units": "log return; 1e4-scaled absolute log returns for magnitude scores",
+      "historical_test_reused_for_selection": false,
+      "research_status": "HISTORICAL_DISCOVERY_NOT_CONFIRMATION"
+    },
+    {
+      "version": "CS04A-0.1.0",
+      "asset": "ETH",
+      "complete_days": 736,
+      "first_complete": "2024-10-02 00:00:00+00:00",
+      "last_complete": "2026-10-10 00:00:00+00:00",
+      "folds": [
+        {
+          "fold": 1,
+          "n_train_days": 293,
+          "n_validation_days": 47,
+          "train_end_exclusive": "2025-07-24 00:00:00+00:00",
+          "validation_start": "2025-07-25 00:00:00+00:00",
+          "validation_end_inclusive": "2025-09-10 00:00:00+00:00",
+          "embargo_days": 1
+        },
+        {
+          "fold": 2,
+          "n_train_days": 375,
+          "n_validation_days": 47,
+          "train_end_exclusive": "2025-10-15 00:00:00+00:00",
+          "validation_start": "2025-10-16 00:00:00+00:00",
+          "validation_end_inclusive": "2025-12-01 00:00:00+00:00",
+          "embargo_days": 1
+        },
+        {
+          "fold": 3,
+          "n_train_days": 457,
+          "n_validation_days": 47,
+          "train_end_exclusive": "2026-01-05 00:00:00+00:00",
+          "validation_start": "2026-01-06 00:00:00+00:00",
+          "validation_end_inclusive": "2026-02-21 00:00:00+00:00",
+          "embargo_days": 1
+        }
+      ],
+      "features": {
+        "momentum": [
+          "mom_r5",
+          "mom_r15_mean",
+          "mom_r60_mean",
+          "mom_accel"
+        ],
+        "candle_geometry": [
+          "candle_body",
+          "candle_range",
+          "candle_upper_wick",
+          "candle_lower_wick"
+        ],
+        "minute_path": [
+          "last_1m_r",
+          "minute_rv",
+          "minute_accel"
+        ],
+        "signed_flow": [
+          "flow5",
+          "flow30",
+          "flow5_by_sign",
+          "flow30_by_sign"
+        ],
+        "flow_timing": [
+          "flow_early",
+          "flow_late",
+          "flow_accel"
+        ],
+        "trade_activity": [
+          "log_quote_volume",
+          "log_trades",
+          "log_avg_trade"
+        ],
+        "flow_price_impact": [
+          "flow_price_divergence",
+          "flow_return_alignment"
+        ],
+        "spot_futures_basis": [
+          "basis_bps",
+          "basis_change_bps",
+          "futures_spot_return_gap"
+        ],
+        "peer_market": [
+          "peer_ret5",
+          "peer_flow5"
+        ],
+        "utc_calendar": [
+          "clock_sin",
+          "clock_cos",
+          "weekday_sin",
+          "weekday_cos"
+        ]
+      },
+      "target_horizons_minutes": [
+        5,
+        15,
+        30
+      ],
+      "target_units": "log return; 1e4-scaled absolute log returns for magnitude scores",
+      "historical_test_reused_for_selection": false,
+      "research_status": "HISTORICAL_DISCOVERY_NOT_CONFIRMATION"
+    },
+    {
+      "version": "CS04A-0.1.0",
+      "asset": "SOL",
+      "complete_days": 736,
+      "first_complete": "2024-10-02 00:00:00+00:00",
+      "last_complete": "2026-10-10 00:00:00+00:00",
+      "folds": [
+        {
+          "fold": 1,
+          "n_train_days": 293,
+          "n_validation_days": 47,
+          "train_end_exclusive": "2025-07-24 00:00:00+00:00",
+          "validation_start": "2025-07-25 00:00:00+00:00",
+          "validation_end_inclusive": "2025-09-10 00:00:00+00:00",
+          "embargo_days": 1
+        },
+        {
+          "fold": 2,
+          "n_train_days": 375,
+          "n_validation_days": 47,
+          "train_end_exclusive": "2025-10-15 00:00:00+00:00",
+          "validation_start": "2025-10-16 00:00:00+00:00",
+          "validation_end_inclusive": "2025-12-01 00:00:00+00:00",
+          "embargo_days": 1
+        },
+        {
+          "fold": 3,
+          "n_train_days": 457,
+          "n_validation_days": 47,
+          "train_end_exclusive": "2026-01-05 00:00:00+00:00",
+          "validation_start": "2026-01-06 00:00:00+00:00",
+          "validation_end_inclusive": "2026-02-21 00:00:00+00:00",
+          "embargo_days": 1
+        }
+      ],
+      "features": {
+        "momentum": [
+          "mom_r5",
+          "mom_r15_mean",
+          "mom_r60_mean",
+          "mom_accel"
+        ],
+        "candle_geometry": [
+          "candle_body",
+          "candle_range",
+          "candle_upper_wick",
+          "candle_lower_wick"
+        ],
+        "minute_path": [
+          "last_1m_r",
+          "minute_rv",
+          "minute_accel"
+        ],
+        "signed_flow": [
+          "flow5",
+          "flow30",
+          "flow5_by_sign",
+          "flow30_by_sign"
+        ],
+        "flow_timing": [
+          "flow_early",
+          "flow_late",
+          "flow_accel"
+        ],
+        "trade_activity": [
+          "log_quote_volume",
+          "log_trades",
+          "log_avg_trade"
+        ],
+        "flow_price_impact": [
+          "flow_price_divergence",
+          "flow_return_alignment"
+        ],
+        "spot_futures_basis": [
+          "basis_bps",
+          "basis_change_bps",
+          "futures_spot_return_gap"
+        ],
+        "peer_market": [
+          "peer_ret5",
+          "peer_flow5"
+        ],
+        "utc_calendar": [
+          "clock_sin",
+          "clock_cos",
+          "weekday_sin",
+          "weekday_cos"
+        ]
+      },
+      "target_horizons_minutes": [
+        5,
+        15,
+        30
+      ],
+      "target_units": "log return; 1e4-scaled absolute log returns for magnitude scores",
+      "historical_test_reused_for_selection": false,
+      "research_status": "HISTORICAL_DISCOVERY_NOT_CONFIRMATION"
+    },
+    {
+      "version": "CS04A-0.1.0",
+      "asset": "XRP",
+      "complete_days": 736,
+      "first_complete": "2024-10-02 00:00:00+00:00",
+      "last_complete": "2026-10-10 00:00:00+00:00",
+      "folds": [
+        {
+          "fold": 1,
+          "n_train_days": 293,
+          "n_validation_days": 47,
+          "train_end_exclusive": "2025-07-24 00:00:00+00:00",
+          "validation_start": "2025-07-25 00:00:00+00:00",
+          "validation_end_inclusive": "2025-09-10 00:00:00+00:00",
+          "embargo_days": 1
+        },
+        {
+          "fold": 2,
+          "n_train_days": 375,
+          "n_validation_days": 47,
+          "train_end_exclusive": "2025-10-15 00:00:00+00:00",
+          "validation_start": "2025-10-16 00:00:00+00:00",
+          "validation_end_inclusive": "2025-12-01 00:00:00+00:00",
+          "embargo_days": 1
+        },
+        {
+          "fold": 3,
+          "n_train_days": 457,
+          "n_validation_days": 47,
+          "train_end_exclusive": "2026-01-05 00:00:00+00:00",
+          "validation_start": "2026-01-06 00:00:00+00:00",
+          "validation_end_inclusive": "2026-02-21 00:00:00+00:00",
+          "embargo_days": 1
+        }
+      ],
+      "features": {
+        "momentum": [
+          "mom_r5",
+          "mom_r15_mean",
+          "mom_r60_mean",
+          "mom_accel"
+        ],
+        "candle_geometry": [
+          "candle_body",
+          "candle_range",
+          "candle_upper_wick",
+          "candle_lower_wick"
+        ],
+        "minute_path": [
+          "last_1m_r",
+          "minute_rv",
+          "minute_accel"
+        ],
+        "signed_flow": [
+          "flow5",
+          "flow30",
+          "flow5_by_sign",
+          "flow30_by_sign"
+        ],
+        "flow_timing": [
+          "flow_early",
+          "flow_late",
+          "flow_accel"
+        ],
+        "trade_activity": [
+          "log_quote_volume",
+          "log_trades",
+          "log_avg_trade"
+        ],
+        "flow_price_impact": [
+          "flow_price_divergence",
+          "flow_return_alignment"
+        ],
+        "spot_futures_basis": [
+          "basis_bps",
+          "basis_change_bps",
+          "futures_spot_return_gap"
+        ],
+        "peer_market": [
+          "peer_ret5",
+          "peer_flow5"
+        ],
+        "utc_calendar": [
+          "clock_sin",
+          "clock_cos",
+          "weekday_sin",
+          "weekday_cos"
+        ]
+      },
+      "target_horizons_minutes": [
+        5,
+        15,
+        30
+      ],
+      "target_units": "log return; 1e4-scaled absolute log returns for magnitude scores",
+      "historical_test_reused_for_selection": false,
+      "research_status": "HISTORICAL_DISCOVERY_NOT_CONFIRMATION"
+    }
+  ],
+  "model_count": 2112,
+  "feature_combination_count": 175,
+  "target_labels_locally_saved": "D:\\MarketData\\Deribit\\research\\cs04a_feature_store",
+  "local_target_columns": [
+    "ret_5m",
+    "abs_5m",
+    "sq_5m",
+    "upside_5m",
+    "downside_5m",
+    "path_rv_5m",
+    "path_abs_sum_5m",
+    "ret_15m",
+    "abs_15m",
+    "sq_15m",
+    "upside_15m",
+    "downside_15m",
+    "path_rv_15m",
+    "path_abs_sum_15m",
+    "ret_30m",
+    "abs_30m",
+    "sq_30m",
+    "upside_30m",
+    "downside_30m",
+    "path_rv_30m",
+    "path_abs_sum_30m"
+  ],
+  "previously_inspected_legacy_test_used_for_selection": false,
+  "AM_T_HAR_Blend_modified": false,
+  "disclaimer": "Exploratory only; do not report rank #1 as independent confirmation."
+}

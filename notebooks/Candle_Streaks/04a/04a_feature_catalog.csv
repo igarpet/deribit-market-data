@@ -1,0 +1,11 @@
+family,n_features,features
+momentum,4,mom_r5 | mom_r15_mean | mom_r60_mean | mom_accel
+candle_geometry,4,candle_body | candle_range | candle_upper_wick | candle_lower_wick
+minute_path,3,last_1m_r | minute_rv | minute_accel
+signed_flow,4,flow5 | flow30 | flow5_by_sign | flow30_by_sign
+flow_timing,3,flow_early | flow_late | flow_accel
+trade_activity,3,log_quote_volume | log_trades | log_avg_trade
+flow_price_impact,2,flow_price_divergence | flow_return_alignment
+spot_futures_basis,3,basis_bps | basis_change_bps | futures_spot_return_gap
+peer_market,2,peer_ret5 | peer_flow5
+utc_calendar,4,clock_sin | clock_cos | weekday_sin | weekday_cos
