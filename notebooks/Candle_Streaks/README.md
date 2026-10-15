@@ -42,3 +42,9 @@ The first real-data execution reached the L-BFGS iteration ceiling (300) when fi
 `03c_perp_target_flow.ipynb` reruns the frozen CS03b ablation with the **Binance USD-M perpetual** as the target market (sign, streak, volatility and next return from perp 1m closes). This removes perp→spot lead-lag. The spot target is refitted on the same common days as a reference. It adds an economic test: hold $\operatorname{sign}(P_{up}-P_{down})$ for 5 minutes when $|P_{up}-P_{down}|$ is above the TRAIN 90th percentile, net of 6 / 3 / 0 bp per side. Gates: CS03b statistical gate on the perp target, plus TEST net bp/day lower bound > 0 at taker cost, for BTC and ETH.
 
 Protocol: [`CS03c`](../../discussions/Candle_Streaks/003c_claude_perp_target_preregistration.md). Run `python -m pytest -q tests/test_candle_streak_perp_target.py`, then execute notebook 03c. Results go to `03c/`. `CS03C_SYNTHETIC=1` gives a lead-lag synthetic smoke test only.
+
+## Module 03e — Passive execution of the CS03c signal
+
+`03e_passive_fill.ipynb` reproduces the CS03c BTC/ETH signal and executes it with a limit order k ∈ {0, 1, 2, 5} bp behind the last trade, using Binance USD-M `aggTrades`. The order fills only on a strict trade-through within the forecast bar (an upper bound on fills) and exits at the first trade at or after t + 5 m (15 m secondary). A random-side passive arm on every origin measures adverse selection. Gate: maker in + taker out (8 bp); net bp/day Bonferroni lower bound > 0 for BTC and ETH at the same k.
+
+Protocol: [`CS03e`](../../discussions/Candle_Streaks/003e_claude_passive_fill_preregistration.md). First download the data: `python tools/download_binance_um_aggtrades.py --symbols BTCUSDT ETHUSDT --start 2026-07-01 --end 2026-09-30` (written to `<BINANCE_UM_DIR>/aggTrades/`). Then run `python -m pytest -q tests/test_candle_streak_passive_fill.py` and execute notebook 03e. Results go to `03e/`. `CS03E_SYNTHETIC=1` runs a random-walk smoke test.
