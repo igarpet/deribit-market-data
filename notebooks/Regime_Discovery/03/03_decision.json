@@ -1,0 +1,59 @@
+{
+  "status": "HISTORICAL_EXPLORATORY_REPEATEDLY_INSPECTED",
+  "verdict": "EXPLORATORY_DENSITY_SCREEN",
+  "primary_horizon_min": 30,
+  "historical_primary_checks": [
+    {
+      "asset": "BTC",
+      "method": "observable_tree_mean",
+      "beats_original_nominally": false,
+      "beats_direct_nominally": false
+    },
+    {
+      "asset": "BTC",
+      "method": "latent_static_mean",
+      "beats_original_nominally": false,
+      "beats_direct_nominally": false
+    },
+    {
+      "asset": "BTC",
+      "method": "latent_hmm_mean",
+      "beats_original_nominally": false,
+      "beats_direct_nominally": false
+    },
+    {
+      "asset": "BTC",
+      "method": "latent_semi_markov_mean",
+      "beats_original_nominally": false,
+      "beats_direct_nominally": false
+    },
+    {
+      "asset": "ETH",
+      "method": "observable_tree_mean",
+      "beats_original_nominally": false,
+      "beats_direct_nominally": false
+    },
+    {
+      "asset": "ETH",
+      "method": "latent_static_mean",
+      "beats_original_nominally": false,
+      "beats_direct_nominally": false
+    },
+    {
+      "asset": "ETH",
+      "method": "latent_hmm_mean",
+      "beats_original_nominally": false,
+      "beats_direct_nominally": false
+    },
+    {
+      "asset": "ETH",
+      "method": "latent_semi_markov_mean",
+      "beats_original_nominally": false,
+      "beats_direct_nominally": false
+    }
+  ],
+  "confirmation": false,
+  "prospective_confirmation": false,
+  "AM_T_HAR_Blend_modified": false,
+  "note": "Sep-Oct 2026 has been inspected in other project branches. The mean-only overlays preserve the VD18 predictive variance. HMM and duration overlay are RD02-style refits, not a joint HSMM."
+}

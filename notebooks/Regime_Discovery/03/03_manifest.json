@@ -1,0 +1,74 @@
+{
+  "module": "RD03",
+  "registration": {
+    "version": "RD03-0.1.0",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "horizons": [
+      5,
+      15,
+      30,
+      60
+    ],
+    "primary_horizon": 30,
+    "anchor_minutes": 30,
+    "baseline_version": "VD18-0.1.0",
+    "archived_training_cutoff": "2026-09-19T00:00:00Z",
+    "structure_start": "2026-03-01T00:00:00Z",
+    "structure_end": "2026-05-01T00:00:00Z",
+    "response_end": "2026-09-01T00:00:00Z",
+    "diagnostic_end": "2026-09-19T00:00:00Z",
+    "evaluation_end": "2026-10-14T00:00:00Z",
+    "ridge_alpha": 100.0,
+    "response_shrinkage": 120.0,
+    "max_shift_sigma": 0.5,
+    "tree_depth": 3,
+    "tree_max_leaves": 5,
+    "tree_min_leaf": 100,
+    "latent_states": 3,
+    "latent_em_iterations": 10,
+    "particle_count": 256,
+    "bootstrap_draws": 500,
+    "seed": 2613,
+    "status": "HISTORICAL_EXPLORATORY_REPEATEDLY_INSPECTED"
+  },
+  "baseline": "VD18 archived AM_T_HAR_BLEND frozen parameters, not RV proxy",
+  "source_archive": "notebooks/Volatility_Dynamics/18/18_manifest.json",
+  "synthetic": false,
+  "assets_evaluated": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "excluded": {},
+  "archive_split_audit": {
+    "archived_valid_from": "2025-11-23 00:00:00+00:00",
+    "archived_test_from": "2026-04-22 00:00:00+00:00",
+    "raw_excluded": {}
+  },
+  "horizons": [
+    5,
+    15,
+    30,
+    60
+  ],
+  "methods": [
+    "AM_T_HAR_BLEND",
+    "sign_only_mean",
+    "direct_mean",
+    "observable_tree_mean",
+    "latent_static_mean",
+    "latent_hmm_mean",
+    "latent_semi_markov_mean"
+  ],
+  "status": "HISTORICAL_EXPLORATORY_REPEATEDLY_INSPECTED",
+  "historical_period_previously_inspected": true,
+  "variance_particles_identical_across_methods": true,
+  "pointwise_vd17_nll_identity_tested": true,
+  "AM_T_HAR_Blend_modified": false
+}
