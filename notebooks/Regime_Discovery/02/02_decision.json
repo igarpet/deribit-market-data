@@ -1,0 +1,18 @@
+{
+  "status": "HISTORICAL_DISCOVERY_NOT_CONFIRMATION",
+  "primary_horizon_min": 30,
+  "heuristic_favorable": {
+    "direct_symmetric": false,
+    "observable_tree_skew": false,
+    "latent_static": false,
+    "latent_hmm": false,
+    "latent_semi_markov": false
+  },
+  "latent_hmm_competitive": false,
+  "latent_duration_competitive": false,
+  "historical_exploratory": true,
+  "prospective_confirmation": false,
+  "synthetic": false,
+  "AM_T_HAR_Blend_modified": false,
+  "warning": "RD02 semi-Markov is a two-stage duration overlay; not a jointly fitted HSMM. Normalization is trailing RV, NOT AM-T-HAR-Blend. Historical development folds already inspected."
+}

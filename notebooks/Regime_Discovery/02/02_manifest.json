@@ -1,0 +1,159 @@
+{
+  "module": "RD02",
+  "registration": {
+    "version": "RD02-0.1.0",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "horizons": [
+      5,
+      15,
+      30,
+      60
+    ],
+    "primary_horizon_min": 30,
+    "anchor_minutes": 30,
+    "k_states": 3,
+    "emission_df": 6.0,
+    "student_return_df": 6.0,
+    "em_iterations": 10,
+    "covariance_floor": 0.05,
+    "transition_pseudocount": 8.0,
+    "duration_age_cap": 24,
+    "duration_prior_strength": 80.0,
+    "response_shrinkage": 200.0,
+    "skew_shrinkage": 250.0,
+    "max_skew": 0.45,
+    "ridge_alpha": 100.0,
+    "discovery_fraction": 0.8,
+    "fold_positions": [
+      0.5,
+      0.64,
+      0.78
+    ],
+    "validation_days_fraction": 0.08,
+    "embargo_days": 1,
+    "structure_fraction": 0.7,
+    "tree_max_depth": 3,
+    "tree_leaf_fraction": 0.08,
+    "bootstrap_reps": 300,
+    "seed": 2612,
+    "status": "HISTORICAL_DISCOVERY_NOT_CONFIRMATION"
+  },
+  "assets": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "folds": {
+    "BTC": [
+      {
+        "fold": 1,
+        "structure_end": "2025-04-26 00:00:00+00:00",
+        "calibration_start": "2025-04-27 00:00:00+00:00",
+        "validation_start": "2025-07-25 00:00:00+00:00",
+        "validation_end": "2025-09-10 00:00:00+00:00"
+      },
+      {
+        "fold": 2,
+        "structure_end": "2025-06-22 00:00:00+00:00",
+        "calibration_start": "2025-06-23 00:00:00+00:00",
+        "validation_start": "2025-10-16 00:00:00+00:00",
+        "validation_end": "2025-12-01 00:00:00+00:00"
+      },
+      {
+        "fold": 3,
+        "structure_end": "2025-08-18 00:00:00+00:00",
+        "calibration_start": "2025-08-19 00:00:00+00:00",
+        "validation_start": "2026-01-06 00:00:00+00:00",
+        "validation_end": "2026-02-21 00:00:00+00:00"
+      }
+    ],
+    "ETH": [
+      {
+        "fold": 1,
+        "structure_end": "2025-04-26 00:00:00+00:00",
+        "calibration_start": "2025-04-27 00:00:00+00:00",
+        "validation_start": "2025-07-25 00:00:00+00:00",
+        "validation_end": "2025-09-10 00:00:00+00:00"
+      },
+      {
+        "fold": 2,
+        "structure_end": "2025-06-22 00:00:00+00:00",
+        "calibration_start": "2025-06-23 00:00:00+00:00",
+        "validation_start": "2025-10-16 00:00:00+00:00",
+        "validation_end": "2025-12-01 00:00:00+00:00"
+      },
+      {
+        "fold": 3,
+        "structure_end": "2025-08-18 00:00:00+00:00",
+        "calibration_start": "2025-08-19 00:00:00+00:00",
+        "validation_start": "2026-01-06 00:00:00+00:00",
+        "validation_end": "2026-02-21 00:00:00+00:00"
+      }
+    ],
+    "SOL": [
+      {
+        "fold": 1,
+        "structure_end": "2025-04-26 00:00:00+00:00",
+        "calibration_start": "2025-04-27 00:00:00+00:00",
+        "validation_start": "2025-07-25 00:00:00+00:00",
+        "validation_end": "2025-09-10 00:00:00+00:00"
+      },
+      {
+        "fold": 2,
+        "structure_end": "2025-06-22 00:00:00+00:00",
+        "calibration_start": "2025-06-23 00:00:00+00:00",
+        "validation_start": "2025-10-16 00:00:00+00:00",
+        "validation_end": "2025-12-01 00:00:00+00:00"
+      },
+      {
+        "fold": 3,
+        "structure_end": "2025-08-18 00:00:00+00:00",
+        "calibration_start": "2025-08-19 00:00:00+00:00",
+        "validation_start": "2026-01-06 00:00:00+00:00",
+        "validation_end": "2026-02-21 00:00:00+00:00"
+      }
+    ],
+    "XRP": [
+      {
+        "fold": 1,
+        "structure_end": "2025-04-26 00:00:00+00:00",
+        "calibration_start": "2025-04-27 00:00:00+00:00",
+        "validation_start": "2025-07-25 00:00:00+00:00",
+        "validation_end": "2025-09-10 00:00:00+00:00"
+      },
+      {
+        "fold": 2,
+        "structure_end": "2025-06-22 00:00:00+00:00",
+        "calibration_start": "2025-06-23 00:00:00+00:00",
+        "validation_start": "2025-10-16 00:00:00+00:00",
+        "validation_end": "2025-12-01 00:00:00+00:00"
+      },
+      {
+        "fold": 3,
+        "structure_end": "2025-08-18 00:00:00+00:00",
+        "calibration_start": "2025-08-19 00:00:00+00:00",
+        "validation_start": "2026-01-06 00:00:00+00:00",
+        "validation_end": "2026-02-21 00:00:00+00:00"
+      }
+    ]
+  },
+  "complete_days": {
+    "BTC": 736,
+    "ETH": 736,
+    "SOL": 736,
+    "XRP": 736
+  },
+  "local_inputs": "CS04-A feature store only",
+  "historical_legacy_test_used": false,
+  "normalizer": "TRAILING_24H_RV_PROXY_NOT_AM_T_HAR_BLEND",
+  "latent_model": "Student-t-emission 3-state HMM EM; Viterbi-trained semi-Markov age-hazard overlay",
+  "synthetic": false,
+  "AM_T_HAR_Blend_modified": false,
+  "excluded": {}
+}
