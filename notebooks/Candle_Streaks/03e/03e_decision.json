@@ -1,0 +1,65 @@
+{
+  "verdict": "NO_PASSIVE_EDGE",
+  "passing_offsets_bp": [],
+  "gates": [
+    {
+      "asset": "BTC",
+      "k_bp": 0.0,
+      "net_bp_per_day": -249.9637430038571,
+      "lower_bonferroni": -278.94495065332876,
+      "pass": false
+    },
+    {
+      "asset": "ETH",
+      "k_bp": 0.0,
+      "net_bp_per_day": -264.6661364464083,
+      "lower_bonferroni": -294.92623112887856,
+      "pass": false
+    },
+    {
+      "asset": "BTC",
+      "k_bp": 1.0,
+      "net_bp_per_day": -210.9094155896825,
+      "lower_bonferroni": -234.139113325288,
+      "pass": false
+    },
+    {
+      "asset": "ETH",
+      "k_bp": 1.0,
+      "net_bp_per_day": -237.4217394832266,
+      "lower_bonferroni": -266.06831443383095,
+      "pass": false
+    },
+    {
+      "asset": "BTC",
+      "k_bp": 2.0,
+      "net_bp_per_day": -176.26481716912437,
+      "lower_bonferroni": -199.38330287358843,
+      "pass": false
+    },
+    {
+      "asset": "ETH",
+      "k_bp": 2.0,
+      "net_bp_per_day": -210.9490016682625,
+      "lower_bonferroni": -237.97744088153934,
+      "pass": false
+    },
+    {
+      "asset": "BTC",
+      "k_bp": 5.0,
+      "net_bp_per_day": -108.03494618544771,
+      "lower_bonferroni": -127.47852912644815,
+      "pass": false
+    },
+    {
+      "asset": "ETH",
+      "k_bp": 5.0,
+      "net_bp_per_day": -155.05455327921263,
+      "lower_bonferroni": -178.9996909751074,
+      "pass": false
+    }
+  ],
+  "status": "HISTORICAL_EXPLORATORY",
+  "prospective_confirmation": false,
+  "note": "Fill on strict trade-through ignores queue position and latency: an UPPER bound on fills."
+}
