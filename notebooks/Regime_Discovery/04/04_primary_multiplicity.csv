@@ -1,0 +1,7 @@
+asset,method,reference,period,horizon_min,n_days,delta_equal_day,bonferroni_upper_one_sided,familywise_alpha_per_comparison,familywise_screen_pass
+BTC,latent_hmm_mean,direct_mean,diagnostic,30,18,-0.0003760641992175036,0.0003180922949859957,0.008333333333333333,False
+BTC,latent_semi_markov_mean,direct_mean,diagnostic,30,18,-0.00035740752763333304,0.0003859456133274179,0.008333333333333333,False
+BTC,observable_tree_mean,direct_mean,diagnostic,30,18,-6.26115968664662e-05,0.00044756567856235407,0.008333333333333333,False
+ETH,latent_hmm_mean,direct_mean,diagnostic,30,18,-1.1301304964443186e-06,0.000833180745655442,0.008333333333333333,False
+ETH,latent_semi_markov_mean,direct_mean,diagnostic,30,18,-8.162098307303486e-06,0.0008044744152233059,0.008333333333333333,False
+ETH,observable_tree_mean,direct_mean,diagnostic,30,18,4.512609107661566e-05,0.0015005475992467287,0.008333333333333333,False

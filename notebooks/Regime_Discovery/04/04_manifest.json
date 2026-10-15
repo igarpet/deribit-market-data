@@ -1,0 +1,50 @@
+{
+  "module": "RD04",
+  "version": "RD04-0.1.0",
+  "spec": {
+    "version": "RD04-0.1.0",
+    "primary_horizon": 30,
+    "horizons": [
+      5,
+      15,
+      30,
+      60
+    ],
+    "primary_assets": [
+      "BTC",
+      "ETH"
+    ],
+    "periods": [
+      "diagnostic",
+      "evaluation"
+    ],
+    "bootstrap_reps": 1000,
+    "seed": 2614,
+    "min_days": 12,
+    "min_days_half": 6,
+    "min_days_vol_bucket": 5,
+    "min_days_weekly": 8,
+    "max_multiplicity_tests": 6,
+    "status": "REPEATEDLY_INSPECTED_HISTORICAL_ROBUSTNESS"
+  },
+  "source_RD03": "RD03-0.1.0",
+  "source_VD18": "VD18-0.1.0",
+  "synthetic": false,
+  "assets_evaluated": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "excluded": {},
+  "vd18_archive_split": {
+    "archived_valid_from": "2025-11-23 00:00:00+00:00",
+    "archived_test_from": "2026-04-22 00:00:00+00:00",
+    "raw_excluded": {}
+  },
+  "rd03_exact_archived_score_identity": true,
+  "historical_data_repeatedly_inspected": true,
+  "no_independent_confirmation": true,
+  "AM_T_HAR_Blend_modified": false,
+  "no_model_reselection": true
+}

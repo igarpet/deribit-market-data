@@ -1,0 +1,26 @@
+{
+  "status": "REPEATEDLY_INSPECTED_HISTORICAL_ROBUSTNESS",
+  "verdict": "NO_STABLE_INCREMENTAL_REGIME_EVIDENCE",
+  "methods": {
+    "observable_tree_mean": {
+      "all_primary_windows_and_baselines_nominally_favorable": false,
+      "n_nominal_favorable": 0,
+      "n_required": 8
+    },
+    "latent_hmm_mean": {
+      "all_primary_windows_and_baselines_nominally_favorable": false,
+      "n_nominal_favorable": 0,
+      "n_required": 8
+    },
+    "latent_semi_markov_mean": {
+      "all_primary_windows_and_baselines_nominally_favorable": false,
+      "n_nominal_favorable": 0,
+      "n_required": 8
+    }
+  },
+  "primary_family_tests": 6,
+  "multiplicity_adjusted_confirmation": false,
+  "prospective_confirmation": false,
+  "AM_T_HAR_Blend_modified": false,
+  "note": "Daily bootstrap and nominal intervals are descriptive after many previous searches. RD04 does not confer clean confirmation or authorize trading."
+}

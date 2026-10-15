@@ -1,0 +1,51 @@
+{
+  "verdict": "PERP_STATISTICAL_ONLY",
+  "status": "HISTORICAL_EXPLORATORY",
+  "gates": [
+    {
+      "asset": "BTC",
+      "gate": "stat_threeclass_logloss",
+      "delta": -0.00036855456698833817,
+      "upper95": -0.00011066137162327751,
+      "pass": true
+    },
+    {
+      "asset": "BTC",
+      "gate": "stat_binary_logloss",
+      "delta": -0.0003652875062578722,
+      "upper95": -0.00013496811719277237,
+      "pass": true
+    },
+    {
+      "asset": "BTC",
+      "gate": "econ_taker_top_decile",
+      "net_bp_per_day": -208.3228153551216,
+      "lower95": -223.23584584645872,
+      "pass": false
+    },
+    {
+      "asset": "ETH",
+      "gate": "stat_threeclass_logloss",
+      "delta": -0.0007209542944801757,
+      "upper95": -0.0003948589490903561,
+      "pass": true
+    },
+    {
+      "asset": "ETH",
+      "gate": "stat_binary_logloss",
+      "delta": -0.0006605908724051883,
+      "upper95": -0.0003856015979561731,
+      "pass": true
+    },
+    {
+      "asset": "ETH",
+      "gate": "econ_taker_top_decile",
+      "net_bp_per_day": -205.7935274077906,
+      "lower95": -223.14048030249702,
+      "pass": false
+    }
+  ],
+  "prospective_confirmation": false,
+  "AM_T_HAR_Blend_modified": false,
+  "note": "Primary target = perp's own next 5m return; spot target reported on the same days as a lead-lag reference. CS03 TEST dates reused."
+}
