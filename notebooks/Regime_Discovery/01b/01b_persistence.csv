@@ -1,0 +1,25 @@
+method,n_adjacent_pairs,observed_stay,within_day_iid_expected_stay,excess_stay_vs_iid,warning,asset,fold
+residual_tree,13489,0.5050782118763437,0.3916074624047805,0.11347074947156321,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,BTC,1
+residual_tree_sticky,13489,0.9552969085921862,0.46932511245731545,0.48597179613487074,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,BTC,1
+residual_tree,13489,0.5225739491437468,0.4198054160099815,0.10276853313376527,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,BTC,2
+residual_tree_sticky,13489,0.9543331603528801,0.6426504629629629,0.31168269738991716,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,BTC,2
+residual_tree,13489,0.7156942694047002,0.5537096549120042,0.16198461449269597,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,BTC,3
+residual_tree_sticky,13489,0.9418785677218474,0.7211756304176514,0.220702937304196,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,BTC,3
+residual_tree,13489,0.3566609830232041,0.27939383865248224,0.07726714437072185,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,ETH,1
+residual_tree_sticky,13489,0.9742012009785751,0.5787411552731812,0.39546004570539395,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,ETH,1
+residual_tree,13489,0.4417673660019275,0.31232197678618334,0.12944538921574417,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,ETH,2
+residual_tree_sticky,13489,0.9661205426643932,0.5042079146966115,0.46191262796778165,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,ETH,2
+residual_tree,13489,0.4603751204685299,0.4562781143288677,0.004097006139662185,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,ETH,3
+residual_tree_sticky,13489,0.979538883534732,0.8286826692605728,0.15085621427415918,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,ETH,3
+residual_tree,13489,0.5279116316999036,0.5735553954885737,-0.04564376378867008,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,SOL,1
+residual_tree_sticky,13489,0.9965156794425087,0.9569984157473077,0.03951726369520103,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,SOL,1
+residual_tree,13489,0.47416413373860183,0.25890372586682425,0.21526040787177758,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,SOL,2
+residual_tree_sticky,13489,0.9363184817258507,0.3721049423758865,0.5642135393499643,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,SOL,2
+residual_tree,13489,0.18993253762324858,0.25821266745468874,-0.06828012983144016,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,SOL,3
+residual_tree_sticky,13489,0.9879160797687004,0.6096674300630418,0.37824864970565863,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,SOL,3
+residual_tree,13489,0.24064052190673882,0.28453393830443924,-0.04389341639770042,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,XRP,1
+residual_tree_sticky,13489,0.9864333901697679,0.7215778500131335,0.2648555401566345,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,XRP,1
+residual_tree,13489,0.5784713470235007,0.35725308641975306,0.2212182606037476,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,XRP,2
+residual_tree_sticky,13489,0.9515901845948551,0.4835613261754662,0.4680288584193889,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,XRP,2
+residual_tree,13489,0.17125064867669954,0.2112176172182821,-0.039966968541582576,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,XRP,3
+residual_tree_sticky,13489,0.9855437764104085,0.529727824566588,0.4558159518438205,Three-bar confirmation induces persistence; within-day iid is NOT a temporal null,XRP,3

@@ -1,0 +1,27 @@
+{
+  "status": "HISTORICAL_DISCOVERY_NOT_CONFIRMATION",
+  "primary_horizon_min": 30,
+  "descriptive_candidates": [
+    {
+      "model": "residual_tree",
+      "primary_horizon_min": 30,
+      "average_delta_nll_vs_interaction": -0.0001501483607543319,
+      "favorable_asset_folds": 8,
+      "n_asset_folds": 12,
+      "historical_candidate": false,
+      "independent_confirmation": false
+    },
+    {
+      "model": "residual_tree_sticky",
+      "primary_horizon_min": 30,
+      "average_delta_nll_vs_interaction": 0.00019582409545933674,
+      "favorable_asset_folds": 3,
+      "n_asset_folds": 12,
+      "historical_candidate": false,
+      "independent_confirmation": false
+    }
+  ],
+  "no_prospective_claim": true,
+  "AM_T_HAR_Blend_modified": false,
+  "note": "Persistence from three-bar confirmation is mechanically induced; cannot prove structural regimes."
+}

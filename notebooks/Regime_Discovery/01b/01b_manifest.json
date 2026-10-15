@@ -1,0 +1,153 @@
+{
+  "module": "RD01-b",
+  "registration": {
+    "version": "RD01b-0.1.0",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "horizons": [
+      5,
+      15,
+      30,
+      60
+    ],
+    "primary_horizon_min": 30,
+    "structure_early_fraction": 0.65,
+    "tree_max_leaf_nodes": 6,
+    "tree_max_depth": 3,
+    "tree_min_leaf_fraction": 0.07,
+    "tree_min_leaf_absolute": 55,
+    "confirm_bars": 3,
+    "ridge_alpha": 100.0,
+    "regime_shrinkage": 500.0,
+    "student_df": 6.0,
+    "bootstrap_repetitions": 300,
+    "minimum_bootstrap_days": 20,
+    "minimum_state_events": 200,
+    "minimum_state_days": 20,
+    "random_state": 2608,
+    "status": "HISTORICAL_DISCOVERY_NOT_CONFIRMATION"
+  },
+  "assets_evaluated": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "folds": [
+    {
+      "asset": "BTC",
+      "fold": 1,
+      "structure_end": "2025-04-26 00:00:00+00:00",
+      "calibration_start": "2025-04-27 00:00:00+00:00",
+      "validation_start": "2025-07-25 00:00:00+00:00",
+      "validation_end": "2025-09-10 00:00:00+00:00"
+    },
+    {
+      "asset": "BTC",
+      "fold": 2,
+      "structure_end": "2025-06-22 00:00:00+00:00",
+      "calibration_start": "2025-06-23 00:00:00+00:00",
+      "validation_start": "2025-10-16 00:00:00+00:00",
+      "validation_end": "2025-12-01 00:00:00+00:00"
+    },
+    {
+      "asset": "BTC",
+      "fold": 3,
+      "structure_end": "2025-08-18 00:00:00+00:00",
+      "calibration_start": "2025-08-19 00:00:00+00:00",
+      "validation_start": "2026-01-06 00:00:00+00:00",
+      "validation_end": "2026-02-21 00:00:00+00:00"
+    },
+    {
+      "asset": "ETH",
+      "fold": 1,
+      "structure_end": "2025-04-26 00:00:00+00:00",
+      "calibration_start": "2025-04-27 00:00:00+00:00",
+      "validation_start": "2025-07-25 00:00:00+00:00",
+      "validation_end": "2025-09-10 00:00:00+00:00"
+    },
+    {
+      "asset": "ETH",
+      "fold": 2,
+      "structure_end": "2025-06-22 00:00:00+00:00",
+      "calibration_start": "2025-06-23 00:00:00+00:00",
+      "validation_start": "2025-10-16 00:00:00+00:00",
+      "validation_end": "2025-12-01 00:00:00+00:00"
+    },
+    {
+      "asset": "ETH",
+      "fold": 3,
+      "structure_end": "2025-08-18 00:00:00+00:00",
+      "calibration_start": "2025-08-19 00:00:00+00:00",
+      "validation_start": "2026-01-06 00:00:00+00:00",
+      "validation_end": "2026-02-21 00:00:00+00:00"
+    },
+    {
+      "asset": "SOL",
+      "fold": 1,
+      "structure_end": "2025-04-26 00:00:00+00:00",
+      "calibration_start": "2025-04-27 00:00:00+00:00",
+      "validation_start": "2025-07-25 00:00:00+00:00",
+      "validation_end": "2025-09-10 00:00:00+00:00"
+    },
+    {
+      "asset": "SOL",
+      "fold": 2,
+      "structure_end": "2025-06-22 00:00:00+00:00",
+      "calibration_start": "2025-06-23 00:00:00+00:00",
+      "validation_start": "2025-10-16 00:00:00+00:00",
+      "validation_end": "2025-12-01 00:00:00+00:00"
+    },
+    {
+      "asset": "SOL",
+      "fold": 3,
+      "structure_end": "2025-08-18 00:00:00+00:00",
+      "calibration_start": "2025-08-19 00:00:00+00:00",
+      "validation_start": "2026-01-06 00:00:00+00:00",
+      "validation_end": "2026-02-21 00:00:00+00:00"
+    },
+    {
+      "asset": "XRP",
+      "fold": 1,
+      "structure_end": "2025-04-26 00:00:00+00:00",
+      "calibration_start": "2025-04-27 00:00:00+00:00",
+      "validation_start": "2025-07-25 00:00:00+00:00",
+      "validation_end": "2025-09-10 00:00:00+00:00"
+    },
+    {
+      "asset": "XRP",
+      "fold": 2,
+      "structure_end": "2025-06-22 00:00:00+00:00",
+      "calibration_start": "2025-06-23 00:00:00+00:00",
+      "validation_start": "2025-10-16 00:00:00+00:00",
+      "validation_end": "2025-12-01 00:00:00+00:00"
+    },
+    {
+      "asset": "XRP",
+      "fold": 3,
+      "structure_end": "2025-08-18 00:00:00+00:00",
+      "calibration_start": "2025-08-19 00:00:00+00:00",
+      "validation_start": "2026-01-06 00:00:00+00:00",
+      "validation_end": "2026-02-21 00:00:00+00:00"
+    }
+  ],
+  "n_full_days": {
+    "BTC": 736,
+    "ETH": 736,
+    "SOL": 736,
+    "XRP": 736
+  },
+  "source": "LOCAL CS04-A per-origin Parquet, causal RD01 labels",
+  "normalization": "TRAILING_24H_VARIANCE_PROXY_NOT_AM_T_HAR_BLEND",
+  "legacy_test_used_for_selection": false,
+  "independent_confirmation": false,
+  "AM_T_HAR_Blend_modified": false,
+  "disclaimer": "All historical development comparisons exploratory; repeated development inspection.",
+  "synthetic": false,
+  "excluded": {},
+  "n_asset_folds": 12
+}
