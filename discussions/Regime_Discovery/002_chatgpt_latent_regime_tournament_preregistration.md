@@ -1,0 +1,41 @@
+# RD02 — Latent-state tournament against observable return regimes
+
+**Protocol:** 2026-10-15 · version `RD02-0.1.0` · historical discovery, *not* prospective confirmation. This module follows RD01 (observable rules/CART), RD01-b (residual regime regression, negative screening), and RD01-c (conditional return skew; regime tree failed its direct-continuous-skew gate). There is no authorization to alter AM-T-HAR-Blend, any collectors, or deployed signals.
+
+## Primary question
+
+Do the **ordering and durations of latent market states** derived from contemporaneous momentum / aggressive trade flow / spot–futures basis improve the next **30-minute raw signed-return log density** beyond a continuous feature-conditioned return-skew model and an observable tree-skew model, on exactly matched held-out forecast origins? If the Markov model improves a state-free mixture, is the improvement driven by temporal state information rather than just a static heavy-tailed clustering of market observations? Secondary horizons: 5, 15, 60 minutes. BTC/ETH primary, SOL/XRP robustness.
+
+## Important distinction from prior RSD HDP-HSMM
+
+This is **not** another fit of price/volatility-only HDP-HSMM. The regime-inference covariates now include causal Binance perpetual signed taker flow, spot–futures basis, and five-minute price dynamics, all sourced from the CS04-A local feature store. The fixed-K Gaussian-graphical alternative is avoided in favor of **independent-dimension Student-t(6) emissions** in a three-state finite HMM, estimated with a robust Baum-Welch/ECM procedure. This is an interpretable benchmark, not a Bayesian posterior over number of states.
+
+The duration-aware extension is a **two-stage semi-Markov overlay**, not a fully joint HSMM parameter fit. Train-only Viterbi state episodes identify age-specific hazards, shrunk toward HMM geometric hazards. A causal age-expanded forward filter then incorporates those hazards. It is mathematically equivalent to HMM filtering if each age's hazard is fixed to the HMM's geometric hazard; tests must verify this invariant. Do **not** represent this overlay as a jointly fitted hierarchical Bayesian HSMM or read a large episode count as economic regime proof.
+
+## Input, causality and reproducibility
+
+- Exactly the same local `DERIBIT_DATA_ROOT/research/cs04a_feature_store/<ASSET>_features_and_forward_magnitude.parquet` as RD01-c. No new downloads, raw uploads or database changes.
+- Validate every complete UTC 288-row five-minute day and reconstruct 5/15/30/60-minute net signed returns from **strictly later** contiguous five-minute spot log returns. Censor any horizon crossing midnight; verify saved targets whenever present. No outcome enters an observation feature.
+- Anchor forecast origins at **UTC 00/30** (30-minute clock); observation is the most recently completed five-minute return/feature at that origin. Evaluation is only at these anchors, with no 5-minute-bar flooding of effective sample size. A 60-minute target necessarily overlaps the next anchor; resample *days*, not origins, for diagnostic uncertainty.
+- Frozen HMM features: `mom_r5, flow5, basis_bps, basis_change_bps, last_1m_r, log_trades`. Train-only z-score and clip to [-6,+6]. The separate continuous signed-return predictor uses `mom_r5, mom_r15_mean, flow5, flow30, basis_bps, basis_change_bps, last_1m_r, minute_accel, log_trades`.
+- Exactly the RD01 80%-discovery sample with expanding structure/calibration/validation folds at 50%, 64%, 78% of discovery days, 8%-width held-out windows and one-full-day embargo. The previously inspected final 20% is **not used to fit, tune, rank or validate RD02**. All folds and files retain historical exploratory status.
+- Separate **STRUCTURE** fits unsupervised HMM emission/transition and supervised observable-tree split. CALIBRATION fits conditional-return responses, Student-t scale and skew conditional on frozen states. VALIDATION only scores frozen forecasters. Filters within CAL/VALID use features at or before each forecast origin and reset at missing 30-minute anchors. Viterbi and backward smoothing are never inputs to VALID forecasting; train-only Viterbi is used solely for fitting duration hazards.
+
+## Frozen model specifications
+
+- HMM K=3, six-dimensional independent Student-t(6) emissions, covariance floor 0.05, 10 robust EM/ECM iterations, initial KMeans and 0.93 diagonal Markov matrix. Dirichlet-style transition smoothing strength 8; one fixed seed 2612. No K-selection or retrospective hyperparameter sweep.
+- Two-stage explicit-duration overlay with cap 24 half-hour anchor ages (12 hours); at cap hazard stays at last estimate rather than forcing a switch. Duration hazard shrunk with effective exposure prior 80. End-of-segment episodes counted as right-censored (not exits). Unobserved initial age is approximated as one at a segment boundary. Report posterior duration limitations and hidden state label permutation across fits.
+- CAL-trained response in each latent component: common continuous Ridge signed-return location plus shrunk state residual location and state-conditioned two-piece Student-t(6) skew. No state-specific volatility scaling or Student-t df changes. Response shrinkage 200, skew shrinkage 250, |skew|<=0.45. Integrate **predictive densities** across posterior latent weights; never score a distribution obtained by simply averaging state locations and skewnesses.
+- Normalize return fitting by the same trailing 24-hour realized five-minute variance proxy used in RD01; **this is NOT the AM-T-HAR-Blend point-in-time volatility forecast**. Every model shares exactly this volatility proxy and TRAIN/CAL-only standardized Student-t scale. This module therefore cannot claim an incremental AM-T-HAR-Blend result.
+- Six matched origin methods: `direct_symmetric`, `direct_continuous_skew` (proper-NLL-regularized continuous skew), `observable_tree_skew` (early/late STRUCTURE supervised skew-proxy tree, CAL-only leaf skew), `latent_static` (same fitted HMM emissions without temporal filtering), `latent_hmm`, and `latent_semi_markov` (age-dependent state hazard filter). These are **fresh matched re-fits**, not imports of the historical RD01-c score CSV.
+
+## Outcomes, decision and safeguards
+
+- **Primary proper score:** raw signed future log-return NLL at 30 minutes. Secondary: signed UP-probability Brier, 5/15/60-minute NLL, state occupancy, mean conditional return in bps, modeled transition probabilities, Viterbi-train duration hazards, observed causal filtered-state episode durations. All probabilities and models are evaluated on the same anchors per asset/fold/horizon.
+- Preserve whole-UTC-day paired bootstrap NLL intervals (300 resamples) for comparisons: HMM vs continuous skew, semi-Markov vs continuous skew, semi-Markov vs HMM, HMM vs static order-ablated mixture, and both temporal models vs observable tree. These are *nominal* exploratory intervals, not selection-adjusted significance.
+- Conservative descriptive screen: negative pooled mean 30m NLL delta vs continuous skew and >=10 of 12 favorable asset-folds. The duration model also needs to beat the HMM to demonstrate incremental explicit age dependence. A model can produce sensible state durations while **failing** to add return predictability. Historical gate passes do not constitute a trading signal or a claim of underlying structural regimes.
+- Failure/scope: if no improvement is established, record negative result; do not adjust K, transform inputs or invent market labels after seeing VALID results. A fully joint HSMM and actual matched AM-T-HAR-Blend density comparison are separate authorized research proposals after RD02. A genuine prospective period after the repeated historical tests is required to confirm any claim.
+
+## Repository outputs
+
+Implementation `src/data_engineering/modeling/latent_regime_tournament.py`; tests `tests/test_latent_regime_tournament.py`; notebook `notebooks/Regime_Discovery/02_latent_regime_tournament.ipynb`; aggregate-only CSV/JSON at `notebooks/Regime_Discovery/02/`. No per-origin raw features, returns, filtered regime probabilities or episode timestamps should be uploaded. The notebook has a strictly synthetic smoke option `RD02_SYNTHETIC=1` writing to temporary storage and flagged `synthetic=true`, never research evidence.
