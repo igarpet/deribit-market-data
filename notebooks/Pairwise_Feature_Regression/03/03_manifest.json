@@ -1,0 +1,92 @@
+{
+  "module": "PFR03",
+  "registration": {
+    "version": "PFR03-0.1.0",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "horizons_min": [
+      5,
+      15,
+      60
+    ],
+    "target_column": "perp_mid_return_5m",
+    "control_feature": "perp_ret_5m",
+    "discovery_fraction": 0.6,
+    "winsor": [
+      0.005,
+      0.995
+    ],
+    "min_obs": 500,
+    "min_days": 6,
+    "bootstrap_reps": 2000,
+    "alpha_family": 0.05,
+    "confirm_alpha_one_sided": 0.05,
+    "round_trip_cost_bp": 12.0,
+    "seed": 2608,
+    "status": "HISTORICAL_EXPLORATORY"
+  },
+  "source": "research.duckdb time_series_feature_state, ('BTC', 'ETH', 'SOL', 'XRP')",
+  "synthetic": false,
+  "split": {
+    "BTC": {
+      "days": 24,
+      "discovery_days": [
+        "2026-09-19",
+        "2026-10-02"
+      ],
+      "confirmation_days": [
+        "2026-10-03",
+        "2026-10-12"
+      ],
+      "n_features": 81,
+      "tests_per_asset": 243,
+      "discovery_two_sided_alpha_per_test": 0.000205761316872428
+    },
+    "ETH": {
+      "days": 24,
+      "discovery_days": [
+        "2026-09-19",
+        "2026-10-02"
+      ],
+      "confirmation_days": [
+        "2026-10-03",
+        "2026-10-12"
+      ],
+      "n_features": 81,
+      "tests_per_asset": 243,
+      "discovery_two_sided_alpha_per_test": 0.000205761316872428
+    },
+    "SOL": {
+      "days": 24,
+      "discovery_days": [
+        "2026-09-19",
+        "2026-10-02"
+      ],
+      "confirmation_days": [
+        "2026-10-03",
+        "2026-10-12"
+      ],
+      "n_features": 81,
+      "tests_per_asset": 243,
+      "discovery_two_sided_alpha_per_test": 0.000205761316872428
+    },
+    "XRP": {
+      "days": 24,
+      "discovery_days": [
+        "2026-09-19",
+        "2026-10-02"
+      ],
+      "confirmation_days": [
+        "2026-10-03",
+        "2026-10-12"
+      ],
+      "n_features": 81,
+      "tests_per_asset": 243,
+      "discovery_two_sided_alpha_per_test": 0.000205761316872428
+    }
+  }
+}
