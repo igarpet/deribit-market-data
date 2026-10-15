@@ -1,0 +1,40 @@
+{
+  "status": "HISTORICAL_DISCOVERY_NOT_CONFIRMATION",
+  "primary_horizon_min": 30,
+  "primary_comparisons": [
+    {
+      "reference": "direct_continuous_skew",
+      "mean_delta_nll": -0.00021371848473198765,
+      "favorable_asset_folds": 8,
+      "n_asset_folds": 12,
+      "BTC_ETH_each_2_of_3": true,
+      "exploratory_favorable": false
+    },
+    {
+      "reference": "interaction_symmetric",
+      "mean_delta_nll": -0.0006745494898575307,
+      "favorable_asset_folds": 9,
+      "n_asset_folds": 12,
+      "BTC_ETH_each_2_of_3": true,
+      "exploratory_favorable": true
+    },
+    {
+      "reference": "direct_global_skew",
+      "mean_delta_nll": -0.0004264105820365553,
+      "favorable_asset_folds": 8,
+      "n_asset_folds": 12,
+      "BTC_ETH_each_2_of_3": true,
+      "exploratory_favorable": false
+    }
+  ],
+  "screening_candidate": false,
+  "state_support_counts": {
+    "BTC": 15,
+    "ETH": 15,
+    "SOL": 15,
+    "XRP": 15
+  },
+  "independent_confirmation": false,
+  "AM_T_HAR_Blend_modified": false,
+  "note": "Historical folds already studied; testing different distributional shape after negative RD01-b is exploratory. Student-t scale is trailing-RV proxy, NOT AM-T-HAR-Blend."
+}
