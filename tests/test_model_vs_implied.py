@@ -80,3 +80,14 @@ def test_decision():
     assert mv.decision({"x": .5, "x_lo": .1, "x_hi": .9}, {"lo": -0.2})["verdict"] == "MODEL_ADDS_INFORMATION"
     assert mv.decision({"x": .5, "x_lo": .1, "x_hi": .9}, {"lo": 0.05})["verdict"] == "MODEL_EDGE_CANDIDATE"
     assert mv.decision({"x": 0, "x_lo": -.1, "x_hi": .1}, {})["verdict"] == "NO_EVIDENCE"
+
+
+def test_index_panel_dense_and_rv():
+    t = pd.to_datetime(["2026-10-01 00:00", "2026-10-01 00:05", "2026-10-01 00:15", "2026-10-01 00:20"], utc=True)
+    idx = pd.DataFrame({"state_time": t, "underlying": "BTC", "futures_index_price": [100, 101, 102, 103.0]})
+    p = mv.index_panel(idx)
+    assert len(p) == 5 and np.isnan(p.return_5m.iloc[2]) and np.isnan(p.return_5m.iloc[3])
+    o = pd.DataFrame({"underlying": ["BTC", "BTC"], "state_time": [t[0], t[2]], "h": [10, 5]})
+    rv = mv.realised_variance(p, o)
+    assert np.isnan(rv.iloc[0])                                        # window crosses the gap
+    assert rv.iloc[1] == pytest.approx(np.log(103 / 102) ** 2)

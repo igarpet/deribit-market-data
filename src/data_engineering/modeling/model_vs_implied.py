@@ -31,7 +31,7 @@ from dataclasses import asdict, dataclass
 import numpy as np
 import pandas as pd
 
-VERSION = "VD19-0.1.0"
+VERSION = "VD19-0.1.1"   # 0.1.1: UTC session fix (06/12 entries), Deribit-index RV diagnostic
 ENTRY_HORIZON = {4: 240, 6: 120, 12: 1200}    # UTC entry hour -> minutes to 08:00 expiry
 PRIMARY_ENTRY = 4
 HAR_FAMILY = "HAR_4"                           # VD18's late-VALID choice at 120 and 240 min
@@ -83,6 +83,21 @@ def forecast_panel(raw: pd.DataFrame, v14, v18) -> pd.DataFrame:
                                 *[f"har_logrv_{k}" for k in v18.ALL_FEATURES]]]
 
 
+def index_panel(idx: pd.DataFrame) -> pd.DataFrame:
+    """Dense 5m panel of Deribit index log returns (columns state_time, underlying, return_5m) from
+    time_series_feature_state.futures_index_price. Missing bars stay NaN (break the RV window)."""
+    parts = []
+    for a, g in idx.groupby("underlying"):
+        z = g[["state_time", "futures_index_price"]].copy()
+        z["state_time"] = pd.to_datetime(z["state_time"], utc=True)
+        z = z.drop_duplicates("state_time").set_index("state_time").sort_index()
+        grid = pd.date_range(z.index.min(), z.index.max(), freq="5min")
+        pz = pd.to_numeric(z["futures_index_price"], errors="coerce").reindex(grid)
+        r = np.log(pz.where(pz > 0)).diff()
+        parts.append(pd.DataFrame({"state_time": grid, "underlying": a, "return_5m": r.to_numpy(float)}))
+    return pd.concat(parts, ignore_index=True)
+
+
 def realised_variance(panel: pd.DataFrame, origins: pd.DataFrame) -> pd.Series:
     """Sum of squared 5m returns over (t, t+h]; NaN unless every bar is present."""
     out = np.full(len(origins), np.nan)
@@ -132,8 +147,10 @@ def entries(straddles: pd.DataFrame, p: Params | None = None) -> pd.DataFrame:
     return s.drop_duplicates(["session", "underlying", "entry_hour"]).reset_index(drop=True)
 
 
-def comparison_frame(e: pd.DataFrame, sigma_model: pd.Series, rv: pd.Series | None = None) -> pd.DataFrame:
+def comparison_frame(e: pd.DataFrame, sigma_model: pd.Series, rv: pd.Series | None = None,
+                     rv_index: pd.Series | None = None) -> pd.DataFrame:
     d = e.copy()
+    d["rv_index"] = rv_index.to_numpy(float) if rv_index is not None else np.nan
     d["sigma_model"] = sigma_model.to_numpy(float)
     d["rv_path"] = rv.to_numpy(float) if rv is not None else np.nan
     d["sigma_imp"] = d["iv_straddle_mid"].to_numpy(float) * np.sqrt(d["T"].to_numpy(float))
@@ -144,6 +161,7 @@ def comparison_frame(e: pd.DataFrame, sigma_model: pd.Series, rv: pd.Series | No
         d["y"] = np.log(move / (d["sigma_imp"] * np.sqrt(2 / np.pi)))
         d["y_model"] = np.log(move / (d["sigma_model"] * np.sqrt(2 / np.pi)))
         d["y_rv"] = np.log(d["rv_path"] / d["sigma_imp"] ** 2)
+        d["y_rv_index"] = np.log(d["rv_index"] / d["sigma_imp"] ** 2)
         d["log_rv"] = np.log(d["rv_path"])
         d["log_sigma_imp"] = np.log(d["sigma_imp"])
         d["log_sigma_model"] = np.log(d["sigma_model"])
