@@ -7,7 +7,7 @@
 | `03_flow_heat.ipynb` | SJ 03: order-flow "heat" (trade/volume acceleration, \|imbalance\|) added to SJ 01 (b)/(e); F1/F2/F3 gates; 15-min hazard lift; event-time activity profile around jumps | Run `11f8369` (SJ 006): F1 PASS, F2 FAIL, F3 FAIL — flow is a sharper volatility thermometer, not a separate boil signal |
 | `04_seconds.ipynb` | SJ 04: SJ 01 jump minutes located to the second with spot 1s klines; P1 activity build-up vs hour-matched placebo, P2 split events, P3 post-onset continuation grid | Run `342ea73` (SJ 008): P1 PASS, P2 MOSTLY_DISTINCT_EVENTS, P3 withdrawn (look-ahead in design) |
 | `05_realtime_trigger.ipynb` | SJ 04b: real-time seconds trigger, forward returns over latency δ ∈ {1,2,5,10,30} s × hold H ∈ {10,30,60,300} s, c ∈ {3,4,5}; splits by asset/direction | Run `6733112` (SJ 010): NO_CONTINUATION, flat at every latency/hold/threshold |
-| `06_jump_hazard_vd19.ipynb` | SJ 05: expected SJ 01 jumps from VD 19 entries to the 08:00 expiry; encompassing regression with VD 19's x; R_net split by jump hazard | Built; awaiting run (reads `Volatility_Dynamics/19/19_rows.csv`) |
+| `06_jump_hazard_vd19.ipynb` | SJ 05: expected SJ 01 jumps from VD 19 entries to the 08:00 expiry; encompassing regression with VD 19's x; R_net split by jump hazard | Run `f3cee6f` (SJ 012): NO_EVIDENCE; prospective re-score with VD 19 |
 
 Protocol: `../../discussions/Signed_Jumps/001_claude_sj01_preregistration.md`. Code: `src/data_engineering/modeling/signed_jumps.py`.
 
