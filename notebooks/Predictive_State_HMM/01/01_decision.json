@@ -1,0 +1,102 @@
+[
+  {
+    "asset": "BTC",
+    "K": 4,
+    "verdict": "NO_STABLE_HMM_INCREMENT",
+    "vs_static": {
+      "delta_logloss": -0.00038553630768308346,
+      "ci025": -0.0007473712053557485,
+      "ci975": -4.6704084882613415e-05,
+      "test_days": 154
+    },
+    "vs_continuous": {
+      "delta_logloss": -0.0003634529063759965,
+      "ci025": -0.000710141827362679,
+      "ci975": -3.3602733971050856e-05,
+      "test_days": 154
+    },
+    "vs_nonlinear": {
+      "delta_logloss": 0.0036167643703906662,
+      "ci025": 8.429829136270545e-05,
+      "ci975": 0.007033217335998879,
+      "test_days": 154
+    },
+    "prospective_confirmation": false,
+    "execution_approved": false
+  },
+  {
+    "asset": "ETH",
+    "K": 4,
+    "verdict": "NO_STABLE_HMM_INCREMENT",
+    "vs_static": {
+      "delta_logloss": -7.550493094671146e-05,
+      "ci025": -0.0005606514353257185,
+      "ci975": 0.00039428524353955714,
+      "test_days": 154
+    },
+    "vs_continuous": {
+      "delta_logloss": -9.806096007308717e-05,
+      "ci025": -0.0005893756036971384,
+      "ci975": 0.0003833256573946998,
+      "test_days": 154
+    },
+    "vs_nonlinear": {
+      "delta_logloss": 0.002166095777072336,
+      "ci025": -0.00023159899351581092,
+      "ci975": 0.004849552430426639,
+      "test_days": 154
+    },
+    "prospective_confirmation": false,
+    "execution_approved": false
+  },
+  {
+    "asset": "SOL",
+    "K": 4,
+    "verdict": "NO_STABLE_HMM_INCREMENT",
+    "vs_static": {
+      "delta_logloss": -0.0003680951007301367,
+      "ci025": -0.000659817184636438,
+      "ci975": -7.570786066388162e-05,
+      "test_days": 154
+    },
+    "vs_continuous": {
+      "delta_logloss": -0.000398125826289171,
+      "ci025": -0.000696679016329716,
+      "ci975": -8.52020258498809e-05,
+      "test_days": 154
+    },
+    "vs_nonlinear": {
+      "delta_logloss": 0.003093006970422661,
+      "ci025": 0.0008255211774161491,
+      "ci975": 0.005541763876120992,
+      "test_days": 154
+    },
+    "prospective_confirmation": false,
+    "execution_approved": false
+  },
+  {
+    "asset": "XRP",
+    "K": 4,
+    "verdict": "NO_STABLE_HMM_INCREMENT",
+    "vs_static": {
+      "delta_logloss": 0.00012800967007840097,
+      "ci025": -0.0006259266460268992,
+      "ci975": 0.0007519820396350008,
+      "test_days": 154
+    },
+    "vs_continuous": {
+      "delta_logloss": -0.00014330560413875718,
+      "ci025": -0.0010499936866388824,
+      "ci975": 0.0005983221557017748,
+      "test_days": 154
+    },
+    "vs_nonlinear": {
+      "delta_logloss": 0.0015570660570463156,
+      "ci025": -0.00011963567148782651,
+      "ci975": 0.003164181297998387,
+      "test_days": 154
+    },
+    "prospective_confirmation": false,
+    "execution_approved": false
+  }
+]
