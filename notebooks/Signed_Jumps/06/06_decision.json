@@ -1,0 +1,20 @@
+{
+ "version": "SJ05-0.1.0",
+ "verdict": "NO_EVIDENCE",
+ "gamma": 0.1011171316561721,
+ "gamma_ci": [
+  -0.1342329350036448,
+  0.6266642714879387
+ ],
+ "beta": 1.4999230525753848,
+ "beta_ci": [
+  0.49007470965983846,
+  2.452569894288886
+ ],
+ "n": 77,
+ "sessions": 21,
+ "corr_x_xJ": -0.1628078054393665,
+ "status": "PREREGISTERED_SJ011",
+ "prospective_confirmation": false,
+ "synthetic": false
+}

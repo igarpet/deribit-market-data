@@ -1,0 +1,16 @@
+{
+ "registration": {
+  "primary_entry_hour": 4,
+  "primary_outcome": "y_rv_index",
+  "secondary_outcomes": [
+   "y_rv",
+   "y"
+  ],
+  "vd19_selection_log_ratio": 0.22314355131420976,
+  "origin_tolerance_min": 5,
+  "status": "PREREGISTERED_SJ011",
+  "version": "SJ05-0.1.0",
+  "gate": "entry 04:00, y_rv_index ~ x + xJ, VD19 session bootstrap: gamma lo > 0 => JUMP_HAZARD_ADDS_INFORMATION; gamma hi < 0 => JUMP_HAZARD_ANTI; else NO_EVIDENCE"
+ },
+ "runtime_s": 167.9013330936432
+}
