@@ -40,7 +40,7 @@ import pandas as pd
 from scipy.optimize import minimize
 from scipy.signal import lfilter
 
-VERSION = "SJ01-0.1.0"
+VERSION = "SJ01-0.1.1"   # 0.1.1: optional extra baseline covariates (models bf, f) for SJ 03; SJ 01 models unchanged
 ASSETS = ("BTC", "ETH", "SOL", "XRP")
 BARS_PER_DAY = 1440
 SIGNS = ("up", "down")
@@ -305,8 +305,10 @@ def design(pan: Panel, model: str) -> np.ndarray:
     if model == "a":
         return D
     cols = [D, pan.clock, pan.L[:, None], pan.F[:, None], pan.TV]
-    if model == "e":
+    if model in ("e", "f"):
         cols.append(pan.TSK[:, None])
+    if model in ("bf", "f"):
+        cols.append(pan.extra)          # SJ 03 flow covariates, attached by signed_jumps_flow
     return np.column_stack(cols).astype(np.float32)
 
 
@@ -317,13 +319,15 @@ def design_names(pan: Panel, model: str, p: Params) -> list[str]:
     for j in range(1, p.fourier_k + 1):
         names += [f"sin{j}", f"cos{j}"]
     names += ["weekend", "L_slow", "F_fast_minus_slow"] + [f"TV{w}" for w in p.surprise_windows]
-    if model == "e":
+    if model in ("e", "f"):
         names.append("TSK")
+    if model in ("bf", "f"):
+        names += list(pan.extra_names)
     return names
 
 
 def excitation_design(E: dict, model: str, child: str) -> np.ndarray | None:
-    if model in ("a", "b"):
+    if model in ("a", "b", "bf"):
         return None
     if model == "c":
         return (E["up"] + E["down"])[:, None]
@@ -546,7 +550,7 @@ def horizon_forecast(fits, model: str, assets, pan: Panel, p: Params, rows: np.n
                 y = (cnt > 0).astype(float)
                 y[ob < h * 0.9] = np.nan
                 out_y[h][s][sel] = y
-    if model in ("a", "b"):
+    if model in ("a", "b", "bf"):
         for s in SIGNS:
             cum = np.cumsum(base[s], axis=1)
             for h in p.horizons:
@@ -600,12 +604,18 @@ def occurrence_logloss(prob: dict, y: dict) -> np.ndarray:
 
 def simulate(n_days=40, n_assets=2, eta=((0.0, 0.0), (0.0, 0.0)), half_life=10.0, base_rate=6e-4,
              vol_persist=0.9995, vol_sd=0.02, common=0.7, df=4, jump_mult=6.0, seed=0, sigma=8e-4,
-             clock_amp=0.3, start="2024-01-01", skew_link=0.0, skew_persist=0.995) -> dict:
+             clock_amp=0.3, start="2024-01-01", skew_link=0.0, skew_persist=0.995,
+             heat_link=0.0, heat_persist=0.995, flow=False, flow_heat=0.0, flow_vol=0.5):
     """Synthetic 1m log prices: common+idiosyncratic log-vol AR(1), Student-t diffusion, intraday clock,
     and a discrete signed Hawkes jump layer with branching matrix eta[child][parent].
     Down jumps are larger (unconditional size asymmetry).
     skew_link > 0 plants pre-jump asymmetry: a slow latent state k_t skews the diffusion and tilts the
-    baselines, lambda+ x exp(skew_link k), lambda- x exp(-skew_link k)."""
+    baselines, lambda+ x exp(skew_link k), lambda- x exp(-skew_link k).
+    heat_link > 0 plants a latent "heat" state H_t (AR(1)) that multiplies both jump baselines by
+    exp(heat_link H). flow=True also returns per-minute trades / quote volume / taker-buy quote volume, with
+    trade intensity exp(flow_vol * log-vol + flow_heat * H): flow_heat = 0 means flow tracks volatility only.
+    Heat and flow use a separate random stream, so the price paths for flow=False/heat_link=0 are unchanged.
+    Returns the series dict, or (series, flow) when flow=True."""
     rng = np.random.default_rng(seed)
     n = n_days * BARS_PER_DAY
     t = pd.date_range(start, periods=n, freq="1min", tz="UTC")
@@ -613,6 +623,8 @@ def simulate(n_days=40, n_assets=2, eta=((0.0, 0.0), (0.0, 0.0)), half_life=10.0
     clock = np.exp(clock_amp * np.sin(2 * np.pi * slot / BARS_PER_DAY))
     hc = lfilter([vol_sd], [1, -vol_persist], rng.standard_normal(n))
     out = {}
+    fl = {}
+    rng2 = np.random.default_rng(seed + 10_000)
     eta = np.asarray(eta, float)
     q = np.exp(-np.log(2) / half_life)
     for a in range(n_assets):
@@ -630,8 +642,11 @@ def simulate(n_days=40, n_assets=2, eta=((0.0, 0.0), (0.0, 0.0)), half_life=10.0
         ju = np.zeros(n)
         jd = np.zeros(n)
         u = rng.random((n, 2))
-        bu = base_rate * np.exp(skew_link * kst)
-        bd = base_rate * np.exp(-skew_link * kst)
+        H = np.zeros(n)
+        if heat_link or flow:
+            H = lfilter([np.sqrt(1 - heat_persist ** 2)], [1, -heat_persist], rng2.standard_normal(n))
+        bu = base_rate * np.exp(skew_link * kst + heat_link * H)
+        bd = base_rate * np.exp(-skew_link * kst + heat_link * H)
         for i in range(n):
             lu = bu[i] + eta[0, 0] * Eu + eta[0, 1] * Ed
             ld = bd[i] + eta[1, 0] * Eu + eta[1, 1] * Ed
@@ -644,7 +659,14 @@ def simulate(n_days=40, n_assets=2, eta=((0.0, 0.0), (0.0, 0.0)), half_life=10.0
         r = r + ju * size_u - jd * size_d
         lp = np.log(100.0) + np.concatenate([[0.0], np.cumsum(r[1:])])
         out[f"S{a}"] = pd.Series(lp, index=t + pd.Timedelta(minutes=1))
-    return out
+        if flow:
+            lam_tr = 40.0 * clock * np.exp(flow_vol * h / max(np.std(h), 1e-9) * 0.5 + flow_heat * H)
+            trades = rng2.poisson(lam_tr).astype(float)
+            qv = trades * np.exp(rng2.normal(8.0, 0.5, n))
+            tb = qv * np.clip(rng2.normal(0.5, 0.08, n), 0, 1)
+            fl[f"S{a}"] = pd.DataFrame({"trades": trades, "quote_volume": qv, "taker_buy_quote_volume": tb},
+                                       index=t + pd.Timedelta(minutes=1))
+    return (out, fl) if flow else out
 
 
 # ----------------------------------------------------------------------------- end to end
