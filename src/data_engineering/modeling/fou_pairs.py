@@ -27,7 +27,7 @@ from math import gamma
 import numpy as np
 import pandas as pd
 
-VERSION = "PF01-0.1.0"
+VERSION = "PF01-0.1.1"   # 0.1.1: run_pair hooks (screen_fn, funding, per-leg costs) for PF02; PF01 behaviour unchanged
 STEP = pd.Timedelta(minutes=5)
 
 
@@ -189,11 +189,23 @@ def innovations(xhist: np.ndarray, fit: dict) -> np.ndarray:
 # ---------------------------------------------------------------- backtest
 
 def run_pair(P: pd.DataFrame, y: str, x: str, spec: Spec | None = None, *, mode: str = "fou",
-             days=None, progress=None, screen_cache: dict | None = None) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+             days=None, progress=None, screen_cache: dict | None = None, screen_fn=None,
+             funding_y: pd.Series | None = None, funding_x: pd.Series | None = None,
+             cost_y_bp: float | None = None, cost_x_bp: float | None = None,
+             label: str | None = None) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """mode: 'fou' (thesis), 'ou' (same, but H fixed at 0.5 for dynamics and no H filter),
     'zscore' (cointegrated days only; enter |Z| >= 1.5, exit at mu or after max_horizon; no simulation).
     Returns (trades, forecasts, day_fits)."""
     spec = spec or Spec()
+    screen_fn = screen_fn or screen
+    name = label or f"{y}-{x}"
+    cy = spec.cost_bp_per_side_leg if cost_y_bp is None else cost_y_bp
+    cx = spec.cost_bp_per_side_leg if cost_x_bp is None else cost_x_bp
+
+    def funding_sum(f, a, b_):           # sum of rates with funding time in (a, b_]
+        if f is None or len(f) == 0:
+            return 0.0
+        return float(f[(f.index > a) & (f.index <= b_)].sum())
     ly, lx = P[y].to_numpy(float), P[x].to_numpy(float)
     t = P.index
     day = t.floor("D")
@@ -210,14 +222,14 @@ def run_pair(P: pd.DataFrame, y: str, x: str, spec: Spec | None = None, *, mode:
         if f0 < 0:
             continue
         fy, fx = ly[f0:i0], lx[f0:i0]
-        rec = {"pair": f"{y}-{x}", "day": d, "mode": mode}
+        rec = {"pair": name, "day": d, "mode": mode}
         if not (np.isfinite(fy).all() and np.isfinite(fx).all()):
             fits.append({**rec, "eligible": False, "reason": "gaps"}); continue
         key = (y, x, d)
         if screen_cache is not None and key in screen_cache:
             sc = screen_cache[key]
         else:
-            sc = screen(fy, fx, spec)
+            sc = screen_fn(fy, fx, spec)
             if screen_cache is not None:
                 screen_cache[key] = sc
         rec.update({k: sc.get(k) for k in ("integration_ok", "coint_ok", "coint_p", "a", "b")})
@@ -259,7 +271,7 @@ def run_pair(P: pd.DataFrame, y: str, x: str, spec: Spec | None = None, *, mode:
                 pT = float((tau <= T).mean()) if T else np.nan
             else:
                 T, p_max, pT = spec.max_horizon, np.nan, np.nan
-            fc = {"pair": f"{y}-{x}", "mode": mode, "signal_bar": t[i], "z": float(z), "T70": T,
+            fc = {"pair": name, "mode": mode, "signal_bar": t[i], "z": float(z), "T70": T,
                   "p_at_T": pT, "p_max": p_max, "admitted": bool(T is not None and T > 1)}
             # realised first passage over (i, i+T] on the frozen spread (calibration)
             if fc["admitted"]:
@@ -291,10 +303,14 @@ def run_pair(P: pd.DataFrame, y: str, x: str, spec: Spec | None = None, *, mode:
                 exit_i, why = j, why + "_gapfill"
             s = -np.sign(z)
             gross = s * ((ly[exit_i] - ly[e]) - b * (lx[exit_i] - lx[e])) / (1 + b)
-            trades.append({"pair": f"{y}-{x}", "mode": mode, "day": d, "signal_bar": t[i], "entry_bar": t[e],
+            # funding: a long perp position pays the rate; position on y is s, on x is -s*b
+            fund = (-s * funding_sum(funding_y, t[e], t[exit_i]) + s * b * funding_sum(funding_x, t[e], t[exit_i])) / (1 + b)
+            cost = 2 * (cy + b * cx) / (1 + b)
+            trades.append({"pair": name, "mode": mode, "day": d, "signal_bar": t[i], "entry_bar": t[e],
                            "exit_bar": t[exit_i], "bars_held": exit_i - e, "z": float(z), "b": b, "T70": T,
-                           "exit": why, "gross_bp": 1e4 * gross,
-                           "net_bp": 1e4 * gross - 2 * spec.cost_bp_per_side_leg})
+                           "exit": why, "gross_bp": 1e4 * gross, "funding_bp": 1e4 * fund, "cost_bp": cost,
+                           "side": "short_y" if s < 0 else "long_y",
+                           "net_bp": 1e4 * (gross + fund) - cost})
             open_until = exit_i + 1
             i = exit_i + 1
         if progress:
