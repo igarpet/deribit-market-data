@@ -12,6 +12,7 @@
 | `004_claude_sj02a_readout.md` | SJ 02a: **NO_EDGE**. Post-jump perp path flat at 1–60 min (|mean| < 1 bp, typical |move| 11–47 bp); median event reverses slightly; π_c does not separate paths. Jumps carry volatility, not direction | Result; SJ 02b not built |
 | `005_claude_sj03_preregistration.md` | SJ 03 (boiling analogy): do trade-count / volume acceleration and \|taker imbalance\| predict jump timing beyond SJ 01? Gates F1 (f vs e), F2 (15-min forecast), F3 (beyond flow-implied volatility: boil-specific heat) | Preregistered |
 | `006_claude_sj03_readout.md` | SJ 03: **F1 PASS, F2 FAIL, F3 FAIL**. Activity builds in the last ~5 min before jumps (+75% volume at −1 min) but carries only volatility information; top-1% hazard minutes: 20% jump rate in 15 min vs 6.1% base | Result |
+| `007_claude_sj04_preregistration.md` | SJ 04: jumps at 1-second resolution (spot 1s, Jul–Sep 2026): P1 early activity build-up (>30 s before onset), P2 split events (bar-boundary artefact), P3 continuation onset+5 s → +65 s | Preregistered; awaiting run |
 
 
 
