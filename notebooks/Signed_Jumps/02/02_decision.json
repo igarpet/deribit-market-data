@@ -1,0 +1,29 @@
+{
+ "version": "SJ02a-0.1.0",
+ "status": "PREREGISTERED_SJ003",
+ "rule": {
+  "filter": "all",
+  "horizon_min": 1,
+  "direction": "reversal",
+  "dev_gross_bp": 1.7281402669625505,
+  "dev_gross_lo": 0.7848927800705228,
+  "dev_n": 8560
+ },
+ "verdict": "NO_EDGE",
+ "test_gross_bp": 0.13123054524905006,
+ "test_gross_lo": -0.6256161595245382,
+ "test_net_12bp": -11.868769454750948,
+ "test_net_12bp_lo": -12.625616159524537,
+ "test_net_7bp": -6.86876945475095,
+ "test_net_7bp_lo": -7.6256161595245375,
+ "delayed_entry": {
+  "gross_bp": -0.44081532517561667,
+  "gross_lo": -1.1091694389952014,
+  "net_12bp": -12.440815325175617,
+  "net_12bp_lo": -13.109169438995202,
+  "verdict": "NO_EDGE"
+ },
+ "test_events": 5679,
+ "build_SJ02b": false,
+ "synthetic": false
+}

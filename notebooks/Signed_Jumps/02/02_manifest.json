@@ -1,0 +1,35 @@
+{
+ "registration": {
+  "horizons": [
+   1,
+   2,
+   3,
+   5,
+   10,
+   15,
+   30,
+   60
+  ],
+  "cluster_gap": 5,
+  "excursion_window": 15,
+  "cost_primary_bp": 12.0,
+  "cost_grid_bp": [
+   7.0,
+   12.0,
+   14.0
+  ],
+  "n_boot": 2000,
+  "min_test_events": 200,
+  "status": "PREREGISTERED_SJ003",
+  "version": "SJ02a-0.1.0",
+  "selection": "argmax DEV net 95% lower bound over horizon x {continuation, reversal} x {all, top, bottom pi_c quintile}",
+  "gates": {
+   "NET_EDGE": "TEST net lower 95% > 0",
+   "GROSS_EDGE_ONLY": "TEST gross lower 95% > 0, net not",
+   "NO_EDGE": "otherwise"
+  }
+ },
+ "runtime_s": 109.65758419036865,
+ "events": 18580,
+ "starters": 15495
+}
