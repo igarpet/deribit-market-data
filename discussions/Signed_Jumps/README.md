@@ -14,6 +14,7 @@
 | `006_claude_sj03_readout.md` | SJ 03: **F1 PASS, F2 FAIL, F3 FAIL**. Activity builds in the last ~5 min before jumps (+75% volume at −1 min) but carries only volatility information; top-1% hazard minutes: 20% jump rate in 15 min vs 6.1% base | Result |
 | `007_claude_sj04_preregistration.md` | SJ 04: jumps at 1-second resolution (spot 1s, Jul–Sep 2026): P1 early activity build-up (>30 s before onset), P2 split events (bar-boundary artefact), P3 continuation onset+5 s → +65 s | Preregistered |
 | `008_claude_sj04_readout.md` | SJ 04: **P1 PASS** (activity +1.4× ~2 min before onset, ~11× at onset); **P2 mostly distinct events** (15% split) → SJ 01 excitation real; **P3 withdrawn** (look-ahead: onset uses the full jump minute); post-close returns ≈ flat. Proposes SJ 04b real-time seconds trigger | Result |
+| `009_claude_sj04b_preregistration.md` | SJ 04b: real-time trigger (trailing-60 s return ≥ 4 × engine 1-min σ, past data only); gate δ = 2 s latency, H = 60 s, gross q2.5 > 0; latency × hold grid; economic flags 7 / 12 bp | Preregistered; awaiting run |
 
 
 
