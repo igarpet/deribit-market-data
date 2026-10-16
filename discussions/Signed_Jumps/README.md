@@ -8,5 +8,8 @@
 |---|---|---|
 | `001_claude_sj01_preregistration.md` | SJ 01: model ladder (a)–(e), gates G1–G3, synthetic validation, limitations | Preregistered |
 | `002_claude_sj01_readout.md` | SJ 01 results: **all gates PASS**. ρ = 0.155, half-life 1 min; continuation 71% after up jumps, 60% after down; TSK predicts sign (t ≈ ±8); jump sizes symmetric. Economics ≈ 1–3 bp gross per jump vs 12 bp costs; proposes SJ 02a event study before options | Result |
+| `003_claude_sj02a_preregistration.md` | SJ 02a: perp path after cluster-starting jumps (1–60 min), continuation vs reversal × π_c quintile, rule chosen on DEV by net lower bound, TEST verdict at 12 bp | Preregistered; awaiting run |
 
-Sequence: SJ 01 (statistics) → SJ 02 (single-wing options vs straddle) only if G2 and G3 pass.
+
+
+Sequence: SJ 01 (statistics) → SJ 02a (post-jump perp path, event study) → SJ 02b (Deribit single wing vs straddle) only on SJ 02a `NET_EDGE`.
