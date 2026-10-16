@@ -1,0 +1,70 @@
+{
+ "registration": {
+  "assets": [
+   "BTC",
+   "ETH",
+   "SOL",
+   "XRP"
+  ],
+  "c": 4.0,
+  "c_sensitivity": [
+   3.5,
+   4.5,
+   5.0
+  ],
+  "floor_bp": 5.0,
+  "fourier_k": 4,
+  "har_windows": [
+   30,
+   60,
+   240,
+   1440
+  ],
+  "har_target": 60,
+  "min_cover": 0.75,
+  "fast_half_life": 30,
+  "slow_half_life": 240,
+  "surprise_windows": [
+   10,
+   60
+  ],
+  "tsk_window": 60,
+  "tsk_min": 45,
+  "half_lives": [
+   1,
+   3,
+   10,
+   30,
+   90
+  ],
+  "dev_fraction": 0.7,
+  "n_boot": 2000,
+  "horizons": [
+   5,
+   15,
+   60
+  ],
+  "primary_horizon": 15,
+  "origin_step": 15,
+  "mc_paths": 200,
+  "min_test_jumps_per_sign": 200,
+  "status": "PREREGISTERED_SJ001",
+  "version": "SJ01-0.1.0",
+  "gates": {
+   "G1_excitation": "(c) vs (b): TEST logLik/row delta > 0, day-bootstrap q2.5 > 0, >= min jumps per sign",
+   "G2a_parent_sign": "(d) vs (c): same rule at Bonferroni q1.25",
+   "G2b_truncated_skew": "(e) vs (d): same rule at Bonferroni q1.25",
+   "G2": "PASS if G2a or G2b passes",
+   "G3_horizon": "signed occurrence log-loss at primary horizon, selected model vs (b): delta > 0, q2.5 > 0",
+   "G4_economics": "deferred to SJ 02; built only if G2 and G3 pass"
+  }
+ },
+ "runtime_s": 1566.0355427265167,
+ "assets": [
+  "BTC",
+  "ETH",
+  "SOL",
+  "XRP"
+ ],
+ "rows": 4625542
+}

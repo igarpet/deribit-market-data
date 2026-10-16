@@ -1,0 +1,34 @@
+{
+ "version": "SJ01-0.1.0",
+ "status": "PREREGISTERED_SJ001",
+ "G1_excitation": "PASS",
+ "G2a_parent_sign": "PASS",
+ "G2b_truncated_skew": "PASS",
+ "G2": "PASS",
+ "G3_horizon": "PASS",
+ "G3_model": "e",
+ "G4_build_SJ02": true,
+ "branching_c": 0.1560213540879659,
+ "branching_d": 0.15531827414735727,
+ "continuation_index": 0.09352746542540316,
+ "eta_matrix": [
+  {
+   "child": "up",
+   "from_up": 0.09223335627188602,
+   "from_down": 0.07338109036902508,
+   "half_life_min": 1
+  },
+  {
+   "child": "down",
+   "from_up": 0.03727933281976928,
+   "from_down": 0.11195453234231151,
+   "half_life_min": 1
+  }
+ ],
+ "test_jumps": {
+  "up": 3546,
+  "down": 3212
+ },
+ "dev_end": "2026-02-15 00:00:00+00:00",
+ "synthetic": false
+}
