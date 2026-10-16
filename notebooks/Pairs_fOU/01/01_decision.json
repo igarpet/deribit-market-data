@@ -1,0 +1,16 @@
+{
+  "verdict": "INCONCLUSIVE",
+  "stage_b_unlocked": false,
+  "test_trades": 25,
+  "gross_bp": [
+    11.832744604763935,
+    -1.6760680067537932,
+    16.359992891313265
+  ],
+  "net_bp": [
+    -0.16725539523606586,
+    -13.676068006753793,
+    4.359992891313264
+  ],
+  "status": "HISTORICAL_EXPLORATORY"
+}

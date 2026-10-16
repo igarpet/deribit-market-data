@@ -1,0 +1,5 @@
+mode,period,forecasts,complete,mean_predicted,observed,brier
+fou,dev,0,,,,
+fou,test,25,25.0,0.7092639999999999,0.0,0.503082064
+ou,dev,0,,,,
+ou,test,35,35.0,0.7097314285714286,0.02857142857142857,0.49170113942857147
