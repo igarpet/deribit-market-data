@@ -1,0 +1,38 @@
+{
+ "version": "SJ03-0.1.0",
+ "F1_flow_adds_to_SJ01": "PASS",
+ "F2_15min_forecast": "FAIL",
+ "F3_jump_specific_heat": "FAIL",
+ "flow_vs_engine_only_bf_vs_b": "PASS",
+ "flow_vhat_info": {
+  "flow_beta_on_fwd_var": {
+   "AN10": 0.0843,
+   "AV10": 0.0432,
+   "AN60": 0.0645,
+   "AV60": -0.0129,
+   "IMB10": 0.0039
+  },
+  "fwd_var_R2_base_dev": 0.04006565391354888,
+  "fwd_var_R2_with_flow_dev": 0.06037199014599248
+ },
+ "test_jumps": {
+  "up": 3546,
+  "down": 3212
+ },
+ "dev_end": "2026-02-15 00:00:00+00:00",
+ "synthetic": false,
+ "top1pct_15min": {
+  "b": {
+   "realised": 0.16129032258064516,
+   "lift": 2.6262394988862883
+  },
+  "e": {
+   "realised": 0.17204301075268819,
+   "lift": 2.8013221321453745
+  },
+  "f": {
+   "realised": 0.2010752688172043,
+   "lift": 3.274045241944906
+  }
+ }
+}

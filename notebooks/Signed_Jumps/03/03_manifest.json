@@ -1,0 +1,31 @@
+{
+ "registration": {
+  "accel_pairs": [
+   [
+    10,
+    240
+   ],
+   [
+    60,
+    1440
+   ]
+  ],
+  "imb_window": 10,
+  "min_cover": 0.75,
+  "sj01_half_life": 1.0,
+  "profile_window": [
+   -30,
+   10
+  ],
+  "n_boot": 2000,
+  "status": "PREREGISTERED_SJ005",
+  "version": "SJ03-0.1.0",
+  "gates": {
+   "F1": "(f) vs (e) TEST logLik/row delta > 0 and day-bootstrap q2.5 > 0, >= 200 TEST jumps/sign",
+   "F2": "15-min signed occurrence log-loss (f) vs (e): delta > 0 and q2.5 > 0",
+   "F3": "(f) vs (e + flow-implied forward variance v_hat): same rule as F1"
+  }
+ },
+ "runtime_s": 544.1656711101532,
+ "rows": 4625542
+}
