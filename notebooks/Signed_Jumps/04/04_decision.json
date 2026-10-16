@@ -1,0 +1,34 @@
+{
+ "version": "SJ04-0.1.0",
+ "status": "PREREGISTERED_SJ007",
+ "P1_early_buildup": {
+  "event_mean": -0.9018953718196534,
+  "placebo_mean": -1.2114260389425777,
+  "excess": 0.3095306671229243,
+  "q025": 0.25382886437556756,
+  "q975": 0.36915375950815615,
+  "n_events": 1868,
+  "n_placebo": 6558,
+  "status": "PASS"
+ },
+ "P2_split_events": {
+  "pairs_same_sign": 104,
+  "pairs_opposite": 55,
+  "split_share_same_sign": 0.15384615384615385,
+  "split_share_opposite": 0.4,
+  "median_gap_same_sign_s": 51.5,
+  "verdict": "MOSTLY_DISTINCT_EVENTS"
+ },
+ "P3_continuation": {
+  "gross_bp": 8.174507842914316,
+  "q025": 6.694245440394582,
+  "q975": 9.749123488537945,
+  "n": 1868,
+  "status": "PASS",
+  "net_12bp": -3.8254921570856837,
+  "net_22bp": -13.825492157085684
+ },
+ "events": 2186,
+ "starters": 1868,
+ "synthetic": false
+}
