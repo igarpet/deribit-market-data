@@ -98,3 +98,11 @@ Environment variables keep their old names (`M13_BLOCKS`, `M14_NULL_SCOPE`, `VRP
 - Frozen specifications (e.g. `notebooks/HSMM/06_frozen_spec_v02.json`) and holdout windows are declared in advance and not touched.
 - Agreement between the models is not evidence. Held-out results and null tests decide.
 - The framework document (`SDF_HSMM_0DTE_Regime_Framework v3.2`) binds the HSMM price branch unless Ivan says otherwise.
+
+## 8. Research markets — owner instruction, 2026-10-17
+
+**Perpetual futures AND options are independent eligible research/trading markets** from now on. A validated, executable perpetual-futures opportunity does not require an associated options edge, and vice versa. This broadens the project mandate; it does not retroactively change prior branch protocols, undo negative findings, or authorize live orders.
+
+For all NEW studies: assess forecast skill at the intended instrument/horizon, then instrument-specific economics using actual contract prices or executable quote/fill data, maker/taker fees, slippage, spreads, funding, latency and risk/position constraints where applicable. Keep **statistical significance**, **economic significance after costs**, and **prospective confirmation** as separate verdicts. Do not substitute Binance spot movements for Deribit perpetual executable returns or option premium returns. Cross-market research output reuse still needs the owner's approval and a written declaration under §2. The user retains final approval for any live deployment.
+
+The new `Predictive_State_HMM` branch implements this mandate as an exploratory two-market research line; it does not modify any archived HSMM, VD19, signed-jump or option-strategy frozen study.
