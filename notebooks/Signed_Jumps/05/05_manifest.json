@@ -1,0 +1,37 @@
+{
+ "registration": {
+  "c_trig": 4.0,
+  "c_grid": [
+   3.0,
+   4.0,
+   5.0
+  ],
+  "floor_bp": 5.0,
+  "window_s": 60,
+  "cooldown_s": 300,
+  "delta_s": 2,
+  "h_s": 60,
+  "grid_delta": [
+   1,
+   2,
+   5,
+   10,
+   30
+  ],
+  "grid_h": [
+   10,
+   30,
+   60,
+   300
+  ],
+  "costs_bp": [
+   7.0,
+   12.0
+  ],
+  "n_boot": 2000,
+  "status": "PREREGISTERED_SJ009",
+  "version": "SJ04b-0.1.0",
+  "gate": "c_trig=4, delta=2 s, H=60 s: gross day-bootstrap q2.5 > 0 => CONTINUATION; else NO_CONTINUATION"
+ },
+ "runtime_s": 149.68525218963623
+}
