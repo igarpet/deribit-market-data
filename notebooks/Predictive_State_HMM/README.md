@@ -20,3 +20,11 @@ Data inputs (read only): `DERIBIT_DATA_ROOT/history/price_5m/<ASSET>.csv.gz` (Bi
 Notebook outputs under `01/`: `01_forecast_scores.csv`, `01_state_profiles.csv`, `01_transition_matrix.csv`, `01_duration_hazards.csv`, `01_coverage.csv`, `01_perp_economics.json`, `01_decision.json`, `01_manifest.json`. Commit those along with the executed notebook for review. No raw-per-candle labels or local feature caches are committed.
 
 **Interpretation limits:** Expected 12bp round-trip hypothetical perp cost is an assumption and not an observed Deribit fill; no funding, position constraints or liquidation risk are evaluated. The HMM is **not** an HSMM. Stage A uses only vol memories, not the statistically significant signed-flow / jump-hazard candidate modules, until a new test is registered. No signal is deployable.
+
+## PSH02 — Volatility × signed flow (2026-10-17)
+
+PSH01's historical 4-state HMM did not beat the nonlinear continuous-volatility baseline. The user authorized an independent PSH02 trial to determine whether signed aggressive flow interacts with continuous volatility or filtered HMM state probabilities for future perpetual returns. **The primary prediction horizon is 5 minutes**, matching CS03c's demonstrated flow result; 30 minutes is secondary. Both options and perps remain independently valid research endpoints, but PSH02 evaluates perps only. No order placement is authorized.
+
+[PSH02 frozen preregistration](../../discussions/Predictive_State_HMM/002_chatgpt_psh02_preregistration.md) · [PSH02 local run guide](02/README.md).
+
+Run `python -m pytest -q tests\\test_predictive_state_flow.py`, followed by `jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 notebooks\\Predictive_State_HMM\\02_volatility_signed_flow.ipynb` from the repository root in `deribit-data`. The notebook writes only aggregate CSV/JSON under `02/`. Commit its executed output for review, not raw data.
