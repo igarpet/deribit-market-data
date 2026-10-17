@@ -10,11 +10,11 @@ This branch uses only feature families with demonstrated historical out-of-sampl
 
 ## Files
 
-- Protocol: `../../discussions/Predictive_State_HMM/002_chatgpt_psh02_preregistration.md`.
-- Engine: `../../src/data_engineering/modeling/predictive_state_flow.py`.
-- Tests: `../../tests/test_predictive_state_flow.py`.
-- Notebook: `02_volatility_signed_flow.ipynb`.
-- Written artifacts after execution: `02/02_forecast_scores.csv`, `02/02_paired_day_comparisons.csv`, `02/02_perp_cost_scenarios.csv`, `02/02_coverage.csv`, `02/02_decision.json`, `02/02_manifest.json`.
+- Protocol: `../../../discussions/Predictive_State_HMM/002_chatgpt_psh02_preregistration.md`.
+- Engine: `../../../src/data_engineering/modeling/predictive_state_flow.py`.
+- Tests: `../../../tests/test_predictive_state_flow.py`.
+- Notebook: `../02_volatility_signed_flow.ipynb`.
+- Written artifacts after execution: `02_forecast_scores.csv`, `02_paired_day_comparisons.csv`, `02_perp_cost_scenarios.csv`, `02_coverage.csv`, `02_decision.json`, `02_manifest.json`.
 
 ## Run on Windows CMD
 
