@@ -20,3 +20,7 @@ jupyter nbconvert --to notebook --execute --inplace notebooks\VWAP_Events\01_vwa
 Environment: `VE01_ASSETS` (comma list), `VE01_N_PLACEBO` (default 20), `VE01_SYNTHETIC=1` (smoke run to a temp dir). Assets without a parquet file are skipped.
 
 Outputs go to `01/`: coverage, event counts, primary readout, decision, horizons, per-asset test readout, direction, and the manifest. All are small CSV/JSON.
+
+## 02 — touch / cross / return-time statistics (descriptive, 2026-10-17)
+
+`02_touch_cross_stats.ipynb` (`src/data_engineering/modeling/vwap_touch_stats.py`, tests `tests/test_vwap_touch_stats.py`): BTC and ETH perp 1m, session (08:00 UTC) and 4H VWAP. Counts touches (bars and episodes) and crosses; after each cross, minutes to the next touch, to a cross back, and to a touch after price first detaches (window resets censored, Kaplan-Meier medians). Same statistics for placebo anchors at unused times. No gates. Outputs in `02/`. `VE02_SYNTHETIC=1` runs a synthetic smoke test.
