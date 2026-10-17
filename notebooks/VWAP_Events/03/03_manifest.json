@@ -1,0 +1,42 @@
+{
+ "registration": {
+  "k_grid": [
+   1.0,
+   2.0
+  ],
+  "k_primary": 1.0,
+  "stretch_m": 15,
+  "warmup_min": 30,
+  "max_hold": 60,
+  "targets": [
+   5,
+   10,
+   20,
+   40,
+   "vwap"
+  ],
+  "stops": [
+   5,
+   10,
+   20,
+   40
+  ],
+  "primary_target": "vwap",
+  "primary_stop": 20,
+  "costs_bp": [
+   4.0,
+   7.0,
+   12.0
+  ],
+  "tradeable_bp": 7.0,
+  "n_boot": 2000,
+  "status": "PREREGISTERED_VE004",
+  "version": "VE03-0.1.0",
+  "gates": {
+   "G1": "hour-matched real - placebo mean gross bp, day-bootstrap q2.5 > 0 (primary cell)",
+   "G2": "real mean gross bp q2.5 > 7 (primary cell)"
+  }
+ },
+ "runtime_s": 99.46082329750061,
+ "trades": 7887924
+}

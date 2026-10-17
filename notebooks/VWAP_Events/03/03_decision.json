@@ -1,0 +1,22 @@
+{
+ "version": "VE03-0.1.0",
+ "status": "PREREGISTERED_VE004",
+ "n_real": 38174,
+ "real_gross_bp": -0.16136577725410461,
+ "real_lo": -0.42906290367472555,
+ "real_hi": 0.11151867392739072,
+ "placebo_gross_bp": 0.02500804141163826,
+ "real_minus_placebo_hour_matched": -0.14213407142115078,
+ "diff_lo": -0.3938034136521491,
+ "diff_hi": 0.10578630556243193,
+ "real_minus_placebo_unmatched": -0.1863738004690873,
+ "unmatched_lo": -0.4326225511090209,
+ "unmatched_hi": 0.06271512453650414,
+ "win_rate_real": 0.4752973227851417,
+ "G1_vwap_specific": "FAIL",
+ "G2_tradeable": "FAIL",
+ "real_net_4bp": -4.161365777254105,
+ "real_net_7bp": -7.161365777254105,
+ "real_net_12bp": -12.161365777254105,
+ "verdict": "NO_EDGE"
+}
