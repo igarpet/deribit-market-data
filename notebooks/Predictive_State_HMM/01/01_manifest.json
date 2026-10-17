@@ -1,0 +1,54 @@
+{
+  "spec": {
+    "version": "PSH01-0.1.0",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "min_history_days": 365,
+    "hmm_states": [
+      2,
+      3,
+      4
+    ],
+    "anchor_minutes": 30,
+    "primary_shock_horizon_min": 60,
+    "perp_horizon_min": 30,
+    "perp_roundtrip_cost_bp": 12.0,
+    "logistic_C": 0.1,
+    "ridge_alpha": 100.0,
+    "bootstrap_days": 500,
+    "min_test_days": 30,
+    "seed": 2617,
+    "status": "HISTORICAL_EXPLORATORY",
+    "emissions": [
+      "ema_30m",
+      "ema_240m"
+    ],
+    "baseline_features": [
+      "now",
+      "ema_30m",
+      "ema_240m",
+      "clock_sin",
+      "clock_cos"
+    ],
+    "allowed_predictor_evidence": {
+      "ema_30m": "VD12",
+      "ema_240m": "VD12"
+    },
+    "option_PnL": "NOT_TESTED_WITHOUT_POINT_IN_TIME_QUOTES",
+    "perp_source": "Binance USD-M historical proxy; not Deribit execution"
+  },
+  "frozen_history_end_exclusive": "2026-10-17T00:00:00Z",
+  "assets": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "actual_executed": true,
+  "synthetic": false,
+  "caveat": "Entire historical period repeatedly researched; exploratory only"
+}

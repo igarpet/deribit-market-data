@@ -1,0 +1,134 @@
+[
+  {
+    "asset": "BTC",
+    "K": 4,
+    "perp_evaluation": {
+      "status": "HISTORICAL_PERP_COST_SCENARIO",
+      "n_test_origins": 7248,
+      "continuous": {
+        "n_trades": 0,
+        "mean_bp_per_trade_net": null,
+        "total_bp_per_notional_slot_net": 0.0,
+        "mean_bp_per_origin_net": 0.0,
+        "gross_bp_per_trade": null,
+        "hit_rate": null
+      },
+      "static": {
+        "n_trades": 0,
+        "mean_bp_per_trade_net": null,
+        "total_bp_per_notional_slot_net": 0.0,
+        "mean_bp_per_origin_net": 0.0,
+        "gross_bp_per_trade": null,
+        "hit_rate": null
+      },
+      "hmm": {
+        "n_trades": 0,
+        "mean_bp_per_trade_net": null,
+        "total_bp_per_notional_slot_net": 0.0,
+        "mean_bp_per_origin_net": 0.0,
+        "gross_bp_per_trade": null,
+        "hit_rate": null
+      }
+    },
+    "options_evaluation": "NOT_TESTED_MISSING_MATCHED_DERIBIT_QUOTES"
+  },
+  {
+    "asset": "ETH",
+    "K": 4,
+    "perp_evaluation": {
+      "status": "HISTORICAL_PERP_COST_SCENARIO",
+      "n_test_origins": 7248,
+      "continuous": {
+        "n_trades": 0,
+        "mean_bp_per_trade_net": null,
+        "total_bp_per_notional_slot_net": 0.0,
+        "mean_bp_per_origin_net": 0.0,
+        "gross_bp_per_trade": null,
+        "hit_rate": null
+      },
+      "static": {
+        "n_trades": 0,
+        "mean_bp_per_trade_net": null,
+        "total_bp_per_notional_slot_net": 0.0,
+        "mean_bp_per_origin_net": 0.0,
+        "gross_bp_per_trade": null,
+        "hit_rate": null
+      },
+      "hmm": {
+        "n_trades": 0,
+        "mean_bp_per_trade_net": null,
+        "total_bp_per_notional_slot_net": 0.0,
+        "mean_bp_per_origin_net": 0.0,
+        "gross_bp_per_trade": null,
+        "hit_rate": null
+      }
+    },
+    "options_evaluation": "NOT_TESTED_MISSING_MATCHED_DERIBIT_QUOTES"
+  },
+  {
+    "asset": "SOL",
+    "K": 4,
+    "perp_evaluation": {
+      "status": "HISTORICAL_PERP_COST_SCENARIO",
+      "n_test_origins": 7248,
+      "continuous": {
+        "n_trades": 0,
+        "mean_bp_per_trade_net": null,
+        "total_bp_per_notional_slot_net": 0.0,
+        "mean_bp_per_origin_net": 0.0,
+        "gross_bp_per_trade": null,
+        "hit_rate": null
+      },
+      "static": {
+        "n_trades": 0,
+        "mean_bp_per_trade_net": null,
+        "total_bp_per_notional_slot_net": 0.0,
+        "mean_bp_per_origin_net": 0.0,
+        "gross_bp_per_trade": null,
+        "hit_rate": null
+      },
+      "hmm": {
+        "n_trades": 0,
+        "mean_bp_per_trade_net": null,
+        "total_bp_per_notional_slot_net": 0.0,
+        "mean_bp_per_origin_net": 0.0,
+        "gross_bp_per_trade": null,
+        "hit_rate": null
+      }
+    },
+    "options_evaluation": "NOT_TESTED_MISSING_MATCHED_DERIBIT_QUOTES"
+  },
+  {
+    "asset": "XRP",
+    "K": 4,
+    "perp_evaluation": {
+      "status": "HISTORICAL_PERP_COST_SCENARIO",
+      "n_test_origins": 7248,
+      "continuous": {
+        "n_trades": 0,
+        "mean_bp_per_trade_net": null,
+        "total_bp_per_notional_slot_net": 0.0,
+        "mean_bp_per_origin_net": 0.0,
+        "gross_bp_per_trade": null,
+        "hit_rate": null
+      },
+      "static": {
+        "n_trades": 13,
+        "mean_bp_per_trade_net": -46.55036999073166,
+        "total_bp_per_notional_slot_net": -605.1548098795115,
+        "mean_bp_per_origin_net": -0.08349266140721737,
+        "gross_bp_per_trade": -34.55036999073166,
+        "hit_rate": 0.7692307692307693
+      },
+      "hmm": {
+        "n_trades": 1,
+        "mean_bp_per_trade_net": 48.80278156546162,
+        "total_bp_per_notional_slot_net": 48.80278156546162,
+        "mean_bp_per_origin_net": 0.0067332756022987885,
+        "gross_bp_per_trade": 60.80278156546162,
+        "hit_rate": 1.0
+      }
+    },
+    "options_evaluation": "NOT_TESTED_MISSING_MATCHED_DERIBIT_QUOTES"
+  }
+]

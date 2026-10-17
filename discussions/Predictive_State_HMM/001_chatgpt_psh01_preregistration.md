@@ -1,0 +1,56 @@
+# PSH 001 — Predictive-evidence-gated HMM: options AND perpetuals
+
+| | |
+|---|---|
+| **Author** | ChatGPT |
+| **Date** | 2026-10-17 |
+| **Branch** | Predictive_State_HMM |
+| **Responds to** | Owner's explicit 2026-10-17 approval to run an HMM/HSMM experiment using only predictive-significant features and to consider independent perp and option opportunities |
+| **Status** | Frozen initial exploratory implementation; not prospectively confirmed and not a live trading system |
+
+## 1. Scope and authorization
+
+The owner authorizes **research of both perpetual-futures and options edges**; results in either market may ultimately qualify independently, after costs and validation. This overrides the earlier *options-only research priority* for this new branch. It does **not** authorize order placement, leverage, deployment, or changes to the frozen HSMM / VD19 research specifications. This new branch explicitly reuses the causal 30-minute and 240-minute volatility memories from Volatility Dynamics VD12, and the Student-t HMM fitting/filtering routines from Regime Discovery RD02. No previously fitted research model or frozen result is altered.
+
+The original conceptual HSMM state labels must not be imposed. Historical splits (60% TRAIN / 20% VALID / 20% TEST) in the existing VD12 data utility serve as **exploratory chronology**, since this price history has been inspected by other branches. An untouched prospective period will be required for confirmation.
+
+## 2. Admission by predictive evidence (before fitting)
+
+**Main state emissions:** two TRAIN-declocked, observation-weight-normalized, strictly prior-to-origin volatility memories `ema_30m` and `ema_240m`. VD12 (2026-10-12) showed two-EMA prediction of the next 60-minute q99 onset, with day-bootstrap 95% intervals entirely favorable against climatology and fixed short lags. Strong evidence is for the *family*, **not** for two independently significant marginal coefficients. Main experiment deliberately uses only these two emissions.
+
+**Candidate fast layer only AFTER Stage A and separate incremental testing:** signed taker imbalance (CS03c; statistically significant five-minute BTC/ETH perpetual direction, non-economic after costs), up-displacement × flow-shock transition (RS01; significant against shared-sign volatility-preserving null), and short-lag jump intensity (SJ01; prediction of jump arrival, but not net signed returns). These differ by input instruments and event horizons, so they are **not silently merged** into the first notebook. RS03's previous-day volatility-surprise predictor is held as a redundancy challenge to the 240m factor. Model/IV wedge (VD19) is an auxiliary point-in-time option pricing metric, not an emission in PSH01.
+
+Exclude Hurst exponent/roughness, VWAP touches, simple breakout, streak length, OBI/L2 roughness, basis fOU, option IV shape and other unconfirmed incremental predictors.
+
+## 3. HMM design and falsification
+
+At every exact UTC 30-minute anchor, construct HMM emissions from causal 5-minute spot returns. The 30m and 240m memories use **only data strictly BEFORE t**. Correct missing 5m bars by zero observation mass (not zero return), and require 24h elapsed history with at least 80% available plus a nonstale last 15m. TRAIN-only de-clocking, floors, centering and scaling. A change to future returns cannot alter a state filtered at t.
+
+Fit one HMM per asset (BTC, ETH, SOL, XRP), K∈{2,3,4}, diagonal Student-t(ν=6) emissions, using the frozen RD02 EM implementation. Select K by TRAIN BIC with minimum 1% training filtered occupancy. State probabilities are **filtered**, not smoothed; split starts and timestamp gaps reset filter sequences. Diagnose posterior occupancy, state-persistence, transition matrix and held-out age-specific exit hazards versus HMM's geometric hazard.
+
+**Primary target:** whether any q99 native-5-minute *onset* occurs in (t,t+60m], using a per-asset TRAIN-only q99 threshold and strictly complete future-bar windows, with no labels crossing a chronological split. Only currently eligible non-q99 origins are scored. TRAIN-fitted logistic calibration compares HMM filtered-state features + continuous baseline to (i) the same continuous baseline with no state, (ii) static state posterior without transition structure, and (iii) nonlinear continuous baseline (small histogram-gradient-boosting classifier). Every test comparison is on IDENTICAL origins, assessed with daily paired log-loss bootstrap (500 draws); negative delta favors HMM. Primary PSH01 screening requires upper 95% CI <0 versus all three references on TEST and ≥30 test days. Historical success can be at most `EXPLORATORY_HMM_INCREMENT`, never independent confirmation.
+
+**HSMM gate:** do not estimate a new HSMM here. A duration extension is warranted only if stable, non-geometric, right-censor-aware empirical exit hazards AND incremental *future* forecast improvement appear in a subsequent independently registered test. Long runs generated by the smooth EMA inputs do not prove regimes.
+
+## 4. Independent market outcomes
+
+**Perps:** On the same 30m anchors, construct ACTUAL Binance USD-M perpetual 30m returns from 30 consecutive one-minute contract candles. Reject incomplete 30-minute buckets and any 30m outcome crossing a split. Use TRAIN-fitted Ridge forecasts of future perpetual returns with the same continuous, static and HMM state predictors. Nonoverlapping 30-minute decision opportunities. A hypothetical position is opened only when the predicted **gross magnitude exceeds 12bp round-trip assumed cost**, sign from forecast; report net bp/trade, gross, hit rate, exposure and no-trade count. **This is a deliberately conservative scenario, not measured Deribit spread/slippage/funding.** No claim of executable Deribit edge; actual Deribit fills and funding require a separate matched-time test. Never infer perp PnL from spot returns.
+
+**Options:** No option PnL is produced by PSH01 because two years of matched, executable Deribit 0DTE quotes are unavailable. State-conditioned option IV/physical-variance and bid/ask PnL require a new read-only quote-join module and proper funding/fees/expiry and session alignment. Perp and option gates are separate; a failure in one cannot force the other to fail.
+
+No money is put at risk and no executable signal, account connection or order code is created.
+
+## 5. Deliverables and immutable record
+
+Engine `src/data_engineering/modeling/predictive_state_hmm.py`; synthetic checks `tests/test_predictive_state_hmm.py`; notebook `notebooks/Predictive_State_HMM/01_predictive_state_hmm.ipynb`, and archive `notebooks/Predictive_State_HMM/01/` after user runs locally. Export decisions, pooled TEST loss diagnostics, posterior emission means, transition probabilities, age-specific hazards, coverage, and perp economic scenario. Do not push per-candle data. No changes to collectors, shared feature tables, existing VD18/VD19 engines, HSMM frozen specifications or trading infrastructure.
+
+## Questions for Claude
+
+1. Does selection by TRAIN BIC plus separate TEST prediction avoid choosing K on the observed future shock labels? Identify remaining leakage or reproducibility risks.
+2. Given EMA memory's mechanical persistence, are the continuous/nonlinear and static HMM reference arms sufficient, or which stronger stationary null should precede any HSMM claim?
+3. What point-in-time Deribit perpetual-fill archive is required before accepting economically positive historical Binance-perp scenarios?
+
+## Decisions needed from Ivan
+
+1. The owner already approved building this exploratory stage and broadening the project to perp and option edges. Running PSH01 is the next action.
+2. After results, decide whether to fund the signed-flow fast extension and/or new prospective confirmation. No live trade decision is requested or assumed.
