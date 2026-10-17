@@ -1,0 +1,74 @@
+{
+  "spec": {
+    "version": "PSH02-0.1.0",
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "XRP"
+    ],
+    "k_states": 4,
+    "origin_step_minutes": 30,
+    "horizons_minutes": [
+      5,
+      30
+    ],
+    "primary_horizon_minutes": 5,
+    "logistic_C": 0.25,
+    "ridge_alpha": 100.0,
+    "nonlinear_leaf_nodes": 7,
+    "nonlinear_iterations": 80,
+    "roundtrip_cost_bp": 12.0,
+    "top_decile_fraction": 0.1,
+    "bootstrap_reps": 2000,
+    "familywise_alpha": 0.05,
+    "min_test_days": 30,
+    "seed": 2618,
+    "status": "HISTORICAL_EXPLORATORY",
+    "source": "Binance USD-M 1min contract candles and taker buy quote volume; Binance spot 5min price for VD12 EMA states",
+    "cross_branch": "PSH01 K=4 historical structure; CS03c signed flow evidence",
+    "feature_admission": [
+      "ema_30m",
+      "ema_240m",
+      "flow_5m"
+    ],
+    "primary_metric": "next-5m nonzero perp direction logloss",
+    "comparisons": [
+      [
+        "plus_flow",
+        "price_vol"
+      ],
+      [
+        "continuous_interaction",
+        "plus_flow"
+      ],
+      [
+        "hmm_flow_interaction",
+        "continuous_interaction"
+      ],
+      [
+        "hmm_flow_interaction",
+        "hmm_additive"
+      ],
+      [
+        "hmm_flow_interaction",
+        "nonlinear_continuous"
+      ]
+    ],
+    "familywise_one_sided_quantile": 0.995,
+    "historical_test_reused": true,
+    "options_economics": "NOT_TESTED",
+    "trade_status": "NO_EXECUTION_APPROVAL"
+  },
+  "historical_cutoff_exclusive": "2026-10-17 00:00:00+00:00",
+  "assets": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP"
+  ],
+  "synthetic": false,
+  "prospective_confirmation": false,
+  "outcome_data": "Binance USD-M future CLOSE returns; no fills/funding",
+  "sources_modified": false
+}

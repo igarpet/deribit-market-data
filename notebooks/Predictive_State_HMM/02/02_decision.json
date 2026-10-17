@@ -1,0 +1,156 @@
+[
+  {
+    "asset": "BTC",
+    "verdict": "NO_CONFIRMED_INCREMENT",
+    "coverage": {
+      "5": {
+        "n_train": 20874,
+        "n_test": 7248,
+        "n_nonzero_test": 7236,
+        "days_test": 151
+      },
+      "30": {
+        "n_train": 20873,
+        "n_test": 7248,
+        "n_nonzero_test": 7245,
+        "days_test": 151
+      }
+    },
+    "prospective_confirmation": false,
+    "execution_approved": false,
+    "primary_checks": [
+      {
+        "left": "plus_flow",
+        "right": "price_vol",
+        "passed": false,
+        "delta": 0.0008605062023380523,
+        "upper_familywise": 0.0022648964603510535
+      },
+      {
+        "left": "continuous_interaction",
+        "right": "plus_flow",
+        "passed": false,
+        "delta": -0.000154922419199635,
+        "upper_familywise": 0.00012285011405654172
+      },
+      {
+        "left": "hmm_flow_interaction",
+        "right": "continuous_interaction",
+        "passed": false,
+        "delta": 0.0011251708689359497,
+        "upper_familywise": 0.002485645403108611
+      },
+      {
+        "left": "hmm_flow_interaction",
+        "right": "hmm_additive",
+        "passed": false,
+        "delta": 0.0004132692323307694,
+        "upper_familywise": 0.001201703468109741
+      },
+      {
+        "left": "hmm_flow_interaction",
+        "right": "nonlinear_continuous",
+        "passed": false,
+        "delta": 0.0016104646715286361,
+        "upper_familywise": 0.003092559120793064
+      }
+    ]
+  },
+  {
+    "asset": "ETH",
+    "verdict": "NO_CONFIRMED_INCREMENT",
+    "coverage": {
+      "5": {
+        "n_train": 20874,
+        "n_test": 7248,
+        "n_nonzero_test": 7231,
+        "days_test": 151
+      },
+      "30": {
+        "n_train": 20873,
+        "n_test": 7248,
+        "n_nonzero_test": 7238,
+        "days_test": 151
+      }
+    },
+    "prospective_confirmation": false,
+    "execution_approved": false,
+    "primary_checks": [
+      {
+        "left": "plus_flow",
+        "right": "price_vol",
+        "passed": false,
+        "delta": 0.0007070075102752062,
+        "upper_familywise": 0.0017608573009501114
+      },
+      {
+        "left": "continuous_interaction",
+        "right": "plus_flow",
+        "passed": false,
+        "delta": 0.0004750333456353517,
+        "upper_familywise": 0.0014037755475397027
+      },
+      {
+        "left": "hmm_flow_interaction",
+        "right": "continuous_interaction",
+        "passed": false,
+        "delta": 0.00015663190709185165,
+        "upper_familywise": 0.0008085356578631365
+      },
+      {
+        "left": "hmm_flow_interaction",
+        "right": "hmm_additive",
+        "passed": false,
+        "delta": -0.00012615493281312076,
+        "upper_familywise": 0.0004269595359380531
+      },
+      {
+        "left": "hmm_flow_interaction",
+        "right": "nonlinear_continuous",
+        "passed": false,
+        "delta": 0.0009100531453366601,
+        "upper_familywise": 0.002455670593671813
+      }
+    ]
+  },
+  {
+    "asset": "SOL",
+    "verdict": "SECONDARY_DESCRIPTIVE_ONLY",
+    "coverage": {
+      "5": {
+        "n_train": 20874,
+        "n_test": 7248,
+        "n_nonzero_test": 7001,
+        "days_test": 151
+      },
+      "30": {
+        "n_train": 20873,
+        "n_test": 7248,
+        "n_nonzero_test": 7113,
+        "days_test": 151
+      }
+    },
+    "prospective_confirmation": false,
+    "execution_approved": false
+  },
+  {
+    "asset": "XRP",
+    "verdict": "SECONDARY_DESCRIPTIVE_ONLY",
+    "coverage": {
+      "5": {
+        "n_train": 20874,
+        "n_test": 7248,
+        "n_nonzero_test": 7038,
+        "days_test": 151
+      },
+      "30": {
+        "n_train": 20873,
+        "n_test": 7248,
+        "n_nonzero_test": 7146,
+        "days_test": 151
+      }
+    },
+    "prospective_confirmation": false,
+    "execution_approved": false
+  }
+]
