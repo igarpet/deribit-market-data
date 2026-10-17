@@ -1,0 +1,50 @@
+{
+ "registration": {
+  "k_sigma": [
+   3.0,
+   4.0,
+   5.0
+  ],
+  "pct": [
+   0.005,
+   0.0075,
+   0.01
+  ],
+  "stretch_m": 15,
+  "warmup_min": 30,
+  "cooldown": 30,
+  "targets": [
+   20,
+   40,
+   80,
+   "vwap"
+  ],
+  "stops": [
+   20,
+   40,
+   80
+  ],
+  "holds": [
+   60,
+   240
+  ],
+  "min_dev_n": 50,
+  "tradeable_bp": 7.0,
+  "costs_bp": [
+   4.0,
+   7.0,
+   12.0
+  ],
+  "n_boot": 2000,
+  "status": "PREREGISTERED_VE006",
+  "version": "VE04-0.1.0",
+  "test_start": "2026-04-01 00:00:00+00:00",
+  "selection": "DEV real cell with max day-bootstrap q2.5 of mean gross bp (n_dev >= 50)",
+  "gates": {
+   "G1": "TEST hour-matched real - placebo > 0, q2.5 > 0",
+   "G2": "TEST real gross q2.5 > 7 bp"
+  }
+ },
+ "runtime_s": 237.98211693763733,
+ "trades": 17789688
+}

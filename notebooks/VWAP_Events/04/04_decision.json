@@ -1,0 +1,28 @@
+{
+ "version": "VE04-0.1.0",
+ "status": "PREREGISTERED_VE006",
+ "cell": {
+  "thr": "k5",
+  "target": "vwap",
+  "stop": 20,
+  "hold": 60,
+  "dev_gross": 1.233174471677581,
+  "dev_lo": 0.3224333590725082,
+  "dev_n": 9839
+ },
+ "test_n": 3276,
+ "test_gross": 0.7532786222925849,
+ "test_lo": -0.3936853844374369,
+ "test_hi": 2.02279343495363,
+ "placebo_gross": 0.3709686548964262,
+ "real_minus_placebo_hour_matched": 0.1898628026901022,
+ "diff_lo": -1.088445642583132,
+ "diff_hi": 1.4552617819215545,
+ "test_win_rate": 0.4062881562881563,
+ "G1_vwap_specific": "FAIL",
+ "G2_tradeable": "FAIL",
+ "test_net_4bp": -3.246721377707415,
+ "test_net_7bp": -6.246721377707415,
+ "test_net_12bp": -11.246721377707415,
+ "verdict": "NO_EDGE"
+}
