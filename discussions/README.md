@@ -23,7 +23,7 @@ Each research line is a **branch**: one folder here and one under `notebooks/`, 
 | Volatility Regression | `Volatility_Regression/` | `notebooks/Volatility_Regression/` |
 | Pairwise Feature Regression | `Pairwise_Feature_Regression/` | `notebooks/Pairwise_Feature_Regression/` |
 | Volatility Dynamics | `Volatility_Dynamics/` | `notebooks/Volatility_Dynamics/` |
-| Order Book Imbalance (proposed 2026-10-11; handoff only) | `Order_Book_Imbalance/` | `notebooks/Order_Book_Imbalance/` (not yet created) |
+| Order Book Imbalance (proposed 2026-10-11; **closed 2026-10-17 as covered**, OBI 001) | `Order_Book_Imbalance/` | — (no notebooks) |
 | Hurst Regimes (2026-10-11) | `Hurst_Regimes/` | `notebooks/Hurst_Regimes/` |
 | Breakout Trend (2026-10-13) | `Breakout_Trend/` | `notebooks/Breakout_Trend/` |
 | VWAP Events (2026-10-13, concluded VWAP 002) | `VWAP_Events/` | `notebooks/VWAP_Events/` |
