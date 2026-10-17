@@ -19,6 +19,7 @@ Research branches are independent experiments. They may share the common data-en
 | [VWAP_Events](./VWAP_Events/) | Does a touch of the 08:00 UTC session or 4-hour VWAP precede a violent move beyond offset and random-phase placebo touches? Binance USD-M 1m klines, time-of-day-normalised realised vol, Bonferroni gates on the test window (VWAP 001). **Concluded (VWAP 002): VWAP touches not special.** |
 | [Regime_Structure](./Regime_Structure/) | Do range / displacement / noise / shock states persist beyond volatility clustering (sign-randomised null), and do Ivan's cycle transitions appear? Hourly labels on Binance 1m, no VWAP (RS 001). |
 | [Signed_Jumps](./Signed_Jumps/) | Do 1-minute jumps self-excite, does the parent jump's sign or pre-jump truncated skewness predict the next jump's sign? Volatility engine on bipower + signed Hawkes, Binance spot 1m BTC/ETH/SOL/XRP (SJ 001). |
+| [Multi_Scale_HMM](./Multi_Scale_HMM/) | Can a Student-t HMM on 1h/4h/1D bars built from 1-minute perpetual data (intrabar emissions: volatility, semivariance, efficiency, wicks, jumps, flow) find momentum/reversal states that predict the next bar net of costs? Shared-sign minute null, drift benchmark (MSH 001). |
 
 ## Output-size policy (from 2026-10-09)
 
