@@ -1,0 +1,11 @@
+{
+ "version": "VD20-0.1.0",
+ "G1_skill_vs_naive": "PASS",
+ "G2_engine_vs_daily_har": "ENGINE_BETTER",
+ "G3_beyond_implied": "FAIL",
+ "G3_model": null,
+ "verdict": "FORECASTS_VOL_BUT_NOT_BEYOND_IMPLIED",
+ "train_end": "2025-11-22",
+ "eval_days": 325,
+ "best_qlike_model": "ENGINE"
+}
