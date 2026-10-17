@@ -78,3 +78,42 @@ def test_manifest_primary_market_and_outcome():
     assert spec["trade_status"]=="NO_EXECUTION_APPROVAL"
     assert spec["options_economics"]=="NOT_TESTED"
     assert len(sf.COMPS)==5
+
+
+def test_boundary_rejects_return_targets_crossing_split():
+    t=pd.to_datetime(["2026-01-01 23:30Z","2026-01-02 00:00Z",
+                      "2026-01-02 00:30Z"])
+    anchor=pd.DataFrame({"state_time":t,"split":["train","valid","test"]})
+    fut=pd.DataFrame({"state_time":t,"flow_valid":[True,True,True],
+         "flow_5m":[.1,.2,.3],"perp_fwd_5m":[.001,.002,.003],
+         "perp_fwd_30m":[.004,.005,.006]})
+    result=sf.assemble(anchor,fut,sf.Spec())
+    assert np.isnan(result.loc[0,"perp_fwd_30m"])
+    assert np.isnan(result.loc[1,"perp_fwd_30m"])
+    assert np.isfinite(result.loc[0,"perp_fwd_5m"])
+
+
+def test_model_ladder_end_to_end_synthetic():
+    rng=np.random.default_rng(2618)
+    ntrain, ntest=750, 240
+    def make(n, start):
+        t=pd.date_range(start, periods=n, freq="30min",tz="UTC")
+        x=pd.DataFrame({name:rng.normal(size=n) for name in sf.CONT})
+        x["state_time"]=t
+        x["state_ready"]=True
+        s=.0004*rng.normal(size=n)+.00005*x["flow_5m"]
+        x["perp_fwd_5m"]=s
+        x["perp_fwd_30m"]=3*s
+        return x
+    a=make(ntrain,"2025-01-01")
+    b=make(ntest,"2025-08-01")
+    pa=rng.dirichlet(np.ones(4),size=ntrain)
+    pb=rng.dirichlet(np.ones(4),size=ntest)
+    cfg=sf.Spec(bootstrap_reps=30,min_test_days=3)
+    metrics,comps,econ,counts=sf.evaluate_horizon(
+         {"train":a,"test":b},
+         {"train":{"hmm":pa},"test":{"hmm":pb}},cfg,5)
+    assert len(metrics)==6 and len(comps)==5 and len(econ)==5
+    assert counts["n_nonzero_test"]==ntest
+    assert all(np.isfinite(x["logloss"]) for x in metrics)
+    assert all(np.isfinite(x["return_mse_bp2"]) for x in econ)
