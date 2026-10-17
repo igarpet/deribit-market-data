@@ -234,6 +234,9 @@ def evaluate_horizon(parts: dict, posterior: dict, cfg: Spec, horizon: int):
         side2 = np.sign(pred_bp[decile])
         net2 = side2*realized[decile]-cfg.roundtrip_cost_bp
         econ.append(dict(model=arm,horizon_min=horizon,n_test=int(len(test)),
+            return_mse_bp2=float(np.mean((pred_bp-realized)**2)),
+            return_mae_bp=float(np.mean(np.abs(pred_bp-realized))),
+            zero_forecast_mse_bp2=float(np.mean(realized**2)),
             n_cost_gated=int(chosen.sum()),gross_bp_per_cost_trade=
                 float((side*realized[chosen]).mean()) if chosen.any() else None,
             net_bp_per_cost_trade=float(pnl.mean()) if chosen.any() else None,
