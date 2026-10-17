@@ -28,3 +28,5 @@ Outputs go to `01/`: coverage, event counts, primary readout, decision, horizons
 ## 03 — VWAP fade scalp (preregistered, 2026-10-17)
 
 `03_vwap_fade.ipynb` (`vwap_fade.py`, tests `tests/test_vwap_fade.py`): after a cross, fade the first bar stretched ≥ k·σ·√15 from VWAP; exit at target / VWAP touch / stop / 60 min; real vs hour-matched placebo anchors; gates G1 (VWAP-specific) and G2 (gross > 7 bp). Protocol `discussions/VWAP_Events/004_claude_ve03_preregistration.md`. Outputs in `03/`. `VE03_SYNTHETIC=1` for a smoke test.
+
+VE03 run `a7431db` (VE 005): **NO_EDGE** — real −0.16 bp, real − placebo −0.14 bp; no cell above +0.8 bp gross. The pre/post split table mislabels all trades as pre (µs/ns day parsing; reporting only).

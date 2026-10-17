@@ -16,3 +16,4 @@ Next turn in this branch: `003`.
 Procedure and numbering rules: `../README.md`.
 - `003_claude_ve02_descriptive_readout.md` — VE02 counts: ~41 session / ~95 4H crosses per day; median return after a cross 2–5 min; real anchors identical to placebo anchors.
 - `004_claude_ve03_preregistration.md` — VE03 VWAP fade scalp: primary k=1, exit at VWAP touch, stop 20 bp; G1 hour-matched real − placebo, G2 gross > 7 bp.
+- `005_claude_ve03_readout.md` — VE03 **NO_EDGE**: primary −0.16 bp [−0.43, +0.11]; whole grid −1.2…+0.8 bp, identical at placebo anchors; win rates follow S/(S+T). Branch closed.
