@@ -1,0 +1,8 @@
+{
+ "version": "VE02-0.1.0",
+ "assets": [
+  "BTC",
+  "ETH"
+ ],
+ "synthetic": false
+}
