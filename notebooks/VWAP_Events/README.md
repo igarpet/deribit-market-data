@@ -34,3 +34,5 @@ VE03 run `a7431db` (VE 005): **NO_EDGE** — real −0.16 bp, real − placebo �
 ## 04 — extreme-displacement fade (preregistered, 2026-10-17)
 
 `04_vwap_extreme_fade.ipynb` (`vwap_extreme.py`, tests `tests/test_vwap_extreme.py`): fade displacement ≥ 3/4/5σ·√15 or ≥ 0.5/0.75/1% from VWAP at any time (30-min cooldown); 144 exit cells; cell selected on DEV (before 2026-04-01), judged once on TEST vs hour-matched placebo anchors. Outputs in `04/`. `VE04_SYNTHETIC=1` for a smoke test.
+
+VE04 run `6a27404` (VE 007): **NO_EDGE**. Branch closed.

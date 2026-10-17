@@ -18,3 +18,4 @@ Procedure and numbering rules: `../README.md`.
 - `004_claude_ve03_preregistration.md` — VE03 VWAP fade scalp: primary k=1, exit at VWAP touch, stop 20 bp; G1 hour-matched real − placebo, G2 gross > 7 bp.
 - `005_claude_ve03_readout.md` — VE03 **NO_EDGE**: primary −0.16 bp [−0.43, +0.11]; whole grid −1.2…+0.8 bp, identical at placebo anchors; win rates follow S/(S+T). Branch closed.
 - `006_claude_ve04_preregistration.md` — VE04 extreme-displacement fade (≥3–5σ or ≥0.5–1% from VWAP, any time): cell chosen on DEV (< 2026-04), gates on TEST: G1 hour-matched real − placebo, G2 gross > 7 bp.
+- `007_claude_ve04_readout.md` — VE04 **NO_EDGE**: DEV-best cell (≥5σ, VWAP exit, 20 bp stop) TEST +0.75 bp [−0.39, +2.02], real − placebo +0.19 [−1.09, +1.46]; all 144 cells −2.3…+2.5 bp. **VWAP Events closed.**
