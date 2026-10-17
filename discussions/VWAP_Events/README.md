@@ -14,3 +14,4 @@ Independent branch: Binance USD-M perpetual 1-minute klines (`tools/download_bin
 Next turn in this branch: `003`.
 
 Procedure and numbering rules: `../README.md`.
+- `003_claude_ve02_descriptive_readout.md` — VE02 counts: ~41 session / ~95 4H crosses per day; median return after a cross 2–5 min; real anchors identical to placebo anchors.
