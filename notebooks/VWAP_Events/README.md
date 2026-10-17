@@ -24,3 +24,7 @@ Outputs go to `01/`: coverage, event counts, primary readout, decision, horizons
 ## 02 — touch / cross / return-time statistics (descriptive, 2026-10-17)
 
 `02_touch_cross_stats.ipynb` (`src/data_engineering/modeling/vwap_touch_stats.py`, tests `tests/test_vwap_touch_stats.py`): BTC and ETH perp 1m, session (08:00 UTC) and 4H VWAP. Counts touches (bars and episodes) and crosses; after each cross, minutes to the next touch, to a cross back, and to a touch after price first detaches (window resets censored, Kaplan-Meier medians). Same statistics for placebo anchors at unused times. No gates. Outputs in `02/`. `VE02_SYNTHETIC=1` runs a synthetic smoke test.
+
+## 03 — VWAP fade scalp (preregistered, 2026-10-17)
+
+`03_vwap_fade.ipynb` (`vwap_fade.py`, tests `tests/test_vwap_fade.py`): after a cross, fade the first bar stretched ≥ k·σ·√15 from VWAP; exit at target / VWAP touch / stop / 60 min; real vs hour-matched placebo anchors; gates G1 (VWAP-specific) and G2 (gross > 7 bp). Protocol `discussions/VWAP_Events/004_claude_ve03_preregistration.md`. Outputs in `03/`. `VE03_SYNTHETIC=1` for a smoke test.
