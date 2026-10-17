@@ -170,7 +170,7 @@ def day_bootstrap(delta: np.ndarray, days: np.ndarray, cfg: Spec) -> dict:
     return {"mean_delta": float(d.mean()), "upper95": float(np.quantile(sampled,.95)),
             "upper_familywise": float(np.quantile(sampled,q)),
             "lower95": float(np.quantile(sampled,.05)), "n_days": int(len(u)),
-            "favorable_bonferroni": bool(d.mean()<0 and np.quantile(sampled,q)<0)}
+            "favorable_bonferroni": bool(len(u)>=cfg.min_test_days and d.mean()<0 and np.quantile(sampled,q)<0)}
 
 
 def evaluate_horizon(parts: dict, posterior: dict, cfg: Spec, horizon: int):
