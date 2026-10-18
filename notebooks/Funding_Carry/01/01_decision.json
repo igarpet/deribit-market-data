@@ -1,0 +1,26 @@
+{
+ "version": "funding_carry 1.0.0",
+ "registered_run": true,
+ "synthetic": false,
+ "assets_loaded": 30,
+ "missing": [],
+ "C": {
+  "G1_net_ci_positive": true,
+  "G2_dev_and_test_positive": false,
+  "G3_breadth": true,
+  "G4_beats_cash_hurdle": true,
+  "verdict": "NO_CARRY_EDGE",
+  "ann_reserved": 0.013892826723391804,
+  "ann_reserved_lo": 0.004640209356389448,
+  "ann_reserved_hi": 0.028512818372701157,
+  "ann_deployed": 0.06225114422483438,
+  "ann_reserved_dev": 0.02173790936822359,
+  "ann_reserved_test": -0.0008455454512737973,
+  "max_dd_reserved": 0.0014382703961922198,
+  "assets_net_positive": 28,
+  "assets_scored": 30
+ },
+ "U_verdict": "CARRY_POSITIVE_BELOW_HURDLE",
+ "C_lowcost_verdict": "NO_CARRY_EDGE",
+ "branch_verdict": "NO_CARRY_EDGE"
+}
