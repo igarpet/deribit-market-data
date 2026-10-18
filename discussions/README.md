@@ -31,6 +31,7 @@ Each research line is a **branch**: one folder here and one under `notebooks/`, 
 | Signed Jumps (2026-10-16) | `Signed_Jumps/` | `notebooks/Signed_Jumps/` |
 | Predictive State HMM (2026-10-17) | `Predictive_State_HMM/` | `notebooks/Predictive_State_HMM/` |
 | Multi-Scale HMM (2026-10-17) | `Multi_Scale_HMM/` | `notebooks/Multi_Scale_HMM/` |
+| Funding Carry (2026-10-18) | `Funding_Carry/` | `notebooks/Funding_Carry/` |
 
 A new branch gets both folders, each with a `README.md` that states its question, sequence and current status. Branches can run in parallel.
 
