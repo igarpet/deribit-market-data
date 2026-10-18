@@ -1,0 +1,140 @@
+{
+ "registration": {
+  "version": "multiscale_hmm 1.0.0",
+  "assets": [
+   "BTC",
+   "ETH",
+   "SOL",
+   "XRP"
+  ],
+  "scales_min": {
+   "1h": 60,
+   "4h": 240,
+   "1D": 1440
+  },
+  "features": [
+   "z",
+   "lrv",
+   "lsig",
+   "semi",
+   "er",
+   "clv",
+   "wick",
+   "jump",
+   "flow",
+   "lvol"
+  ],
+  "halflife_bars": {
+   "1h": 24,
+   "4h": 18,
+   "1D": 10
+  },
+  "k_grid": {
+   "1h": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "4h": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "1D": [
+    1,
+    2,
+    3,
+    4
+   ]
+  },
+  "nu_grid": [
+   4.0,
+   7.0,
+   15.0,
+   50.0
+  ],
+  "train": [
+   "2024-10-01 00:00:00+00:00",
+   "2025-09-01 00:00:00+00:00"
+  ],
+  "valid": [
+   "2025-09-01 00:00:00+00:00",
+   "2026-02-01 00:00:00+00:00"
+  ],
+  "test": [
+   "2026-02-01 00:00:00+00:00",
+   "2026-10-18 00:00:00+00:00"
+  ],
+  "prospective_from": "2026-10-18 00:00:00+00:00",
+  "prospective_min_days": {
+   "1h": 60,
+   "4h": 90,
+   "1D": 180
+  },
+  "cost_per_side": 0.0006,
+  "tau": 0.0012,
+  "alpha_S": 0.016666666666666666,
+  "min_assets": 3,
+  "n_null": {
+   "1h": 99,
+   "4h": 199,
+   "1D": 199
+  },
+  "boot_B": 2000,
+  "boot_block_days": {
+   "1h": 1,
+   "4h": 1,
+   "1D": 7
+  },
+  "restarts": 6,
+  "null_restarts": 3,
+  "seed": 20261017,
+  "source": "Binance USD-M perpetual 1m klines + funding (data.binance.vision); not Deribit execution"
+ },
+ "n_null_used": {
+  "1h": 99,
+  "4h": 199,
+  "1D": 199
+ },
+ "jobs": 3,
+ "coverage": [
+  {
+   "asset": "BTC",
+   "first_minute": "2024-10-01 00:00:00+00:00",
+   "last_minute": "2026-10-11 23:59:00+00:00",
+   "minutes": 1067040,
+   "funding_rows": 2373,
+   "funding_last": "2026-09-30 16:00:00.002000+00:00"
+  },
+  {
+   "asset": "ETH",
+   "first_minute": "2024-10-01 00:00:00+00:00",
+   "last_minute": "2026-10-11 23:59:00+00:00",
+   "minutes": 1067040,
+   "funding_rows": 2373,
+   "funding_last": "2026-09-30 16:00:00.002000+00:00"
+  },
+  {
+   "asset": "SOL",
+   "first_minute": "2024-10-01 00:00:00+00:00",
+   "last_minute": "2026-10-11 23:59:00+00:00",
+   "minutes": 1067040,
+   "funding_rows": 2373,
+   "funding_last": "2026-09-30 16:00:00.002000+00:00"
+  },
+  {
+   "asset": "XRP",
+   "first_minute": "2024-10-01 00:00:00+00:00",
+   "last_minute": "2026-10-11 23:59:00+00:00",
+   "minutes": 1067040,
+   "funding_rows": 2373,
+   "funding_last": "2026-09-30 16:00:00.002000+00:00"
+  }
+ ]
+}

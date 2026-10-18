@@ -1,0 +1,29 @@
+{
+ "version": "multiscale_hmm 1.0.0",
+ "registered_run": true,
+ "synthetic": false,
+ "per_scale": {
+  "1h": {
+   "S_verdict": "NO_SKILL",
+   "S_p": 0.57,
+   "E_verdict": "NO_NET_EDGE",
+   "states_add_value": false,
+   "scale_verdict": "NO_TRADEABLE_MOMENTUM_STATES"
+  },
+  "4h": {
+   "S_verdict": "NO_SKILL",
+   "S_p": 0.46,
+   "E_verdict": "NO_NET_EDGE",
+   "states_add_value": false,
+   "scale_verdict": "NO_TRADEABLE_MOMENTUM_STATES"
+  },
+  "1D": {
+   "S_verdict": "NO_SKILL",
+   "S_p": 0.925,
+   "E_verdict": "NO_NET_EDGE",
+   "states_add_value": false,
+   "scale_verdict": "NO_TRADEABLE_MOMENTUM_STATES"
+  }
+ },
+ "branch_verdict": "NO_TRADEABLE_MOMENTUM_STATES"
+}
