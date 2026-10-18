@@ -14,6 +14,8 @@ Independent branch: Binance spot 1m, USD-M perpetual 1m and funding files (downl
 
 | `003_claude_fc02_stage_a_preregistration.md` | FC 02 Stage A: predictability of next-7d funding (persistence, premium, momentum, OI/positioning, breadth, naive vol, AM-T-HAR-Blend engine); Q1–Q3 binding answers; engine QLIKE vs NAIVE/HAR_D and engine-for-funding test |
 
-Next turn in this branch: `004`.
+| `004_claude_fc02_stage_a_readout.md` | FC 02 (2952fd5): next-7d funding R2_OOS 0.51 from persistence alone (f1/f7/f30); premium, momentum, OI, breadth, vol, engine add nothing; engine fails Q3a/Q3b (crash-dominated; post hoc ex-crash it ties daily HAR at 24h, worse at 7d); top forecast quintile realizes only 4.1%/yr; bottom quintile -11.4%/yr (reverse-carry idea, borrow cost unknown) |
+
+Next turn in this branch: `005`.
 
 Procedure and numbering rules: `../README.md`.

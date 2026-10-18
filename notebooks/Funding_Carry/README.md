@@ -5,7 +5,7 @@
 | Notebook | Content | Status |
 |---|---|---|
 | `01_funding_carry.ipynb` | PF02 universe; daily frames from 1m spot/perp + funding prints; C (trailing-7d funding hysteresis) and U (always in); base and low-cost; per-asset, episodes, threshold grid (descriptive); verdict G1–G4 | Run cc17447 (FC 002): **NO_CARRY_EDGE** (C); U positive but below the cash hurdle |
-| `02_funding_predictability.ipynb` | Stage A: daily panel, next-1/7/30d funding on nested blocks (asset FE), TRAIN < 2025-10-01 / TEST; unique contributions; volatility engine (VD18 HAR_4 refit on Binance spot) vs NAIVE/HAR_D (QLIKE) and its incremental value for funding | Pre-registered (FC 003), awaiting run (needs `tools\download_binance_um_metrics.py` first) |
+| `02_funding_predictability.ipynb` | Stage A: daily panel, next-1/7/30d funding on nested blocks (asset FE), TRAIN < 2025-10-01 / TEST; unique contributions; volatility engine (VD18 HAR_4 refit on Binance spot) vs NAIVE/HAR_D (QLIKE) and its incremental value for funding | Run 2952fd5 (FC 004): **predictable (R2 0.51, persistence only); engine not useful for carry** |
 
 Code: `src/data_engineering/modeling/funding_carry.py`, `funding_predict.py`. Tests: `tests/test_funding_carry.py`, `tests/test_funding_predict.py`. Outputs: `01/01_*`, `02/02_*`.
 
