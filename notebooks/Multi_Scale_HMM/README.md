@@ -4,7 +4,7 @@
 
 | Notebook | Content | Status |
 |---|---|---|
-| `01_multiscale_hmm.ipynb` | Bars + intrabar emissions from Binance USD-M 1m (BTC/ETH/SOL/XRP); pooled Student-t HMM per scale; per-state $y_{t+1}=a_k+b_k z_t$; TEST 2026-02-01 → 2026-10-18; shared-sign minute null (full refit); verdicts S, E, states-add-value | Pre-registered (MSH 001), awaiting run |
+| `01_multiscale_hmm.ipynb` | Bars + intrabar emissions from Binance USD-M 1m (BTC/ETH/SOL/XRP); pooled Student-t HMM per scale; per-state $y_{t+1}=a_k+b_k z_t$; TEST 2026-02-01 → 2026-10-18; shared-sign minute null (full refit); verdicts S, E, states-add-value | Run 60ff884 (MSH 002): **NO_TRADEABLE_MOMENTUM_STATES** at all three scales |
 
 Code: `src/data_engineering/modeling/multiscale_hmm.py`. Tests: `tests/test_multiscale_hmm.py`. Outputs: `01/01_*` (selection, states, per-asset, null, summary, decision, frozen models, equity plot).
 
