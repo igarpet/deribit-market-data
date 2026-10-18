@@ -5,8 +5,9 @@
 | Notebook | Content | Status |
 |---|---|---|
 | `01_funding_carry.ipynb` | PF02 universe; daily frames from 1m spot/perp + funding prints; C (trailing-7d funding hysteresis) and U (always in); base and low-cost; per-asset, episodes, threshold grid (descriptive); verdict G1–G4 | Run cc17447 (FC 002): **NO_CARRY_EDGE** (C); U positive but below the cash hurdle |
+| `02_funding_predictability.ipynb` | Stage A: daily panel, next-1/7/30d funding on nested blocks (asset FE), TRAIN < 2025-10-01 / TEST; unique contributions; volatility engine (VD18 HAR_4 refit on Binance spot) vs NAIVE/HAR_D (QLIKE) and its incremental value for funding | Pre-registered (FC 003), awaiting run (needs `tools\download_binance_um_metrics.py` first) |
 
-Code: `src/data_engineering/modeling/funding_carry.py`. Tests: `tests/test_funding_carry.py`. Outputs: `01/01_*`.
+Code: `src/data_engineering/modeling/funding_carry.py`, `funding_predict.py`. Tests: `tests/test_funding_carry.py`, `tests/test_funding_predict.py`. Outputs: `01/01_*`, `02/02_*`.
 
 Data: `<parent of DERIBIT_DATA_ROOT>\Binance` (or `BINANCE_UM_DIR`): `<A>USDT_um_1m.parquet`, `basis\spot\<A>USDT_spot_1m.parquet`, `basis\funding\<A>USDT_funding.parquet` (`tools\download_binance_basis_data.py`).
 
@@ -21,5 +22,18 @@ python -m unittest tests.test_funding_carry -v
 jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=3600 notebooks\Funding_Carry\01_funding_carry.ipynb
 git add notebooks\Funding_Carry
 git commit -m "FC 01 run"
+git push
+```
+
+## Running 02 (PC, Windows CMD)
+
+```bat
+cd /d D:\Projects\deribit_market_data
+git pull
+python tools\download_binance_um_metrics.py --start 2024-07-01
+python -m unittest tests.test_funding_predict -v
+jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=14400 notebooks\Funding_Carry\02_funding_predictability.ipynb
+git add notebooks\Funding_Carry
+git commit -m "FC 02 run"
 git push
 ```

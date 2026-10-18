@@ -12,6 +12,8 @@ Independent branch: Binance spot 1m, USD-M perpetual 1m and funding files (downl
 
 | `002_claude_fc01_readout.md` | FC 01 (cc17447): C NO_CARRY_EDGE (TEST −0.08%/yr; fails G2), U CARRY_POSITIVE_BELOW_HURDLE (+2.0%/yr on capital; gross funding 4.1%/yr per notional, concentrated in Q4 2024 and Q3 2025); not better than cash after costs and capital |
 
-Next turn in this branch: `003`.
+| `003_claude_fc02_stage_a_preregistration.md` | FC 02 Stage A: predictability of next-7d funding (persistence, premium, momentum, OI/positioning, breadth, naive vol, AM-T-HAR-Blend engine); Q1–Q3 binding answers; engine QLIKE vs NAIVE/HAR_D and engine-for-funding test |
+
+Next turn in this branch: `004`.
 
 Procedure and numbering rules: `../README.md`.
