@@ -1,5 +1,5 @@
 {
-  "module": "LA-A01-0.1.1",
+  "module": "LA-A01-0.1.2",
   "purpose": "readiness and consistency audit only, not strategy validation",
   "symbols": [
     "BTCUSDT",
@@ -8,7 +8,7 @@
   "binance_root": "D:\\MarketData\\Binance",
   "ready_for_signal_design": true,
   "checks": {
-    "all_present_sources_and_sample_integrity": true
+    "all_present_sources_and_sample_integrity_and_flow_alignment": true
   },
   "warning": "Flow differences are descriptive; all-day aggTrades completeness is NOT proven by three-day probes. No edge is claimed.",
   "files": [

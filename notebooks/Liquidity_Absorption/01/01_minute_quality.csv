@@ -1,5 +1,5 @@
-symbol,venue,status,rows,first_utc,last_utc,null_times,duplicate_minutes,out_of_order_minutes,missing_minutes_inside_span,non_one_minute_intervals,bad_price_rows,negative_volume_rows,taker_quote_exceeds_total_rows,file,missing_columns
-BTCUSDT,perp,PRESENT,1067040.0,2024-10-01 00:00:00+00:00,2026-10-11 23:59:00+00:00,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,D:\MarketData\Binance\BTCUSDT_um_1m.parquet,
-BTCUSDT,spot,BAD_SCHEMA,,,,,,,,,,,,D:\MarketData\Binance\basis\spot\BTCUSDT_spot_1m.parquet,"high,low,open"
-ETHUSDT,perp,PRESENT,1067040.0,2024-10-01 00:00:00+00:00,2026-10-11 23:59:00+00:00,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,D:\MarketData\Binance\ETHUSDT_um_1m.parquet,
-ETHUSDT,spot,BAD_SCHEMA,,,,,,,,,,,,D:\MarketData\Binance\basis\spot\ETHUSDT_spot_1m.parquet,"high,low,open"
+symbol,venue,status,rows,first_utc,last_utc,null_times,duplicate_minutes,out_of_order_minutes,missing_minutes_inside_span,non_one_minute_intervals,bad_price_rows,negative_volume_rows,taker_quote_exceeds_total_rows,file
+BTCUSDT,perp,PRESENT,1067040,2024-10-01 00:00:00+00:00,2026-10-11 23:59:00+00:00,0,0,0,0,0,0,0,0,D:\MarketData\Binance\BTCUSDT_um_1m.parquet
+BTCUSDT,spot,PRESENT,1159200,2024-08-01 00:00:00+00:00,2026-10-14 23:59:00+00:00,0,0,0,0,0,0,0,0,D:\MarketData\Binance\basis\spot\BTCUSDT_spot_1m.parquet
+ETHUSDT,perp,PRESENT,1067040,2024-10-01 00:00:00+00:00,2026-10-11 23:59:00+00:00,0,0,0,0,0,0,0,0,D:\MarketData\Binance\ETHUSDT_um_1m.parquet
+ETHUSDT,spot,PRESENT,1159200,2024-08-01 00:00:00+00:00,2026-10-14 23:59:00+00:00,0,0,0,0,0,0,0,0,D:\MarketData\Binance\basis\spot\ETHUSDT_spot_1m.parquet
