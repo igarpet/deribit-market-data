@@ -1,0 +1,20 @@
+{
+  "version": "LA-A02b-0.1.0",
+  "parent_version": "LA-A02-0.1.0",
+  "config": {
+    "pre_first_profile_min": 30,
+    "poc_log_bin_bp": 1.0,
+    "batch_rows": 250000,
+    "expected_a02_version": "LA-A02-0.1.0"
+  },
+  "event_selection": "Original A02 price-only candidate rows; unchanged",
+  "touch_intervals": "[first_touch_close-1m, first_touch_close) and [second_touch_close-1m, second_touch_close)",
+  "between_touch_interval": "[first_touch_close-1m, second_touch_close), no trades at or after signal close",
+  "pre_first_profile_interval": "[first_touch_close-1m-pre_first_profile_min, first_touch_close-1m)",
+  "zone_inclusion": "actual print price within [level-zone_halfwidth, level+zone_halfwidth], inclusive",
+  "dwell_definition": "1m OHLC intersects zone; proxy for visiting zone, NOT elapsed seconds physically at level",
+  "active_second_definition": "distinct seconds with at least one trade print inside zone; NOT passive order exposure",
+  "profile_node": "POC from pre-first trades only, 1bp log-price bins; descriptive, not candidate-level selection",
+  "growth_undefined": "ratio NaN when first-touch zone quote is zero; do not impute",
+  "status": "EXPLORATORY_FEATURE_ONLY_NO_PNL"
+}

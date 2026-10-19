@@ -1,0 +1,3 @@
+symbol,events,touch_flow_present,missing_touch_day_events,pre_first_profile_present,pre_first_profile_missing_day,zero_first_zone_quote,zero_second_zone_quote,undefined_touch_volume_ratio,undefined_late_early_dwell_ratio,median_second_touch_reconciliation_error,p95_second_touch_reconciliation_error
+BTCUSDT,212,212,0,212,0,0,0,0,0,5.712255503646706e-16,7.811667347950577e-05
+ETHUSDT,240,240,0,240,0,0,0,0,0,4.292583931286804e-16,0.000497208314889499

@@ -1,0 +1,38 @@
+{
+  "version": "LA-A02b-0.1.0",
+  "status": "FEATURE_EXTRACTION_ONLY",
+  "candidate_count": 452,
+  "source_a02_candidate_count": 452,
+  "coverage": [
+    {
+      "symbol": "BTCUSDT",
+      "events": 212,
+      "touch_flow_present": 212,
+      "missing_touch_day_events": 0,
+      "pre_first_profile_present": 212,
+      "pre_first_profile_missing_day": 0,
+      "zero_first_zone_quote": 0,
+      "zero_second_zone_quote": 0,
+      "undefined_touch_volume_ratio": 0,
+      "undefined_late_early_dwell_ratio": 0,
+      "median_second_touch_reconciliation_error": 5.712255503646706e-16,
+      "p95_second_touch_reconciliation_error": 7.811667347950577e-05
+    },
+    {
+      "symbol": "ETHUSDT",
+      "events": 240,
+      "touch_flow_present": 240,
+      "missing_touch_day_events": 0,
+      "pre_first_profile_present": 240,
+      "pre_first_profile_missing_day": 0,
+      "zero_first_zone_quote": 0,
+      "zero_second_zone_quote": 0,
+      "undefined_touch_volume_ratio": 0,
+      "undefined_late_early_dwell_ratio": 0,
+      "median_second_touch_reconciliation_error": 4.292583931286804e-16,
+      "p95_second_touch_reconciliation_error": 0.000497208314889499
+    }
+  ],
+  "ready_for_a03_design": true,
+  "caution": "Feature audit only; no absorption edge, returns, trade simulation, holdout, or final entry/stop/target specification."
+}
