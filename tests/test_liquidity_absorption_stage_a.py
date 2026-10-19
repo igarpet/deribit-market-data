@@ -2,7 +2,7 @@
 import unittest
 import pandas as pd
 from src.data_engineering.modeling.liquidity_absorption_stage_a import (
-    aggregate_trade_chunk, choose_probe_days, compare_minute_flow, minute_quality,
+    aggregate_trade_chunk, choose_probe_days, compare_minute_flow, minute_quality, parse_kline_open_time,
 )
 
 
@@ -35,6 +35,39 @@ class TestStageA01(unittest.TestCase):
         r = compare_minute_flow(x, y, "2026-07-01", "BTCUSDT")
         self.assertEqual(r["matched_minutes"], 1)
         self.assertAlmostEqual(r["p95_delta_error_as_quote_fraction"], 0.)
+
+    def test_numeric_binance_millisecond_epoch_preserves_unique_minutes(self):
+        times = pd.to_datetime(["2026-07-01 00:00Z", "2026-07-01 00:01Z"])
+        ms = (times.astype("int64") // 1_000_000).astype("int64")
+        k = pd.DataFrame({"open_time": ms, "quote_volume": [500., 600.],
+                          "taker_buy_quote_volume": [300., 250.]})
+        audit_input = k.assign(open=[100., 101.], high=[101., 102.], low=[99., 100.],
+                               close=[100., 101.], volume=[5., 6.], trades=[2, 3],
+                               taker_buy_volume=[3., 2.5])
+        q = minute_quality(audit_input, "BTCUSDT", "perp")
+        self.assertEqual(q["duplicate_minutes"], 0)
+        self.assertEqual(q["missing_minutes_inside_span"], 0)
+        self.assertEqual(q["first_utc"], "2026-07-01 00:00:00+00:00")
+        traded = pd.DataFrame({"minute_ms": ms, "quote": [500., 600.],
+                               "buy_quote": [300., 250.], "sell_quote": [200., 350.]})
+        result = compare_minute_flow(k, traded, "2026-07-01", "BTCUSDT")
+        self.assertEqual(result["matched_minutes"], 2)
+        self.assertAlmostEqual(result["median_quote_relative_error"], 0.)
+
+    def test_microsecond_and_datetime_epoch_are_consistent(self):
+        ms = pd.Series([1782864000000, 1782864060000])
+        expected = pd.to_datetime(ms, unit="ms", utc=True)
+        for stamp in (ms * 1000, ms * 1_000_000, expected):
+            pd.testing.assert_series_equal(parse_kline_open_time(pd.Series(stamp)), expected)
+
+    def test_duplicate_minute_data_reports_error_without_silent_deduplication(self):
+        k = pd.DataFrame({"open_time": [1782864000000, 1782864000000],
+                          "quote_volume": [500., 500.], "taker_buy_quote_volume": [300., 300.]})
+        traded = pd.DataFrame({"minute_ms": [1782864000000], "quote": [500.],
+                               "buy_quote": [300.], "sell_quote": [200.]})
+        result = compare_minute_flow(k, traded, "2026-07-01", "BTCUSDT")
+        self.assertEqual(result["status"], "DUPLICATE_KLINE_MINUTES")
+        self.assertEqual(result["duplicate_kline_minutes"], 1)
 
     def test_probe_selection_has_no_outcome_dependence(self):
         x = ["a", "b", "c", "d", "e"]
