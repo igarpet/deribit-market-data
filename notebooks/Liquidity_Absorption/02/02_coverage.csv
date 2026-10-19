@@ -1,0 +1,3 @@
+symbol,minute_rows_including_warmup,price_only_candidates,profile_present,missing_trade_day_events,first_signal,last_signal
+BTCUSDT,136800,212,212,0,2026-07-01 02:33:00+00:00,2026-09-30 20:58:00+00:00
+ETHUSDT,136800,240,240,0,2026-07-01 02:52:00+00:00,2026-09-30 20:37:00+00:00
