@@ -1,0 +1,21 @@
+{
+  "module": "LA-A01-0.1.1",
+  "purpose": "readiness and consistency audit only, not strategy validation",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "binance_root": "D:\\MarketData\\Binance",
+  "ready_for_signal_design": true,
+  "checks": {
+    "all_present_sources_and_sample_integrity": true
+  },
+  "warning": "Flow differences are descriptive; all-day aggTrades completeness is NOT proven by three-day probes. No edge is claimed.",
+  "files": [
+    "01_minute_quality.csv",
+    "01_aggtrade_coverage.csv",
+    "01_trade_probe_quality.csv",
+    "01_trade_kline_flow_comparison.csv",
+    "01_sample_volume_profile.csv"
+  ]
+}
