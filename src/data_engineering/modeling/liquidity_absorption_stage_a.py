@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-VERSION = "LA-A01-0.1.0"
+VERSION = "LA-A01-0.1.1"
 SYMBOLS = ("BTCUSDT", "ETHUSDT")
 MINUTE_MS = 60_000
 TRADE_RE = re.compile(r"-aggTrades-(\d{4}-\d{2}-\d{2})\.parquet$")
@@ -50,11 +50,39 @@ def binance_root(root: Path, override: str | None = None) -> Path:
     raise ValueError("Provide --binance-root or set BINANCE_UM_DIR / DERIBIT_DATA_ROOT")
 
 
+def parse_kline_open_time(values: pd.Series) -> pd.Series:
+    """UTC Binance candle open times: accept datetimes or Unix s/ms/us/ns.
+
+    Binance archive files can store the timestamp as numeric milliseconds or
+    microseconds, whereas previously prepared parquet files may store proper
+    pandas datetimes. pd.to_datetime(numeric) defaults to nanoseconds, which
+    collapses many distinct minute bars onto the same join key if misapplied.
+    """
+    if pd.api.types.is_numeric_dtype(values):
+        numeric = pd.to_numeric(values, errors="coerce")
+        finite = numeric[np.isfinite(numeric)]
+        if finite.empty:
+            return pd.to_datetime(numeric, unit="ms", utc=True, errors="coerce")
+        size = float(finite.abs().median())
+        if 1e17 <= size < 1e20:
+            unit = "ns"
+        elif 1e14 <= size < 1e17:
+            unit = "us"
+        elif 1e11 <= size < 1e14:
+            unit = "ms"
+        elif 1e8 <= size < 1e11:
+            unit = "s"
+        else:
+            raise ValueError(f"Unrecognized numeric Binance open_time epoch scale: median={size:g}")
+        return pd.to_datetime(numeric, unit=unit, utc=True, errors="coerce")
+    return pd.to_datetime(values, utc=True, errors="coerce")
+
+
 def minute_quality(df: pd.DataFrame, symbol: str, venue: str) -> dict:
     missing = set(MINUTE_COLS) - set(df.columns)
     if missing:
         return {"symbol": symbol, "venue": venue, "status": "BAD_SCHEMA", "missing_columns": ",".join(sorted(missing))}
-    t = pd.to_datetime(df["open_time"], utc=True, errors="coerce")
+    t = parse_kline_open_time(df["open_time"])
     valid = t.dropna().sort_values()
     step_s = valid.diff().dt.total_seconds().dropna()
     numeric = df[["open", "high", "low", "close", "volume", "quote_volume", "taker_buy_quote_volume"]].apply(pd.to_numeric, errors="coerce")
@@ -158,9 +186,14 @@ def probe_trades(path: Path, profile_bin_bps: float = 2.0, batch_size: int = 200
 
 
 def compare_minute_flow(kline: pd.DataFrame, traded: pd.DataFrame, day: str, symbol: str) -> dict:
-    k = kline.copy()
-    k["minute_ms"] = (pd.to_datetime(k["open_time"], utc=True).astype("int64") // 1_000_000).astype("int64")
-    k = k.loc[pd.to_datetime(k["open_time"], utc=True).dt.strftime("%Y-%m-%d") == day]
+    timestamp = parse_kline_open_time(kline["open_time"])
+    selected = timestamp.dt.strftime("%Y-%m-%d") == day
+    k = kline.loc[selected].copy()
+    k["minute_ms"] = (timestamp.loc[selected].astype("int64") // 1_000_000).astype("int64")
+    if k["minute_ms"].duplicated().any():
+        return {"symbol": symbol, "day": day, "matched_minutes": 0,
+                "duplicate_kline_minutes": int(k["minute_ms"].duplicated().sum()),
+                "status": "DUPLICATE_KLINE_MINUTES"}
     pairs = k.merge(traded, on="minute_ms", how="inner", validate="one_to_one")
     if pairs.empty:
         return {"symbol": symbol, "day": day, "matched_minutes": 0, "status": "NO_OVERLAP"}
