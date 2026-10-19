@@ -1,13 +1,21 @@
-# Liquidity Absorption — independent research branch
+# Liquidity Absorption — independent research line
 
-This branch studies the MNQ-inspired second-touch absorption/rejection mechanism on Binance BTC/ETH perpetual data, with five-minute context and one-minute execution context. Existing collectors and other research branches are unchanged.
+MNQ-inspired BTC/ETH Binance perpetual *historical exploratory* research. 5-minute context and 1-minute entry/management. Existing production collection pipelines are untouched. Versioned reusable engines live under `src/data_engineering/modeling/`. Local Binance root comes from `BINANCE_UM_DIR` or the parent of `DERIBIT_DATA_ROOT` (`.env`).
 
-- **LA 01**: `01_data_audit.ipynb` — raw input integrity and trade-to-candle reconciliation. Corrected LA-A01-0.1.2 audit passed locally.
-- **LA 02**: `02_causal_features.ipynb` — 452 descriptive, *price-only* second-touch candidate events, enriched with rolling delta/zone quote flow. Does not score profitability.
-- **LA 02b**: `02b_touch_flow.ipynb` — *same A02 candidate set*, but quote-volume and aggressor-side flow attributed separately to first-touch versus second-touch one-minute rejection candles. Adds normalized zone-visitation intensity and a historical pre-first-touch POC diagnostic. **No future returns, trade signals, fills, stops, or P&L.**
+- **01_data_audit.ipynb** — Binance 1m/perp/spot, aggTrades first/middle/last checks, flow reconciliation; outputs in `01/`.
+- **02_causal_features.ipynb** — independent price-only two-touch candidates and signal-close flow features; outputs in `02/`.
+- **02b_touch_flow.ipynb** — same A02 candidates; first-vs-second level-executed volume, aggressor flow, zone dwell proxies, pre-first profile; outputs in `02b/`.
+- **03_execution_simulation.ipynb** — same A02 candidates under FIXED / BREAKEVEN / TRAIL_1M, trade-print ordered stop/target and *assumed* fills; outputs in `03/`.
 
-The A02b inputs are `notebooks/Liquidity_Absorption/02/02_price_only_candidates.csv`, `02_decision.json`, historical Binance USD-M perpetual candle Parquets and existing daily `aggTrades` Parquets. The module scans trades in bounded batches without storing additional raw tick datasets. Full output is under `notebooks/Liquidity_Absorption/02b/` after running locally.
+A03 uses explicitly **provisional** crypto stop/BE/target/fee parameters, and does **not** replicate the user's MNQ point/tick distances, simulate low-volume-node targets, fund positions, identify executable bid/ask liquidity, apply portfolio capital constraints, or claim prospective trading significance. Its historical sample has already been examined for features. Every trade retained in its output, even censored/skipped events.
 
-Use the `deribit-data` conda kernel. From the repo root run `python -m unittest tests.test_liquidity_absorption_stage_a02b`; then run all cells in `02b_touch_flow.ipynb`. `DERIBIT_DATA_ROOT` or `BINANCE_UM_DIR` supplies the Binance data path.
+Run in the `deribit-data` conda environment after `git pull`:
 
-This historical period is exploratory, not a fresh validation holdout. Event conditions remain provisional; no future information is allowed to select the price-only candidates or enter the first/second-touch flow windows. The trading-system payoffs, after-cost economics and prospective confirmation are separate later steps requiring owner-approved definitions.
+```
+python -m unittest tests.test_liquidity_absorption_stage_a03
+jupyter lab
+```
+
+Open and **Restart Kernel & Run All** in `notebooks/Liquidity_Absorption/03_execution_simulation.ipynb`, then commit the notebook and **four** generated `03/` CSV/JSON files to GitHub for independent review. Data are read-only and aggregate trade files are streamed by symbol/day; CPU cost depends on tape volume.
+
+Research discussions under `discussions/Liquidity_Absorption/` document the hypotheses, non-frozen assumptions, integrity caveats, and owner decisions needed before a genuinely untouched holdout experiment.
