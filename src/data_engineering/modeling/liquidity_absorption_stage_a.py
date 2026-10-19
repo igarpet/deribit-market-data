@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-VERSION = "LA-A01-0.1.1"
+VERSION = "LA-A01-0.1.2"
 SYMBOLS = ("BTCUSDT", "ETHUSDT")
 MINUTE_MS = 60_000
 TRADE_RE = re.compile(r"-aggTrades-(\d{4}-\d{2}-\d{2})\.parquet$")
@@ -22,6 +22,8 @@ MINUTE_COLS = (
     "open_time", "open", "high", "low", "close", "volume", "quote_volume",
     "trades", "taker_buy_volume", "taker_buy_quote_volume",
 )
+# The basis/spot 1m downloader intentionally retains no OHLC; only close.
+SPOT_COLS = tuple(c for c in MINUTE_COLS if c not in ("open", "high", "low"))
 
 
 def repo_root() -> Path:
@@ -79,14 +81,15 @@ def parse_kline_open_time(values: pd.Series) -> pd.Series:
 
 
 def minute_quality(df: pd.DataFrame, symbol: str, venue: str) -> dict:
-    missing = set(MINUTE_COLS) - set(df.columns)
+    missing = set(SPOT_COLS if venue == "spot" else MINUTE_COLS) - set(df.columns)
     if missing:
         return {"symbol": symbol, "venue": venue, "status": "BAD_SCHEMA", "missing_columns": ",".join(sorted(missing))}
     t = parse_kline_open_time(df["open_time"])
     valid = t.dropna().sort_values()
     step_s = valid.diff().dt.total_seconds().dropna()
-    numeric = df[["open", "high", "low", "close", "volume", "quote_volume", "taker_buy_quote_volume"]].apply(pd.to_numeric, errors="coerce")
-    bad_price = (~np.isfinite(numeric[["open", "high", "low", "close"]].to_numpy()) | (numeric[["open", "high", "low", "close"]].to_numpy() <= 0)).any(axis=1).sum()
+    price_cols = ["close"] if venue == "spot" else ["open", "high", "low", "close"]
+    numeric = df[price_cols + ["volume", "quote_volume", "taker_buy_quote_volume"]].apply(pd.to_numeric, errors="coerce")
+    bad_price = (~np.isfinite(numeric[price_cols].to_numpy()) | (numeric[price_cols].to_numpy() <= 0)).any(axis=1).sum()
     neg_volume = (numeric[["volume", "quote_volume", "taker_buy_quote_volume"]] < 0).any(axis=1).sum()
     invalid_taker = (numeric["taker_buy_quote_volume"] > numeric["quote_volume"] + np.maximum(1e-8, numeric["quote_volume"].abs() * 1e-8)).sum()
     return {
@@ -189,7 +192,9 @@ def compare_minute_flow(kline: pd.DataFrame, traded: pd.DataFrame, day: str, sym
     timestamp = parse_kline_open_time(kline["open_time"])
     selected = timestamp.dt.strftime("%Y-%m-%d") == day
     k = kline.loc[selected].copy()
-    k["minute_ms"] = (timestamp.loc[selected].astype("int64") // 1_000_000).astype("int64")
+    # Never assume that astype("int64") is nanoseconds: pandas preserves
+    # datetime64[ms]/[us] resolution on some environments. Normalize explicitly.
+    k["minute_ms"] = timestamp.loc[selected].dt.as_unit("ms").astype("int64")
     if k["minute_ms"].duplicated().any():
         return {"symbol": symbol, "day": day, "matched_minutes": 0,
                 "duplicate_kline_minutes": int(k["minute_ms"].duplicated().sum()),
@@ -227,6 +232,8 @@ def run_audit(data_root: Path, out: Path, symbols=SYMBOLS) -> dict:
         if spot.exists():
             sq = minute_quality(pd.read_parquet(spot), symbol, "spot")
             inventory.append({**sq, "file": str(spot)})
+            statuses.append(sq.get("status") == "PRESENT" and all(sq.get(k, 1) == 0 for k in
+                            ("null_times", "duplicate_minutes", "out_of_order_minutes", "missing_minutes_inside_span", "bad_price_rows", "negative_volume_rows")))
         else:
             inventory.append({"symbol": symbol, "venue": "spot", "status": "MISSING_FILE", "file": str(spot)})
         paths = daily_trade_paths(data_root, symbol)
@@ -238,7 +245,15 @@ def run_audit(data_root: Path, out: Path, symbols=SYMBOLS) -> dict:
             probes.append({"symbol": symbol, "day": day, **info})
             statuses.append(info.get("status") == "PRESENT" and info.get("invalid_trade_rows") == 0 and info.get("timestamp_descents") == 0)
             if not minutes.empty:
-                flow.append(compare_minute_flow(df, minutes, day, symbol))
+                comparison = compare_minute_flow(df, minutes, day, symbol)
+                flow.append(comparison)
+                # Do not declare readiness until the sampled aggTrades actually
+                # reconcile to the correct candle timestamps. Numerical flow
+                # differences remain descriptive rather than a tuned threshold.
+                statuses.append(comparison.get("status") == "PRESENT" and
+                                comparison.get("matched_minutes", 0) == info.get("minute_count"))
+            else:
+                statuses.append(False)
             if not bins.empty:
                 largest = bins.nlargest(50, "quote")
                 profiles.extend({"symbol": symbol, "day": day, "log_price_bin": int(row.log_price_bin),
@@ -251,7 +266,7 @@ def run_audit(data_root: Path, out: Path, symbols=SYMBOLS) -> dict:
         pd.DataFrame(rows).to_csv(out / filename, index=False)
     decision = {"module": VERSION, "purpose": "readiness and consistency audit only, not strategy validation",
                 "symbols": list(symbols), "binance_root": str(data_root), "ready_for_signal_design": bool(statuses and all(statuses)),
-                "checks": {"all_present_sources_and_sample_integrity": bool(statuses and all(statuses))},
+                "checks": {"all_present_sources_and_sample_integrity_and_flow_alignment": bool(statuses and all(statuses))},
                 "warning": "Flow differences are descriptive; all-day aggTrades completeness is NOT proven by three-day probes. No edge is claimed.",
                 "files": ["01_minute_quality.csv", "01_aggtrade_coverage.csv", "01_trade_probe_quality.csv",
                           "01_trade_kline_flow_comparison.csv", "01_sample_volume_profile.csv"]}
