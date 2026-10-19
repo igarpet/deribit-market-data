@@ -21,6 +21,7 @@ Research branches are independent experiments. They may share the common data-en
 | [Signed_Jumps](./Signed_Jumps/) | Do 1-minute jumps self-excite, does the parent jump's sign or pre-jump truncated skewness predict the next jump's sign? Volatility engine on bipower + signed Hawkes, Binance spot 1m BTC/ETH/SOL/XRP (SJ 001). |
 | [Multi_Scale_HMM](./Multi_Scale_HMM/) | Can a Student-t HMM on 1h/4h/1D bars built from 1-minute perpetual data (intrabar emissions: volatility, semivariance, efficiency, wicks, jumps, flow) find momentum/reversal states that predict the next bar net of costs? Shared-sign minute null, drift benchmark (MSH 001). |
 | [Funding_Carry](./Funding_Carry/) | Delta-neutral long spot / short USD-M perpetual funding harvest on Binance (PF02 universe); trailing-funding hysteresis vs always-in; net of costs vs a 4% cash hurdle (FC 001). |
+| [Jump_Fade](./Jump_Fade/) | Passive ±1.5σ bracket at each 5m boundary, take-profit at the pre-move price, 3σ stop, 60-min time stop; 1m perp simulation; sign-flip null; Deribit costs (JF 001). |
 
 ## Output-size policy (from 2026-10-09)
 
