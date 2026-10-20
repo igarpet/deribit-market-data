@@ -1,7 +1,7 @@
 # Liquidity Absorption 011 — Independent reversed 1:1 and passive third-touch experiments
 
 **Status:** Implemented; historical execution on local BTC/ETH aggTrade files and review pending.
-**Date:** 2026-10-20. **Branch:** Liquidity_Absorption. **Version:** LA-A03c-0.1.0.
+**Date:** 2026-10-20. **Branch:** Liquidity_Absorption. **Version:** LA-A03c-0.1.1.
 **Source:** A02/A02b 452 unchanged exploratory second-rejection events; A03b confirmed output `03b_1to1_events.csv` and `03b_decision.json` (452 rows, 1:1 pre-cost barriers). **No collector changes** and no previous results overwritten.
 
 ## Primary questions
@@ -31,6 +31,7 @@ We preserve the original A03 **target selection** from A03b, which chose 5m/1m-s
 - **Maker through proxy (stricter):** next appropriately aggressive print **one assumed tick beyond** the resting limit (BTC 0.1 USDT, ETH 0.01 USDT, as the earlier A03 research contract). Still not queue-position proof. Price may trade at the limit without this proxy filling. Both use **actual aggTrade prints and aggressor flags**; no OHLC-based passive fills.
 - Keep A03's frozen TP. At newly filled limit **E=level**, set symmetric 1:1 stop **S=2E−TP** (independent price geometry from A03b, because entry price changed). Exit at earliest crossing print or 240 minutes **after this maker entry**. A stop gap can lose >1R; timeout need not realize ±1R.
 - Maker-entry fee **2 bp** *assumed*, taker exit **6 bp** *A03-consistent assumption*. No free guaranteed maker orders or assumed rebate. Maker limit price is assumed with zero adverse-entry slippage **conditional on a genuine fill**; all such fills unverified. Fee-only sensitivity includes (maker/taker bp) 2/6, 2/5, 0/5, 0/4, 4/6, but these do **not** model different order fills or queue dynamics. The standard USD-M USDT regular maker/taker advertised on Binance's fee table is 2/5 bp, while the A03 original model used 6 bp taker. Real VIP, discounts, promotions and funding differ. See: https://www.binance.com/en-BH/fee/futureFee ; actual historical 2026 contract terms/account fees must be confirmed independently.
+- **Pre-entry cancellation:** if price reaches the preselected profit target **before** the first eligible maker fill, cancel the remaining passive order; likewise cancel on a pre-entry breach of the symmetric stop. This is known from prints at the time and avoids trading a stale setup. Counts as zero realized P&L / unfilled order, never as a recorded loss or take-profit trade. This is a provisional explicit design choice, not user-confirmed trading semantics.
 - **Third touch** is operationalized as the first post-second-close **eligible price revisit** (plus side and, for strict, print-through). It is not a separately confirmed third one-minute rejection candle: orders are already resting when the next print reaches the price. No ex-post candle used to approve entry.
 - **Missing eligibility ≠ losing trade**. The CSV explicitly records `NO_THIRD_TOUCH`, `NO_OPPOSITE_AGGRESSOR_PRINT`, `NO_TRADE_THROUGH`, other invalid orders, and both entry/exit censor categories.
 
