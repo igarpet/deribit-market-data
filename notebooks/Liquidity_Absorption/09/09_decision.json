@@ -1,0 +1,34 @@
+{
+  "version": "LA-LIFECYCLE-09-0.1.0",
+  "status": "RETROSPECTIVE_FORMATION_ANATOMY_NOT_PREDICTIVE",
+  "original_A02_signals": 452,
+  "outcomes_original_A03b": {
+    "TARGET": 116,
+    "STOP": 112,
+    "TIMEOUT": 185,
+    "NO_STRUCTURAL_TARGET": 37,
+    "CENSORED_TAPE_END": 2
+  },
+  "pivot_confirm_delay_min": 10,
+  "prior_day_available_at": "next UTC midnight",
+  "level_available_before_or_at_first_touch": 452,
+  "median_available_to_first_min": 16.0,
+  "median_first_to_second_min": 7.0,
+  "first_touch_same_close_as_availability_caution": 16,
+  "stage_rows": 3616,
+  "stage_missing_or_empty": 16,
+  "minute_landmark_rows": 83168,
+  "landmark_missing_bars": 0,
+  "a03c_maker_note": "eligibility outcomes only; not actual passive fills",
+  "market_after_exit": "descriptive market path; not held-position pnl",
+  "input_prices": "Binance USD-M futures 1m bar data; touch instant within minute unknown",
+  "status_scope": "already inspected Jul-Sep 2026; no holdout confirmation",
+  "config": {
+    "pivot_right_5m": 2,
+    "prior_day_delay_min": 1440,
+    "max_post_min": 240,
+    "alignment_before_min": 15,
+    "alignment_after_min": 30,
+    "history_min": 60
+  }
+}
