@@ -67,3 +67,17 @@ In Jupyter open `notebooks/Liquidity_Absorption/05b_deribit_millisecond_microstr
 `07_winner_anatomy_1to1.ipynb`, engine `src/data_engineering/modeling/liquidity_absorption_w01.py`, tests `tests/test_liquidity_absorption_w01.py`, protocol `discussions/Liquidity_Absorption/027_claude_w01_winner_anatomy_preregistration.md`, outputs `07/`.
 
 Every EXT A03b 1:1 trade with a −240…+240 min per-minute panel from Deribit prints (price/high/low, taker flow, large-print flow, volume), A06 context (liquidations, premium, basis, ATM IV, skew, option flow) and the 18:00 ET session profile at entry. Binding H1: CVD toward the target in the first 15 min predicts the rest of the trade beyond price progress (landmark design, MINING < 2025-07-01, CONFIRM after). Also: landmark exit rules (+15 min losing cut, low-CVD cut), burst onset study, pre-entry and landmark feature screens. Needs EXT outputs; the panel parquet goes to `DERIBIT_DATA_ROOT\la_w01\`. `LAW01_SYNTHETIC=1` for a smoke run.
+
+## LA-08 — Original 1:1 strategy with Claude's Deribit methodology
+
+**Notebook:** `08_original_strategy_claude_method_bridge.ipynb`; engine `src/data_engineering/modeling/liquidity_absorption_bridge_08.py`; tests `tests/test_liquidity_absorption_bridge_08.py`; protocol `discussions/Liquidity_Absorption/029_chatgpt_la08_original_strategy_claude_method_bridge.md`.
+
+Tests our *unchanged* original EXT A03b forward 1:1 entry, structural target, mirrored stop and 240-minute trade-print exits with Claude V2's **signal-close** CVD divergence and causal **18:00 New York** volume-profile target-availability gates (CVD only, profile only, both) alongside unfiltered A03b. A separate reference is Claude's full CVD/profile/VD18 stop/TRAIL_1M strategy, **whose target, stop, and management differ** and therefore cannot be a one-factor control. The same 2,564 EXT candidate IDs must match; the notebook fails safely on drift or invalid gross 1:1 geometry. Reprices EXT/V2 already replayed trades under Claude's frozen Deribit taker cost assumption without re-reading the historical tick archive. Signal-time filters never examine future outcomes.
+
+```bat
+git pull
+python -m unittest discover -s tests -p "test_liquidity_absorption_bridge_08.py" -v
+jupyter lab
+```
+
+Open the new notebook and **Restart Kernel & Run All**, then commit the executed notebook and lightweight `08/` outputs to GitHub main. Inputs: `EXT/03b/03b_1to1_events.csv`, `V2/V2_signals.csv`, `V2/V2_events.csv`. Results are *historical exploratory attribution on previously inspected data*, not new confirmation or portfolio equity. Censored outcomes are kept distinct; paired results exclude unresolved trades.
