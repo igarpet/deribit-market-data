@@ -242,6 +242,12 @@ def build_results(repo:Path,history:Path,out:Path,cfg:Config=Config(),batch_sour
     # Calendar completeness is required before trusting a pair of +/-60s
     # neighborhoods; a missing adjacent midnight file may hide a price move.
     calendar_days=needed_days(anchors,cfg.window_ms)
+    # Track both real-file and scan-reported incomplete source days per anchor.
+    # Windows with a missing midnight-neighbor must not enter medians.
+    required_days=defaultdict(set)
+    for day_key,events in calendar_days.items():
+        for e in events:
+            required_days[(int(e['a02_candidate_row']),e['anchor'])].add(day_key)
     missing_anchor_keys=set()
     if batch_source is None:
         for (cur,d),ev in calendar_days.items():
@@ -257,7 +263,8 @@ def build_results(repo:Path,history:Path,out:Path,cfg:Config=Config(),batch_sour
     with gzip.open(archive,'wt',encoding='utf-8',newline='') as stream:
         for key,chunk in iter_capture_windows(history,anchors,cfg,batch_source,day_status):
             b,p,r=summarize_one(lookup[key],chunk,cfg)
-            complete=key not in missing_anchor_keys
+            incomplete_days={(r['currency'],r['day']) for r in day_status if r['status']!='SCANNED'}
+            complete=(key not in missing_anchor_keys and not (required_days[key] & incomplete_days))
             if len(b):
                 b['complete_calendar_days']=complete
                 b.to_csv(stream,index=False,header=(count==0))
@@ -287,7 +294,15 @@ def build_results(repo:Path,history:Path,out:Path,cfg:Config=Config(),batch_sour
         inclusive=group.assign(feasibility_band='ALL').groupby(fields).agg(n_events=('a02_candidate_row','nunique'),
             **{'median_'+k:(k,'median') for k in cols}).reset_index()
         grouped=pd.concat([a,inclusive],ignore_index=True).sort_values(fields).reset_index(drop=True)
-    else:grouped=pd.DataFrame()
+    else:grouped=pd.DataFrame(columns=fields+['n_events']+['median_'+k for k in cols])
+    if phase.empty:
+        # A notebook run with zero prints must still create readable CSVs
+        # with the frozen schema, not zero-byte files that break pd.read_csv.
+        phase=pd.DataFrame(columns=['a02_candidate_row','anchor','symbol','side','eventual_outcome',
+            'target_to_sigma60','feasibility_band','phase_s_start','phase_s_end',
+            'n_prints','trades_per_sec','aligned_count_imbalance','aligned_amount_imbalance',
+            'signed_price_change_bp','anchor_price_reference','anchor_ref_staleness_ms',
+            'status','complete_calendar_days'])
     phase.to_csv(out/'05b_event_phases.csv',index=False)
     grouped.to_csv(out/'05b_phase_summary.csv',index=False)
     qc.to_csv(out/'05b_anchor_coverage.csv',index=False)
