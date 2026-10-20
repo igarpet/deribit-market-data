@@ -44,6 +44,22 @@ class TestExtended(unittest.TestCase):
                            "entry_fee_bp": [6.0], "exit_fee_bp": [6.0], "net_return_bp_assumed_costs": [50.0]})
         self.assertAlmostEqual(ex.deribit_net(df).iloc[0], 50.0 + (6 * 100 + 6 * 101) / 100 - (5 * 100 + 5 * 101) / 100)
 
+    def test_dedupe_same_signal_two_streams(self):
+        with tempfile.TemporaryDirectory() as d:
+            b = Path(d) / "02"
+            b.mkdir()
+            rows = pd.DataFrame({"symbol": ["BTCUSDT"] * 3, "side": ["long"] * 3,
+                                 "signal_time_utc": ["2025-01-01 10:00:00+00:00"] * 2 + ["2025-01-01 11:00:00+00:00"],
+                                 "level_price": [100.0, 100.0, 100.0], "level_type": ["prior_day", "pivot_5m", "pivot_5m"]})
+            rows.to_csv(b / "02_price_only_candidates.csv", index=False)
+            rows.assign(vwap_utc_session=[1.0, 2.0, 3.0]).to_csv(b / "02_causal_flow_features.csv", index=False)
+            self.assertEqual(ex.dedupe_a02(Path(d)), 1)
+            p = pd.read_csv(b / "02_price_only_candidates.csv")
+            e = pd.read_csv(b / "02_causal_flow_features.csv")
+            self.assertEqual(list(p.level_type), ["prior_day", "pivot_5m"])
+            self.assertEqual(list(e.vwap_utc_session), [1.0, 3.0])          # alignment kept
+            self.assertEqual(ex.dedupe_a02(Path(d)), 0)                     # idempotent
+
     def test_full_chain_synthetic(self):
         repo = ROOT
         with tempfile.TemporaryDirectory() as d:

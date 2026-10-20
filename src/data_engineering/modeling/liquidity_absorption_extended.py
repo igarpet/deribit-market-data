@@ -172,16 +172,38 @@ def _base(shadow: Path) -> Path:
     return Path(shadow)
 
 
+def dedupe_a02(shadow: Path) -> int:
+    """Two level streams (prior-day and 5m pivot) at the SAME price fire the same signal (same symbol, side, minute and
+    level). That is one trade, not two: keep the first row (detector stream order), drop the rest, in BOTH A02 files
+    so their row alignment is preserved. Idempotent. Returns the number of rows dropped."""
+    base = _base(shadow) / "02"
+    p = pd.read_csv(base / "02_price_only_candidates.csv")
+    e = pd.read_csv(base / "02_causal_flow_features.csv")
+    if len(p) != len(e):
+        raise ValueError("A02 files misaligned")
+    key = ["symbol", "side", "signal_time_utc", "level_price"]
+    dup = p.duplicated(key, keep="first").to_numpy()
+    if dup.any():
+        p.loc[~dup].to_csv(base / "02_price_only_candidates.csv", index=False)
+        e.loc[~dup].to_csv(base / "02_causal_flow_features.csv", index=False)
+        log = base / "02_duplicates_dropped.csv"
+        p.loc[dup, key + ["level_type"]].to_csv(log, mode="a", header=not log.exists(), index=False)
+    return int(dup.sum())
+
+
 def stage_a02(root: Path, shadow: Path, spec: Spec) -> dict:
     from src.data_engineering.modeling import liquidity_absorption_stage_a02 as a02
     end = spec.end or max(p.stem.split("-aggTrades-")[1] for p in (Path(root) / "aggTrades" / "BTCUSDT").glob("*.parquet"))
     cfg = a02.Config(start=spec.start, end=end)
-    return a02.run_a02(Path(root), _base(shadow) / "02", cfg)
+    dec = a02.run_a02(Path(root), _base(shadow) / "02", cfg)
+    dec["duplicates_dropped"] = dedupe_a02(shadow)
+    return dec
 
 
 def stage_a02b(root: Path, shadow: Path) -> dict:
     """A02b.run_a02b's work (read A02 candidates, enrich from the tape) without its repo-path coupling."""
     from src.data_engineering.modeling import liquidity_absorption_stage_a02b as a02b
+    dedupe_a02(shadow)                      # also repairs an A02 output written before the dedupe existed
     cands = a02b.read_candidates(_base(shadow) / "02" / "02_price_only_candidates.csv")
     feats = a02b.enrich_a02_candidates(cands, Path(root), a02b.Config())
     out = _base(shadow) / "02b"
