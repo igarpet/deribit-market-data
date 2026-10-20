@@ -1,0 +1,29 @@
+{
+  "version": "LA-A05b-0.1.0",
+  "status": "HISTORICAL_EXPLORATORY_CROSS_VENUE_TRADE_ONLY",
+  "signal_events": 452,
+  "anchors": 904,
+  "anchor_rows": 904,
+  "captured_trade_buckets": 152990,
+  "days_scanned": 159,
+  "missing_days": 0,
+  "anchor_reference_present": 845,
+  "original_outcome_is_descriptive_only": true,
+  "clock": "UTC timestamp milliseconds, first-touch and confirmed signal CANDLE CLOSE; actual touch instant unknown",
+  "price": "Deribit PERPETUAL executed-trade price, NOT the Binance UM level or fill price",
+  "size": "Deribit API reported amount (compare within same instrument only; do not assume USD notional)",
+  "limitations": "No L2 bid/ask, queue, cancelling liquidity, nanosecond ordering, tick continuity or same-venue fill validation",
+  "config": {
+    "window_ms": 60000,
+    "bins_ms": [
+      1,
+      10,
+      100,
+      1000
+    ],
+    "batch_size": 100000,
+    "max_anchor_stale_ms": 30000,
+    "earliest_day": "2026-07-01",
+    "latest_day": "2026-09-30"
+  }
+}
