@@ -1,0 +1,31 @@
+{
+  "version": "LA-A03b-0.1.0",
+  "parent": "LA-A03-0.1.0",
+  "source_events": 452,
+  "config": {
+    "stop_buffer_zone_halfwidths": 1.0,
+    "break_even_initial_r": 1.0,
+    "trailing_buffer_ticks": 2,
+    "assumed_tick_btc": 0.1,
+    "assumed_tick_eth": 0.01,
+    "hold_minutes": 240,
+    "max_entry_wait_seconds": 60,
+    "target_priority": "vwap_if_displaced_else_opposing_prior_day",
+    "vwap_displacement_initial_r": 2.0,
+    "taker_fee_bp_per_side": 6.0,
+    "entry_adverse_bp": 0.5,
+    "target_exit_adverse_bp": 0.5,
+    "stop_exit_adverse_bp": 1.5,
+    "timeout_exit_adverse_bp": 0.5,
+    "flow_reconcile_flag_above_fraction": 0.01
+  },
+  "target": "IDENTICAL original A03 selection: VWAP if >=2 ORIGINAL-stop R favorable, else opposite fully completed prior-day extreme; no LVN",
+  "entry": "Original first aggTrade print at or after signal close, same 60-second limit",
+  "stop": "Exactly 2 * entry_print - original_A03_target, unrounded to preserve 1:1 PRE-COST price distance; order tick validity is not claimed",
+  "fixed_target_rr": 1.0,
+  "exit_mode": "FIXED only; original +1R BE/HH-HL trailing degenerate with 1R target and are verified equivalent",
+  "timeout": "240min unchanged; timeouts can realize non-1R returns; missing tape censored",
+  "fees_impact": "Identical A03 fees/assumed adverse execution, before funding; actual executable quotes not known",
+  "equity": "Exit-time-ordered realized standalone trade outcomes, paired completed events only; USDT 10000 fixed hypothetical notional per trade, overlapping positions allowed without leverage/capital/portfolio constraints",
+  "status": "EXPLORATORY_COMPARISON_ONLY_NOT_CONFIRMED_OR_INVESTABLE"
+}

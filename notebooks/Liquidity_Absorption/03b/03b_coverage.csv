@@ -1,0 +1,3 @@
+symbol,candidates,closed,stop,target,timeout,no_structural_target,other_no_entry,censored,gross_r_mean,net_r_mean,net_return_bp_mean,profitable_closed_share,initial_risk_bp_median,paired_closed_original_a03_fixed,original_a03_fixed_paired_net_return_bp_mean,mirrored_paired_net_return_bp_mean
+BTCUSDT,212,195,55,51,89,16,0,1,0.002187167967819557,-0.2874857230078667,-17.713496415864117,0.4512820512820513,69.36523957122195,195,-13.599220091885973,-17.713496415864117
+ETHUSDT,240,218,57,65,96,21,0,1,0.04303947707334082,-0.2069691748835721,-13.990026611445717,0.4724770642201835,79.37159619855706,218,-13.612994457689629,-13.990026611445717

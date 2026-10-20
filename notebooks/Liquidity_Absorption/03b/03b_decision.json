@@ -1,0 +1,60 @@
+{
+  "version": "LA-A03b-0.1.0",
+  "status": "EXPLORATORY_COMPARISON_ONLY_NOT_CONFIRMED_OR_INVESTABLE",
+  "source_events": 452,
+  "baseline_version": "LA-A03-0.1.0",
+  "coverage": [
+    {
+      "symbol": "BTCUSDT",
+      "candidates": 212,
+      "closed": 195,
+      "stop": 55,
+      "target": 51,
+      "timeout": 89,
+      "no_structural_target": 16,
+      "other_no_entry": 0,
+      "censored": 1,
+      "gross_r_mean": 0.002187167967819557,
+      "net_r_mean": -0.2874857230078667,
+      "net_return_bp_mean": -17.713496415864117,
+      "profitable_closed_share": 0.4512820512820513,
+      "initial_risk_bp_median": 69.36523957122195,
+      "paired_closed_original_a03_fixed": 195,
+      "original_a03_fixed_paired_net_return_bp_mean": -13.599220091885973,
+      "mirrored_paired_net_return_bp_mean": -17.713496415864117
+    },
+    {
+      "symbol": "ETHUSDT",
+      "candidates": 240,
+      "closed": 218,
+      "stop": 57,
+      "target": 65,
+      "timeout": 96,
+      "no_structural_target": 21,
+      "other_no_entry": 0,
+      "censored": 1,
+      "gross_r_mean": 0.04303947707334082,
+      "net_r_mean": -0.2069691748835721,
+      "net_return_bp_mean": -13.990026611445717,
+      "profitable_closed_share": 0.4724770642201835,
+      "initial_risk_bp_median": 79.37159619855706,
+      "paired_closed_original_a03_fixed": 218,
+      "original_a03_fixed_paired_net_return_bp_mean": -13.612994457689629,
+      "mirrored_paired_net_return_bp_mean": -13.990026611445717
+    }
+  ],
+  "paired_closed_events": 413,
+  "print_tape": {
+    "read_daily_parquet_files": 171,
+    "missing_trade_day_files": [
+      "BTCUSDT:2026-10-01",
+      "ETHUSDT:2026-10-01"
+    ]
+  },
+  "charts": [
+    "03b_equity_net.png",
+    "03b_equity_gross.png",
+    "03b_1to1_r_curve.png"
+  ],
+  "caution": "Original structural targets kept; ONLY stop mirrored to entry/TP distance. Gross RR exactly 1 before exit gaps/timeouts; net returns include assumed transaction costs (no funding). Equity curves are NOT a capital-constrained portfolio."
+}
