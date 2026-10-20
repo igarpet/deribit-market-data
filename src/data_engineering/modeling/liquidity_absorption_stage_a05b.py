@@ -185,7 +185,13 @@ def summarize_one(e:dict,trades:pd.DataFrame,cfg:Config=Config()) -> tuple[pd.Da
     z=trades.copy()
     z['timestamp_ms']=pd.to_numeric(z.timestamp_ms,errors='raise').astype('int64')
     z['trade_seq']=pd.to_numeric(z.trade_seq,errors='raise')
-    z=z.sort_values(['timestamp_ms','trade_seq','trade_id'],kind='stable').drop_duplicates(['trade_id'],keep='first')
+    z=z.sort_values(['timestamp_ms','trade_seq','trade_id'],kind='stable')
+    # Duplicate historical IDs are a tape integrity failure, NOT extra valid
+    # executions. Silently dropping them would hide source corruption and alter
+    # signed flow/price statistics without a warning.
+    dup=z.trade_id.astype('string').duplicated(keep=False)
+    if dup.any() or z.trade_id.isna().any():
+        raise ValueError(f'Duplicate or null Deribit trade_id in event window ({int(dup.sum())} duplicate rows)')
     if (z.timestamp_ms.lt(anchor-cfg.window_ms)|z.timestamp_ms.gt(anchor+cfg.window_ms)).any():
         raise ValueError('Event capture contains out-of-window trades')
     pre=z[z.timestamp_ms<=anchor]
@@ -285,7 +291,11 @@ def build_results(repo:Path,history:Path,out:Path,cfg:Config=Config(),batch_sour
     phase=pd.concat(phases,ignore_index=True) if phases else pd.DataFrame()
     qc=pd.DataFrame(summary)
     days=pd.DataFrame(day_status)
-    group=phase[(phase.eventual_outcome.isin(OUTCOMES)) & (phase.complete_calendar_days)] if len(phase) else phase
+    # A stale/missing pre-anchor print cannot define a comparable anchored
+    # price reaction. Keep its rows in QC/phase detail; exclude from grouped
+    # outcome curves until a valid reference is available.
+    group=phase[(phase.eventual_outcome.isin(OUTCOMES)) &
+                (phase.complete_calendar_days) & (phase.status=='PRESENT')] if len(phase) else phase
     cols=['signed_price_change_bp','aligned_count_imbalance','aligned_amount_imbalance','trades_per_sec']
     fields=['anchor','symbol','eventual_outcome','feasibility_band','phase_s_start','phase_s_end']
     if len(group):
