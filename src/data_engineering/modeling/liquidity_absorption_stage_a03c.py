@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-VERSION = "LA-A03c-0.1.0"
+VERSION = "LA-A03c-0.1.1"
 MIN_MS = 60_000
 DAY_MS = 86_400_000
 NOTIONAL_USDT = 10_000.0
@@ -29,6 +29,7 @@ class Config:
     limit_order_ttl_min: int = 90
     hold_minutes: int = 240
     placement_latency_ms: int = 1000
+    cancel_on_pre_entry_target_or_stop: bool = True
     through_ticks: int = 1
     tick_btc: float = 0.1  # project A03 assumptions, not independently validated exchange tick
     tick_eth: float = 0.01
@@ -211,6 +212,16 @@ class TapeStudy:
                                    "NO_OPPOSITE_AGGRESSOR_PRINT" if not self.side_eligible_print else
                                    "NO_TRADE_THROUGH" if self.mode == "MAKER_THROUGH_3RD" else "NO_MAKER_FILL")
                     return
+                # The setup becomes stale if its destination was achieved while
+                # our limit remains unfilled. A move beyond the proposed stop
+                # without an eligible print likewise invalidates queue inference.
+                if self.cfg.cancel_on_pre_entry_target_or_stop:
+                    if self.d * (px - self.target) >= 0:
+                        self.reason = "TARGET_REACHED_BEFORE_MAKER_FILL"
+                        return
+                    if self.d * (px - self.stop) <= 0:
+                        self.reason = "STOP_BREACHED_BEFORE_MAKER_FILL"
+                        return
                 if self._maker_fill_allowed(px, is_buyer_maker):
                     self._entry(tm, self.level, px)
             return  # Entry print cannot also trigger an exit.
@@ -487,6 +498,7 @@ def run(repo: Path, data_root: Path, out: Path, cfg: Config = Config()) -> dict:
         "maker_touch": "Buyer rests bid / seller rests ask. Requires OPPOSING-aggressor prints at/through limit, NO QUEUE PROOF; optimistic eligibility.",
         "maker_through": "Requires same opposing-aggressor trade >=1 assumed tick through order limit, MORE conservative eligibility, but STILL NO QUEUE PROOF.",
         "price_at_placement": "Second 1m close only is the post-only nonmarketable proxy; actual historical BBO unknown.",
+        "pre_entry_cancellation": "Cancel a maker order (no assumed fill) if preselected target OR mirrored stop is crossed first while waiting, using prints observed after placement.",
         "fees": "2bp assumed maker entry, 6bp assumed taker exit (A03 continuity). Sensitivities reprice fees only; funding omitted.",
         "equity": "Exit-ordered $10k notional per trade, overlapping hypothetical positions permitted, not capital equity. No filled => zero realized P&L but denominator 452; censored cause incomplete EV.",
         "status": "EXPLORATORY_NO_REAL_LIMIT_ORDER_FILL_OR_CONFIRMED_EDGE",
