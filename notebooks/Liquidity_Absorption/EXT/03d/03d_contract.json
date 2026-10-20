@@ -1,0 +1,1 @@
+{"version": "LA-A03d-0.1.0", "source_events": 2564, "forecast_present": 2378, "vd18": {"model": "VD18-0.1.0", "selection": "HAR_4 historical-VALID chosen", "saved_sample_last": "2026-09-18 23:55:00+00:00", "source": "notebooks\\Volatility_Dynamics\\18\\18_manifest.json", "forecast_measure": "E[net terminal 5m SPOT log-return squared], not path max adverse excursion"}}

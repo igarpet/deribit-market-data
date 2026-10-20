@@ -1,0 +1,8 @@
+{
+ "version": "LA-A03-0.1.0",
+ "source_events": 2564,
+ "tape": {
+  "read_daily_parquet_files": 1446,
+  "missing_trade_day_files": 1
+ }
+}

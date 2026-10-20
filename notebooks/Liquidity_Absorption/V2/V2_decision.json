@@ -1,0 +1,23 @@
+{
+ "version": "LA-V2-0.1.0",
+ "primary": "CVD on, TRAIL_1M, profile target, Deribit fees",
+ "cells": {
+  "BTCUSDT_H1": false,
+  "BTCUSDT_H2": false,
+  "ETHUSDT_H1": false,
+  "ETHUSDT_H2": false
+ },
+ "holdout_by_symbol_lo95_positive": {
+  "BTCUSDT": false,
+  "ETHUSDT": false
+ },
+ "verdict": "FAIL",
+ "signals": 2564,
+ "cvd_ok_share": 0.42394695787831516,
+ "target_sources": {
+  "NO_PROFILE_TARGET": 1729,
+  "PROFILE_LVN_TO_HVN": 664,
+  "NO_PROFILE_SESSION_TOO_YOUNG": 170,
+  "NO_PROFILE": 1
+ }
+}

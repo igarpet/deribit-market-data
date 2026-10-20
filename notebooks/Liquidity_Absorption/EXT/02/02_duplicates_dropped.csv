@@ -1,0 +1,3 @@
+symbol,side,signal_time_utc,level_price,level_type
+ETHUSDT,short,2025-03-19 00:25:00+00:00,1935.55,pivot_5m
+ETHUSDT,long,2026-04-09 00:49:00+00:00,2179.5,pivot_5m

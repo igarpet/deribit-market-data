@@ -1,0 +1,16 @@
+{
+ "version": "LA-A06-0.1.0",
+ "status": "HISTORICAL_EXPLORATORY_OUTCOME_CONDITIONED_IN_SAMPLE",
+ "anchors_by_group": {
+  "CONTROL": 2128,
+  "OTHER": 7,
+  "STOP": 1080,
+  "TARGET": 609,
+  "TIMEOUT": 431
+ },
+ "days_with_option_file": 2042,
+ "days_with_future_file": 2044,
+ "pre_entry_TARGET_vs_STOP_candidates_q10": [],
+ "pre_entry_SIGNAL_vs_CONTROL_differences_q10": 24,
+ "reading": "Candidates are hypotheses for the untouched LA 022 holdout; post-entry differences are partly mechanical outcome definitions and are not usable as entry filters."
+}

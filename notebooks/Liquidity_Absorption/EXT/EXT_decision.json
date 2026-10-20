@@ -1,0 +1,15 @@
+{
+ "version": "LA-EXT-0.1.0",
+ "primary": "A03b_forward_1to1_taker (Deribit fees)",
+ "cells": {
+  "BTCUSDT_H1": false,
+  "BTCUSDT_H2": false,
+  "ETHUSDT_H1": false,
+  "ETHUSDT_H2": false
+ },
+ "holdout_by_symbol_lo95_positive": {
+  "BTCUSDT": false,
+  "ETHUSDT": false
+ },
+ "verdict": "FAIL_CLOSE_LA"
+}
