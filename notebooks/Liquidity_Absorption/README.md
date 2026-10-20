@@ -37,3 +37,23 @@ Run A03c with `python -m unittest tests.test_liquidity_absorption_stage_a03c` th
 Run A03d after pulling updates with `python -m unittest tests.test_liquidity_absorption_stage_a03d`; open `03d_volatility_risk_integration.ipynb` in the `deribit-data` kernel and **Restart & Run All**. In addition to `BINANCE_UM_DIR`, the frozen VD18 forecast bridge needs local `DERIBIT_DATA_ROOT/history/price_5m/{BTC,ETH}.csv.gz`; results remain exploratory and no actual full historical A03d run has been performed in the assistant's environment. Upload the executed notebook and generated `03d/` artifacts for audit. Holding-time scenarios are compared descriptively; no adaptive timeout is claimed before testing.
 
 Run A05a with `python -m unittest discover -s tests -p "test_liquidity_absorption_stage_a05a.py" -v`, then open `05a_signal_context_event_study.ipynb` in the `deribit-data` kernel and select **Restart Kernel & Run All**. Push the executed notebook and `05a/` results to `main`. A05a reuses the locally generated `04/04_primary_event_outcomes.csv` and existing Binance UM 1m Parquet files; it neither refits VD18 nor rescans aggregate trade tick archives. Research protocol: `discussions/Liquidity_Absorption/017_chatgpt_a05a_signal_context_preregistration.md`.
+
+## Deribit historical trade QA and LA-A05b millisecond context
+
+The Deribit historical archive downloader (`tools/download_deribit_history_trades.py`) writes individual reported trade prints for **dated futures and perpetuals combined** under `DERIBIT_DATA_ROOT/history/trades/{BTC,ETH}/future/YYYY/YYYY-MM-DD.parquet`. Trades may share the same millisecond timestamp. The new **read-only** `tools/validate_deribit_history_trades.py` audits file completeness/availability, per-instrument trade-sequence gaps, invalid numeric/timestamp fields, duplicate IDs (optional exact mode), and overloaded millisecond print buckets. Local QA cannot prove that the timestamp-paginated downloader captured every exchange trade; `PASS_WITH_LIMITATIONS` is not a remote completeness certificate. A partially downloading day remains `.tmp`, not a completed Parquet file.
+
+Use the validator on the full completed range, for example:
+
+```bat
+python -m unittest discover -s tests -p "test_deribit_history_validator.py" -v
+python tools\\validate_deribit_history_trades.py --currencies BTC ETH --kind future --start 2024-01-01 --end 2026-10-19 --out notebooks\\Liquidity_Absorption\\05b\\validator_all_history
+```
+
+**A05b microstructure notebook:** `05b_deribit_millisecond_microstructure.ipynb` reuses 452 frozen A05a signals and their first-touch / second-touch **one-minute candle close** times. Its independent Deribit **BTC-PERPETUAL and ETH-PERPETUAL** windows (±60s) preserve only occupied 1/10/100/1000-ms trade buckets with aggressor count/amount imbalances and executed-price movements. Anchors are *Binance candle times*, **not** precise millisecond touch times; Deribit and Binance markets have different price/level/queue states. No trading signals, strategy fills, collector code, or previous results are changed. Run:
+
+```bat
+python -m unittest discover -s tests -p "test_liquidity_absorption_stage_a05b.py" -v
+jupyter lab
+```
+
+In Jupyter open `notebooks/Liquidity_Absorption/05b_deribit_millisecond_microstructure.ipynb` and **Restart & Run All**. The notebook runs focused daily QA for the original July–September 2026 signal windows and then the tick-resolution study. This can scan large existing Parquet files twice; it doesn't redownload. Share committed lightweight `05b/` results and executed notebook for review; keep oversized `05b_sparse_trade_buckets.csv.gz` in the local archive rather than forcing it through GitHub's file-size limit. Protocol: `discussions/Liquidity_Absorption/019_chatgpt_deribit_history_validator_and_a05b_microstudy.md`.
