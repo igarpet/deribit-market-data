@@ -1,0 +1,23 @@
+{
+ "version": "LA-W01-M-0.1.0",
+ "hi_q": 0.95,
+ "lo_q": 0.05,
+ "boot_b": 500,
+ "econ_q": 0.025,
+ "seed": 20261021,
+ "fwd_minutes": [
+  1,
+  5,
+  15
+ ],
+ "events": [
+  "ALL_OPEN_MINUTES",
+  "STRONG_TOWARD",
+  "STRONG_AGAINST",
+  "ABSORB_FOR",
+  "ABSORB_AGAINST"
+ ],
+ "M1": "partial rank corr of the 1m delta bar (flow_n) with remaining_R from the bar close, given progress (px_R) and the same bar's price change; MINING > 0 and CONFIRM lower 95% > 0",
+ "M2": "add-on unit at ABSORB_FOR and at STRONG_TOWARD bars: CONFIRM mean net R > 0 and one-sided 97.5% day-bootstrap lower bound > 0",
+ "status": "AMENDMENT_AFTER_W01_RESULTS_PRE_REGISTERED_BEFORE_MINUTE_RESULTS"
+}

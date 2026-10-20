@@ -1,0 +1,49 @@
+{
+ "version": "LA-W01-M-0.1.0",
+ "thresholds_flow_n": {
+  "lo": -1.9117946505546568,
+  "hi": 1.8629354238510132
+ },
+ "trade_minutes": 324260,
+ "M1_supported": false,
+ "M1": [
+  {
+   "split": "MINING",
+   "trade_minutes": 159133,
+   "trades": 1130,
+   "partial_rho_d1_rem": -0.0083,
+   "lo95": -0.017,
+   "p_boot_le0": 0.956,
+   "raw_rho_d1_p1": 0.4389,
+   "partial_rho_d1_fwd1": 0.013,
+   "partial_rho_d1_fwd5": 0.0075,
+   "partial_rho_d1_fwd15": -0.0033
+  },
+  {
+   "split": "CONFIRM",
+   "trade_minutes": 128513,
+   "trades": 873,
+   "partial_rho_d1_rem": -0.0079,
+   "lo95": -0.018,
+   "p_boot_le0": 0.892,
+   "raw_rho_d1_p1": 0.4082,
+   "partial_rho_d1_fwd1": 0.0171,
+   "partial_rho_d1_fwd5": 0.0046,
+   "partial_rho_d1_fwd15": -0.0023
+  },
+  {
+   "split": "INSAMPLE",
+   "trade_minutes": 36614,
+   "trades": 261,
+   "partial_rho_d1_rem": -0.0113,
+   "lo95": -0.0333,
+   "p_boot_le0": 0.834,
+   "raw_rho_d1_p1": 0.4032,
+   "partial_rho_d1_fwd1": 0.0097,
+   "partial_rho_d1_fwd5": -0.0046,
+   "partial_rho_d1_fwd15": -0.013
+  }
+ ],
+ "M2_ABSORB_FOR_pass": false,
+ "M2_STRONG_TOWARD_pass": false
+}
