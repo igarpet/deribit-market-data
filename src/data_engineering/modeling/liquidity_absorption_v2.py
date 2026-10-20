@@ -249,6 +249,12 @@ def run_v2(ext: Path, root: Path, repo: Path, out: Path, spec: Spec = Spec()) ->
     from src.data_engineering.modeling import liquidity_absorption_extended as ex
     from src.data_engineering.modeling import liquidity_absorption_stage_a03 as a03
     from src.data_engineering.modeling import liquidity_absorption_stage_a03d as a03d
+    need = [Path(ext) / "02" / "02_causal_flow_features.csv", Path(ext) / "02b" / "02b_touch_features.csv",
+            Path(root) / "BTCUSDT_um_1m.parquet", Path(root) / "price_5m" / "BTC.csv.gz"]
+    missing = [str(p) for p in need if not p.exists()]
+    if missing:
+        raise FileNotFoundError("V2 needs a completed EXT run (A02 + A02b and the venue inputs). Run "
+                                "EXT_full_period_deribit.ipynb first. Missing: " + "; ".join(missing))
     cands = ex.load_candidates_any(ext)
     bars = {s: a03.prepare_bars(Path(root), s) for s in ex.SYMBOLS}
     flow = {}
