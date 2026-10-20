@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-VERSION = "LA-A04-0.1.0"
+VERSION = "LA-A04-0.1.1"
 MIN_MS = 60_000
 LANDMARKS = (1, 5, 15, 30, 60)
 CLOSED = ("TARGET", "STOP", "TIMEOUT")
@@ -44,8 +44,10 @@ def validate_primary(events: pd.DataFrame, cfg: Config = Config()) -> pd.DataFra
         raise ValueError(f"A03d primary cohort identity mismatch: {len(z)} instead of 452 unique events")
     if not z.symbol.isin(("BTCUSDT", "ETHUSDT")).all() or not z.side.isin(("long", "short")).all():
         raise ValueError("Unexpected symbol/direction")
+    # Convert explicitly to epoch milliseconds; pandas may preserve ms/us/ns
+    # resolution depending on version and input instead of always using ns.
     z["signal_ms"] = (pd.to_datetime(z.signal_time_utc, utc=True, errors="raise")
-                        .astype("int64") // 1_000_000)
+                        .dt.as_unit("ms").astype("int64"))
     z["target_distance_bp"] = np.where(z.side == "long", 1, -1) * (
         pd.to_numeric(z.target) - pd.to_numeric(z.entry_print)) / pd.to_numeric(z.entry_print) * 10000
     z["risk_distance_bp"] = (pd.to_numeric(z.entry_print) - pd.to_numeric(z.initial_stop)).abs() / pd.to_numeric(z.entry_print) * 10000
@@ -68,7 +70,9 @@ def load_minute_bars(path: Path) -> pd.DataFrame:
     if ts.isna().any() or ts.duplicated().any() or not ts.is_monotonic_increasing:
         raise ValueError(f"Invalid 1-minute timestamp sequence: {path}")
     z = bars.drop(columns="open_time").copy()
-    z["close_ms"] = ts.astype("int64") // 1_000_000 + MIN_MS
+    # Datetime-to-int conversion without a fixed unit caused distinct 1m bars
+    # to collapse onto identical index values when pandas retained ms precision.
+    z["close_ms"] = ts.dt.as_unit("ms").astype("int64") + MIN_MS
     for c in cols[1:]:
         z[c] = pd.to_numeric(z[c], errors="raise")
     if ((z[["open", "high", "low", "close"]] <= 0).any().any() or
