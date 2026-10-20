@@ -82,11 +82,12 @@ def registration(cfg: Config = Config()) -> dict:
 
 
 # ----------------------------------------------------------------------------- cohort and controls
-def load_cohort(repo: Path) -> pd.DataFrame:
-    o = pd.read_csv(Path(repo) / "notebooks" / "Liquidity_Absorption" / "04" / "04_primary_event_outcomes.csv",
-                    low_memory=False)
-    if len(o) != 452 or o.a02_candidate_row.duplicated().any():
-        raise ValueError("Frozen A04 452-ID cohort absent or changed")
+def load_cohort(repo: Path, path: Path | None = None, expected: int | None = 452) -> pd.DataFrame:
+    """Frozen A04 cohort (452 IDs) by default; `path`/`expected=None` for the LA-EXT full-period cohort."""
+    p = Path(path) if path is not None else Path(repo) / "notebooks" / "Liquidity_Absorption" / "04" / "04_primary_event_outcomes.csv"
+    o = pd.read_csv(p, low_memory=False)
+    if (expected is not None and len(o) != expected) or o.a02_candidate_row.duplicated().any():
+        raise ValueError("A04 cohort absent or changed")
     keep = ["a02_candidate_row", "symbol", "side", "signal_time_utc", "reason", "level_type", "entry_time_ms",
             "exit_time_ms", "gross_return_bp", "target_distance_bp", "initial_risk_bp", "target_to_sigma60",
             "time_to_exit_min", "mfe_print_initial_r", "mae_print_initial_r"]
