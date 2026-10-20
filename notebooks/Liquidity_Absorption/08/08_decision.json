@@ -1,0 +1,49 @@
+{
+  "version": "LA-BRIDGE-08-0.1.0",
+  "status": "EXPLORATORY_ALREADY_INSPECTED_NOT_NEW_OOS",
+  "origin": "EXT A03b original 1:1 payoff replay, joined 1:1 with V2 causal CVD/profile signal features",
+  "original_signals": 2564,
+  "v2_same_signal_replay": 2564,
+  "policies": [
+    "A03B_ALL",
+    "A03B_CVD_ONLY",
+    "A03B_PROFILE_ONLY",
+    "A03B_CVD_AND_PROFILE",
+    "CLAUDE_V2_CVD_PROFILE_VOL_TRAIL"
+  ],
+  "spec": {
+    "bootstrap_iterations": 2000,
+    "bootstrap_seed": 20261020,
+    "bootstrap_alpha": 0.05,
+    "base_1to1_tolerance": 1e-06,
+    "require_complete_signal_match": true
+  },
+  "original_target_and_stop": "A03b unchanged under four overlay filters",
+  "v2_comparator": "Existing TRAIL_1M without CUT15: different target, stop and exits",
+  "no_trade_unresolved": "Unresolved/censored positions are not imputed. Per-signal realized contribution is not economic EV; paired effects exclude either-side censorship.",
+  "data_inspection": "Full EXT/V2 2024-2026 datasets already inspected; H1/H2 period labels do not imply pristine holdout.",
+  "economic_limits": "Executed trade-price assumption only; 5bp/side synthetic taker fee, adverse fill offsets, no funding, book, queues or capital netting.",
+  "candidate_outcomes": {
+    "TIMEOUT": 978,
+    "STOP": 670,
+    "TARGET": 632,
+    "NO_STRUCTURAL_TARGET": 247,
+    "CENSORED_TAPE_END": 18,
+    "NO_PROMPT_ENTRY_PRINT": 13,
+    "INVALID_ENTRY_STOP_GEOMETRY": 6
+  },
+  "v2_outcomes": {
+    "NO_PROFILE_TARGET": 1721,
+    "STOP": 468,
+    "NO_PROFILE_SESSION_TOO_YOUNG": 167,
+    "TARGET": 109,
+    "NO_VOL_FORECAST": 53,
+    "TIMEOUT": 31,
+    "NO_PROMPT_ENTRY_PRINT": 13,
+    "NO_PROFILE": 1,
+    "CENSORED_TAPE_END": 1
+  },
+  "cvd_true_share": 0.42394695787831516,
+  "profile_available_share": 0.2589703588143526,
+  "both_share": 0.11427457098283932
+}
