@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-VERSION = "LA-A03c-0.1.1"
+VERSION = "LA-A03c-0.1.2"
 MIN_MS = 60_000
 DAY_MS = 86_400_000
 NOTIONAL_USDT = 10_000.0
@@ -381,7 +381,40 @@ def validate_inputs(repo: Path) -> pd.DataFrame:
         raise ValueError("A03b symmetric target contract changed")
     if not src.loc[src.reason == "NO_STRUCTURAL_TARGET", "target"].isna().all():
         raise ValueError("Bad A03b target-state contract")
-    return src
+
+    # A03b is an execution-output table: it does NOT retain the signal-bar
+    # close. Restore that contemporaneously known value from the original A02b
+    # candidate table, not from the post-entry tape or a future candle.
+    a02b = repo / "notebooks/Liquidity_Absorption/02b"
+    source_meta = json.loads((a02b / "02b_decision.json").read_text(encoding="utf-8"))
+    if source_meta.get("version") != "LA-A02b-0.1.0" or source_meta.get("candidate_count") != len(src):
+        raise ValueError("Unexpected/changed A02b source metadata")
+    source_fields = ["a02_candidate_row", "symbol", "side", "signal_time_utc", "level_price", "bar_close"]
+    observed = pd.read_csv(a02b / "02b_touch_features.csv", usecols=source_fields)
+    if (len(observed) != len(src) or observed.a02_candidate_row.isna().any()
+            or observed.a02_candidate_row.duplicated().any()
+            or observed.bar_close.isna().any()):
+        raise ValueError("A02b source IDs/close prices are missing or duplicated")
+    joined = src.merge(observed, on="a02_candidate_row", validate="one_to_one",
+                       how="left", suffixes=("", "_a02b"), sort=False)
+    if len(joined) != len(src) or joined.bar_close.isna().any():
+        raise ValueError("Some A03b events do not match A02b signal-bar closes")
+    for label in ("symbol", "side"):
+        if not joined[label].eq(joined[f"{label}_a02b"]).all():
+            raise ValueError(f"A02b/A03b identity mismatch: {label}")
+    times_a = pd.to_datetime(joined.signal_time_utc, utc=True, errors="raise")
+    times_b = pd.to_datetime(joined.signal_time_utc_a02b, utc=True, errors="raise")
+    if not times_a.eq(times_b).all():
+        raise ValueError("A02b/A03b signal-time identity mismatch")
+    ref = pd.to_numeric(joined.level_price, errors="raise").to_numpy(dtype=float)
+    observed_ref = pd.to_numeric(joined.level_price_a02b, errors="raise").to_numpy(dtype=float)
+    close = pd.to_numeric(joined.bar_close, errors="raise").to_numpy(dtype=float)
+    if not np.isfinite(close).all() or (close <= 0).any():
+        raise ValueError("A02b signal close is not a valid price")
+    if not np.isfinite(ref).all() or not np.allclose(ref, observed_ref, rtol=0, atol=1e-7):
+        raise ValueError("A02b/A03b level-price identity mismatch")
+    return joined.drop(columns=[f"{name}_a02b" for name in
+                                ("symbol", "side", "signal_time_utc", "level_price")])
 
 
 def _summaries(trades: pd.DataFrame, cfg: Config) -> list[dict]:
