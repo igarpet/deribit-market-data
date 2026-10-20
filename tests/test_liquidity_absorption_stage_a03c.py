@@ -101,6 +101,19 @@ class TestA03c(unittest.TestCase):
         a=TapeStudy(event(close=99.99),"MAKER_TOUCH_3RD",Config())
         self.assertEqual(a.reason,"NOT_POST_ONLY_AT_SIGNAL_CLOSE_PROXY")
 
+    def test_cancel_maker_if_target_reached_before_third_touch(self):
+        a=TapeStudy(event(),"MAKER_TOUCH_3RD",Config())
+        a.feed(T+2000,101.01,False)
+        self.assertEqual(a.reason,"TARGET_REACHED_BEFORE_MAKER_FILL")
+        a.feed(T+3000,100,True)
+        self.assertIsNone(a.entry_time)
+
+    def test_cancel_if_price_breaches_stop_before_eligible_fill(self):
+        a=TapeStudy(event(),"MAKER_TOUCH_3RD",Config())
+        a.feed(T+2000,98.8,False)  # wrong aggressor, beyond mirror stop
+        self.assertEqual(a.reason,"STOP_BREACHED_BEFORE_MAKER_FILL")
+        self.assertIsNone(a.entry_time)
+
     def test_no_order_fills_after_expiry(self):
         a=TapeStudy(event(),"MAKER_TOUCH_3RD",Config(limit_order_ttl_min=2))
         a.feed(T+120_000,100,True)
@@ -141,7 +154,7 @@ class TestA03c(unittest.TestCase):
         self.assertEqual(a.reason,"CENSORED_TAPE_END")
         self.assertTrue(np.isnan(a.record()["net_r_assumed_costs"]))
         unfilled=TapeStudy(event(ident=1),"MAKER_TOUCH_3RD",Config())
-        unfilled.feed(T+2000,101,True)
+        unfilled.feed(T+2000,100.5,True)
         unfilled.finish({})
         self.assertEqual(unfilled.reason,"CENSORED_ORDER_WINDOW")
 
