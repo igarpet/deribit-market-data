@@ -1,0 +1,38 @@
+{
+  "version": "LA-A05a-0.1.0",
+  "parent": "LA-A04-0.1.1",
+  "status": "EXPLORATORY_RETROSPECTIVE_CONTEXT_NOT_PREDICTIVE",
+  "config": {
+    "before_min": 240,
+    "after_min": 240,
+    "trailing_minutes": 60,
+    "flow_window_minutes": 15,
+    "rv_windows": [
+      15,
+      60
+    ],
+    "cohort_entry_kind": "TAKER_FIRST_POST_SIGNAL",
+    "cohort_mode": "VD18_VOL_FIXED",
+    "cohort_hold_min": 240,
+    "target_sigma_ratio_split": 1.0,
+    "source_A04_version": "LA-A04-0.1.1"
+  },
+  "signals": 452,
+  "minute_rows": 217412,
+  "phase_rows": 2712,
+  "per_event_expected_rows": 481,
+  "complete_pre240": 452,
+  "complete_post240": 452,
+  "missing_bar_rows": 0,
+  "outcomes": {
+    "TARGET": 119,
+    "STOP": 202,
+    "TIMEOUT": 93,
+    "NO_STRUCTURAL_TARGET": 37,
+    "CENSORED_TAPE_END": 1
+  },
+  "anchor": "t=0 is completed A02 second-touch signal candle close; actual entry is separate",
+  "post_exit": "market trajectory remains displayed even once position has exited; not account P&L",
+  "level_reference": "the eventually identified level applied retrospectively; pre-level-formation interpretation is hindsight",
+  "forecast": "frozen A03d VD18 60m spot forecast is context only; not computed from post-signal futures bars"
+}
