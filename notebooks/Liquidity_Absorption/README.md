@@ -81,3 +81,18 @@ jupyter lab
 ```
 
 Open the new notebook and **Restart Kernel & Run All**, then commit the executed notebook and lightweight `08/` outputs to GitHub main. Inputs: `EXT/03b/03b_1to1_events.csv`, `V2/V2_signals.csv`, `V2/V2_events.csv`. Results are *historical exploratory attribution on previously inspected data*, not new confirmation or portfolio equity. Censored outcomes are kept distinct; paired results exclude unresolved trades.
+
+## LA09: observable level-source → confirmation → first touch → second touch → reaction
+
+Open [`09_level_lifecycle_anatomy.ipynb`](09_level_lifecycle_anatomy.ipynb) to follow the **original 452 Binance A02 price-only candidates**, joined to the original A03b **fixed 1:1** outcomes (A03c maker-touch only as unfilled eligibility metadata). A02's five-minute pivot is **not available until 10 minutes after its source candle closes**; prior-day highs/lows become available at the next UTC midnight. First touches whose candles close *exactly at availability* are specifically flagged because their actual intraminute touch time is unknown.
+
+The read-only engine [`liquidity_absorption_stage_a09.py`](../../src/data_engineering/modeling/liquidity_absorption_stage_a09.py) uses existing Binance USDT-M 1-minute Parquet files, and eight fixed market phases: the 60 minutes before source, source→availability, availability→first touch, first→second touch, then +1–5, +6–15, +16–60 and +61–240 minutes after the signal. It also aligns **four different clocks** (source / actual level availability / first touch / second touch), with explicit NaN level-specific features before availability, missing-minute flags, and post-exit market observations clearly marked as non-P&L. No current Deribit historical download or original simulator is modified.
+
+Run after `git pull`:
+
+```bat
+python -m unittest discover -s tests -p "test_liquidity_absorption_stage_a09.py" -v
+jupyter lab
+```
+
+Open the 09 notebook in your `deribit-data` kernel and **Restart & Run All**, then commit the notebook and generated `09/` reports to `main`. Protocol: [`030_chatgpt_a09_observable_level_lifecycle_protocol.md`](../../discussions/Liquidity_Absorption/030_chatgpt_a09_observable_level_lifecycle_protocol.md). A09 is **retrospective descriptive research**, not an independently confirmed entry filter, trading strategy, or actual A03c maker fill.
