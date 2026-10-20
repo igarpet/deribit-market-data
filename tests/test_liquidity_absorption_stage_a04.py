@@ -2,13 +2,15 @@
 from __future__ import annotations
 import sys
 import unittest
+from unittest.mock import patch
+import types
 from pathlib import Path
 import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src' / 'data_engineering' / 'modeling'))
 from liquidity_absorption_stage_a04 import (one_landmark, build_landmarks, validate_primary,
-    summarize_landmarks, cumulative_competing_exits, Config, MIN_MS)
+    summarize_landmarks, cumulative_competing_exits, load_minute_bars, Config, MIN_MS)
 
 
 def fixtures():
@@ -30,6 +32,43 @@ def fixtures():
 
 
 class TestLandmarks(unittest.TestCase):
+    def test_archive_datetime_ms_unit_does_not_collapse_minute_index(self):
+        # Regression for a pandas datetime64[ms, UTC] parser output.
+        # Mock the one-minute parquet reader and upstream parser; keep the
+        # actual A04 load_minute_bars code under test.
+        starts = pd.Series([1787740800000, 1787740860000, 1787740920000])
+        candles = pd.DataFrame({"open_time": starts,
+            "open": [100., 101., 102.], "high": [101., 102., 103.],
+            "low": [99., 100., 101.], "close": [100., 101., 102.],
+            "quote_volume": [1000., 1000., 1000.],
+            "taker_buy_quote_volume": [500., 500., 500.]})
+        ms_series = pd.to_datetime(starts, unit="ms", utc=True).dt.as_unit("ms")
+        module = types.ModuleType("src.data_engineering.modeling.liquidity_absorption_stage_a")
+        module.parse_kline_open_time = lambda _: ms_series
+        with patch("pandas.read_parquet", return_value=candles), patch.dict(
+            sys.modules, {module.__name__: module}):
+            result = load_minute_bars(Path("synthetic.parquet"))
+        expected = (starts + MIN_MS).tolist()
+        self.assertEqual(result.index.to_list(), expected)
+        self.assertEqual(result.close_ms.to_list(), expected)
+        self.assertEqual(result.index.is_unique, True)
+        self.assertEqual(np.diff(result.index.to_numpy()).tolist(), [MIN_MS, MIN_MS])
+
+    def test_archive_datetime_microseconds_also_converts_to_epoch_ms(self):
+        starts = pd.Series([1787740800000, 1787740860000])
+        candles = pd.DataFrame({"open_time": starts,
+            "open": [100., 101.], "high": [101., 102.],
+            "low": [99., 100.], "close": [100., 101.],
+            "quote_volume": [1000., 1000.],
+            "taker_buy_quote_volume": [500., 500.]})
+        us_series = pd.to_datetime(starts, unit="ms", utc=True).dt.as_unit("us")
+        module = types.ModuleType("src.data_engineering.modeling.liquidity_absorption_stage_a")
+        module.parse_kline_open_time = lambda _: us_series
+        with patch("pandas.read_parquet", return_value=candles), patch.dict(
+            sys.modules, {module.__name__: module}):
+            result = load_minute_bars(Path("synthetic.parquet"))
+        self.assertEqual(result.index.to_list(), (starts + MIN_MS).tolist())
+
     def test_first_five_min_price_and_flow(self):
         a,b=fixtures();o=one_landmark(b,a,5)
         self.assertEqual(o['observation_status'],'PRESENT')
