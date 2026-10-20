@@ -39,12 +39,28 @@ class TestHistoryDownloader(unittest.TestCase):
         self.assertEqual(len(got), len(tr))
         self.assertEqual(len({g["trade_id"] for g in got}), len(tr))
 
-    def test_same_millisecond_overflow_advances(self):
+    def test_crowded_millisecond_aborts_instead_of_silently_skipping_trades(self):
         tr = _trades(1500, 5_000, step=0) + _trades(5, 5_001, step=0, id0=9_000)
         srv = FakeServer(tr)
-        got = dh.paginate_day(srv.fetch, 0, 10_000)
-        self.assertGreaterEqual(len(got), 1005)          # 1000 from the crowded ms + the 5 later ones
-        self.assertTrue(any(g["timestamp"] == 5_001 for g in got))
+        with self.assertRaisesRegex(RuntimeError, "Ambiguous Deribit history pagination"):
+            dh.paginate_day(srv.fetch, 0, 10_000)
+
+    def test_nonadvancing_has_more_does_not_persist_incomplete_day(self):
+        day = date(2026, 7, 1)
+        day0 = int(pd.Timestamp(day, tz="UTC").timestamp() * 1000)
+        srv = FakeServer(_trades(1500, day0 + 500, step=0))
+        class Cli:
+            calls = 0
+            def get(self, base, method, params):
+                tr, more = srv.fetch(params["start_timestamp"], params["end_timestamp"], params["count"])
+                return {"trades": tr, "has_more": more}
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            with self.assertRaisesRegex(RuntimeError, "stopping without writing"):
+                dh.run_trades(Cli(), out, ["BTC"], ["future"], day, day)
+            target = out / "trades" / "BTC" / "future" / "2026" / "2026-07-01.parquet"
+            self.assertFalse(target.exists())
+            self.assertFalse(target.with_suffix(".tmp").exists())
 
     def test_parse_instruments(self):
         df = pd.DataFrame({"instrument_name": ["BTC-27DEC24-100000-C", "ETH-3JAN25-3500-P", "BTC-PERPETUAL",
