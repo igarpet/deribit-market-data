@@ -1,0 +1,30 @@
+family,variant,n,gross_total_bp,net_total_bp,gross_mean,net_mean
+"A03 (VWAP/prior-day target, A02 stop)",A03_BREAKEVEN,2296,-160.9,-27510.9,-0.1,-12.0
+"A03 (VWAP/prior-day target, A02 stop)",A03_FIXED,2294,-479.9,-27712.6,-0.2,-12.1
+"A03 (VWAP/prior-day target, A02 stop)",A03_TRAIL_1M,2298,429.0,-27048.8,0.2,-11.8
+"A03b/A03c (1:1, reverse, maker 3rd touch)",A03b_1to1_taker,2280,-6163.6,-31911.7,-2.7,-14.0
+"A03b/A03c (1:1, reverse, maker 3rd touch)",A03c_MAKER_THROUGH_3RD,1970,-9310.6,-20718.0,-4.7,-10.5
+"A03b/A03c (1:1, reverse, maker 3rd touch)",A03c_MAKER_TOUCH_3RD,1979,-8936.0,-20392.0,-4.5,-10.3
+"A03b/A03c (1:1, reverse, maker 3rd touch)",A03c_REVERSE_TAKER_1TO1,2266,5354.2,-20202.3,2.4,-8.9
+A03d (VD18 engine 1σ60 stop),VD18_VOL_BREAKEVEN_60m,2108,-1493.3,-25358.0,-0.7,-12.0
+A03d (VD18 engine 1σ60 stop),VD18_VOL_BREAKEVEN_240m,2124,-1801.6,-26411.8,-0.8,-12.4
+A03d (VD18 engine 1σ60 stop),VD18_VOL_FIXED_60m,2108,-1250.6,-25070.2,-0.6,-11.9
+A03d (VD18 engine 1σ60 stop),VD18_VOL_FIXED_240m,2121,-2188.2,-26598.9,-1.0,-12.5
+A03d (VD18 engine 1σ60 stop),VD18_VOL_MAKER_THROUGH_3RD_60m,1827,-4186.4,-14834.6,-2.3,-8.1
+A03d (VD18 engine 1σ60 stop),VD18_VOL_MAKER_THROUGH_3RD_240m,1827,-5110.4,-16148.7,-2.8,-8.8
+A03d (VD18 engine 1σ60 stop),VD18_VOL_MAKER_TOUCH_3RD_60m,1835,-3624.3,-14315.4,-2.0,-7.8
+A03d (VD18 engine 1σ60 stop),VD18_VOL_MAKER_TOUCH_3RD_240m,1835,-4807.8,-15889.1,-2.6,-8.7
+A03d (VD18 engine 1σ60 stop),VD18_VOL_TRAIL_1M_60m,2111,-1362.0,-25465.1,-0.6,-12.1
+A03d (VD18 engine 1σ60 stop),VD18_VOL_TRAIL_1M_240m,2126,702.5,-24234.3,0.3,-11.4
+"V2 (CVD divergence, 18:00 ET profile LVN→HVN)",BREAKEVEN all,607,-873.2,-7926.7,-1.4,-13.1
+"V2 (CVD divergence, 18:00 ET profile LVN→HVN)",CUT15_BREAKEVEN all,608,-1147.2,-8049.6,-1.9,-13.2
+"V2 (CVD divergence, 18:00 ET profile LVN→HVN)",CUT15_FIXED all,607,-191.7,-7040.8,-0.3,-11.6
+"V2 (CVD divergence, 18:00 ET profile LVN→HVN)",CUT15_TRAIL_1M all,609,-672.9,-7653.3,-1.1,-12.6
+"V2 (CVD divergence, 18:00 ET profile LVN→HVN)",FIXED all,606,-402.2,-7391.5,-0.7,-12.2
+"V2 (CVD divergence, 18:00 ET profile LVN→HVN)",TRAIL_1M all,608,-68.0,-7224.6,-0.1,-11.9
+"V2 (CVD divergence, 18:00 ET profile LVN→HVN)",BREAKEVEN CVD,267,-2195.6,-5299.5,-8.2,-19.8
+"V2 (CVD divergence, 18:00 ET profile LVN→HVN)",CUT15_BREAKEVEN CVD,268,-1810.5,-4853.7,-6.8,-18.1
+"V2 (CVD divergence, 18:00 ET profile LVN→HVN)",CUT15_FIXED CVD,268,-1079.8,-4104.8,-4.0,-15.3
+"V2 (CVD divergence, 18:00 ET profile LVN→HVN)",CUT15_TRAIL_1M CVD,268,-1223.7,-4294.2,-4.6,-16.0
+"V2 (CVD divergence, 18:00 ET profile LVN→HVN)",FIXED CVD,267,-1594.4,-4678.1,-6.0,-17.5
+"V2 (CVD divergence, 18:00 ET profile LVN→HVN)",TRAIL_1M CVD,267,-1834.8,-4976.0,-6.9,-18.6
