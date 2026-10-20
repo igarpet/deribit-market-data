@@ -1,0 +1,29 @@
+{
+  "version": "LA-A02-0.1.0",
+  "status": "FEATURE_EXTRACTION_ONLY",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "summary": [
+    {
+      "symbol": "BTCUSDT",
+      "minute_rows_including_warmup": 1473120,
+      "price_only_candidates": 1204,
+      "profile_present": 1151,
+      "missing_trade_day_events": 0,
+      "first_signal": "2024-01-02 21:48:00+00:00",
+      "last_signal": "2026-10-19 17:31:00+00:00"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "minute_rows_including_warmup": 1473120,
+      "price_only_candidates": 1362,
+      "profile_present": 1252,
+      "missing_trade_day_events": 0,
+      "first_signal": "2024-01-01 13:42:00+00:00",
+      "last_signal": "2026-10-19 21:13:00+00:00"
+    }
+  ],
+  "caution": "No backtested P&L, economic edge, stop simulation, prospective holdout or proof of absorption."
+}

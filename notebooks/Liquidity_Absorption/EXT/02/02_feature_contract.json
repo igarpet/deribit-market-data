@@ -1,0 +1,27 @@
+{
+  "version": "LA-A02-0.1.0",
+  "config": {
+    "start": "2024-01-01",
+    "end": "2026-10-19",
+    "warmup_days": 3,
+    "pivot_left_5m": 2,
+    "pivot_right_5m": 2,
+    "pivot_max_age_min": 720,
+    "zone_halfwidth_bp": 2.0,
+    "wick_fraction_min": 0.35,
+    "max_penetration_zone_widths": 2.0,
+    "leave_zone_multiple": 3.0,
+    "min_touch_separation_min": 3,
+    "max_retest_gap_min": 90,
+    "cooldown_after_event_min": 30,
+    "flow_5m": 5,
+    "flow_15m": 15,
+    "profile_window_min": 5,
+    "profile_bin_bp": 1.0
+  },
+  "design_status": "EXPLORATORY_FEATURE_CONTRACT_NOT_FROZEN_FOR_PNL",
+  "signals_are_after_closed_1m_bar": true,
+  "features_include_future_returns": false,
+  "profile_method": "1bp midpoint-binned trade quote volume, approximate level volume",
+  "note": "Context thresholds are hypotheses, NOT fitted to returns. No actual trade entries/exits are executed."
+}
