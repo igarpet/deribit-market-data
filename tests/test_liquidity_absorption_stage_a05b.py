@@ -59,6 +59,21 @@ class TestMicro(unittest.TestCase):
         self.assertEqual(z.trade_count.sum(),6)
         self.assertEqual(z.loc[z.bucket_relative_ms==0,'trade_count'].iloc[0],2)
 
+    def test_duplicate_trade_id_is_fatal_not_silently_dropped(self):
+        e=event()
+        tr=ticks()
+        tr.loc[1,'trade_id']=tr.loc[0,'trade_id']
+        filtered=m.filter_trade_batch(tr,'BTC-PERPETUAL',[e])[(1,'SIGNAL')]
+        with self.assertRaisesRegex(ValueError, 'Duplicate or null Deribit trade_id'):
+            m.summarize_one(e,filtered)
+
+    def test_same_millisecond_distinct_ids_remain_valid(self):
+        e=event()
+        tr=ticks()
+        filtered=m.filter_trade_batch(tr,'BTC-PERPETUAL',[e])[(1,'SIGNAL')]
+        buckets,_,_=m.summarize_one(e,filtered)
+        self.assertEqual(int(buckets[buckets.bin_ms==1].trade_count.sum()),len(tr))
+
     def test_direction_sign_short(self):
         a=ticks();raw=m.filter_trade_batch(a,'BTC-PERPETUAL',[event()])[(1,'SIGNAL')]
         b,p,q=m.summarize_one(event()|{'side':'short'},raw)
@@ -95,7 +110,7 @@ class TestMicro(unittest.TestCase):
     def test_future_ticks_dont_change_earlier_phase(self):
         a=ticks();x=m.filter_trade_batch(a,'BTC-PERPETUAL',[event()])[(1,'SIGNAL')]
         _,p,_=m.summarize_one(event(),x)
-        extra=ticks([CENTER+50_000],directions=['buy']);extra['price']=1e10
+        extra=ticks([CENTER+50_000],directions=['buy']);extra['price']=1e10;extra['trade_id']='later_unique_trade'
         y=m.filter_trade_batch(pd.concat([a,extra]),'BTC-PERPETUAL',[event()])[(1,'SIGNAL')]
         _,q,_=m.summarize_one(event(),y)
         pre=lambda z:z[(z.phase_s_start==-1)&(z.phase_s_end==0)].iloc[0]
@@ -176,6 +191,20 @@ class TestRegressionContracts(unittest.TestCase):
             self.assertIn('feasibility_band',group.columns)
             self.assertEqual(len(raw),0)
             self.assertIn('complete_calendar_days',raw.columns)
+
+    def test_stale_anchor_is_not_included_in_reaction_group(self):
+        from unittest.mock import patch
+        e=event()
+        # Prints only after t=0 -> no causal pre-anchor mark/valid price base.
+        forward=ticks([CENTER+10,CENTER+20],directions=['buy','sell'])
+        with tempfile.TemporaryDirectory() as td:
+            target=Path(td)/'05b'
+            with patch.object(m,'load_anchors',return_value=pd.DataFrame([e])):
+                m.build_results(Path(td),Path(td),target,batch_source=lambda path:[forward])
+            quality=pd.read_csv(target/'05b_anchor_coverage.csv')
+            grouped=pd.read_csv(target/'05b_phase_summary.csv')
+            self.assertEqual(quality.status.iloc[0],'NO_RECENT_PRE_ANCHOR_PRINT')
+            self.assertEqual(len(grouped),0)
 
     def test_phase_summary_contains_near_far_and_all_groups(self):
         from unittest.mock import patch
