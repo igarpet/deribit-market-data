@@ -1,0 +1,38 @@
+{
+ "version": "LA-W01-0.1.0",
+ "large_q": 0.99,
+ "burst_q": 0.95,
+ "rule_tercile": 0.3333333333333333,
+ "fdr_q": 0.1,
+ "confirm_alpha": 0.05,
+ "boot_b": 2000,
+ "seed": 20261021,
+ "landmarks": [
+  5,
+  15,
+  30,
+  60
+ ],
+ "primary_landmark": 15,
+ "mining_end": "2025-07-01",
+ "insample": [
+  "2026-07-01",
+  "2026-10-01"
+ ],
+ "pre_phases": {
+  "context": [
+   -240,
+   -61
+  ],
+  "approach": [
+   -60,
+   -16
+  ],
+  "formation": [
+   -15,
+   -1
+  ]
+ },
+ "H1": "at L=15, cvd_15 has a positive partial rank correlation with remaining_R given progress_15",
+ "status": "PRE-REGISTERED_EXPLORATORY_MINING_WITH_CONFIRMATION"
+}
