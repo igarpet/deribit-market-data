@@ -178,6 +178,8 @@ def summarize_one(e:dict,trades:pd.DataFrame,cfg:Config=Config()) -> tuple[pd.Da
     the reference if not older than max_anchor_stale_ms.
     """
     anchor=int(e['anchor_ms']);base={k:e[k] for k in ['a02_candidate_row','anchor','symbol','side','eventual_outcome','target_to_sigma60']}
+    r=float(e['target_to_sigma60']) if pd.notna(e['target_to_sigma60']) else np.nan
+    base['feasibility_band']=('TARGET_LE_1SIGMA60' if r<=1 else 'TARGET_GT_1SIGMA60') if e['eventual_outcome'] in OUTCOMES else 'NO_CLOSED_OUTCOME'
     if trades.empty:
         return pd.DataFrame(),pd.DataFrame(),[base|{'status':'NO_TRADES_IN_WINDOW','n_prints':0}]
     z=trades.copy()
@@ -278,8 +280,14 @@ def build_results(repo:Path,history:Path,out:Path,cfg:Config=Config(),batch_sour
     days=pd.DataFrame(day_status)
     group=phase[(phase.eventual_outcome.isin(OUTCOMES)) & (phase.complete_calendar_days)] if len(phase) else phase
     cols=['signed_price_change_bp','aligned_count_imbalance','aligned_amount_imbalance','trades_per_sec']
-    grouped=group.groupby(['anchor','symbol','eventual_outcome','phase_s_start','phase_s_end']).agg(
-        n_events=('a02_candidate_row','nunique'),**{'median_'+k:(k,'median') for k in cols}).reset_index() if len(group) else pd.DataFrame()
+    fields=['anchor','symbol','eventual_outcome','feasibility_band','phase_s_start','phase_s_end']
+    if len(group):
+        a=group.groupby(fields).agg(n_events=('a02_candidate_row','nunique'),
+            **{'median_'+k:(k,'median') for k in cols}).reset_index()
+        inclusive=group.assign(feasibility_band='ALL').groupby(fields).agg(n_events=('a02_candidate_row','nunique'),
+            **{'median_'+k:(k,'median') for k in cols}).reset_index()
+        grouped=pd.concat([a,inclusive],ignore_index=True).sort_values(fields).reset_index(drop=True)
+    else:grouped=pd.DataFrame()
     phase.to_csv(out/'05b_event_phases.csv',index=False)
     grouped.to_csv(out/'05b_phase_summary.csv',index=False)
     qc.to_csv(out/'05b_anchor_coverage.csv',index=False)
@@ -308,7 +316,8 @@ def _plot(group:pd.DataFrame,out:Path):
         fig,axes=plt.subplots(1,2,figsize=(13,4))
         for ax,sym in zip(axes,('BTCUSDT','ETHUSDT')):
             for label in OUTCOMES:
-                g=group[(group.anchor==anchor)&(group.symbol==sym)&(group.eventual_outcome==label)].sort_values('phase_s_start')
+                g=group[(group.anchor==anchor)&(group.symbol==sym)&(group.eventual_outcome==label)&
+                        (group.feasibility_band=='ALL')].sort_values('phase_s_start')
                 if not g.empty:
                     x=(g.phase_s_start+g.phase_s_end)/2
                     ax.plot(x,g.median_signed_price_change_bp,marker='o',label=f'{label} (n={int(g.n_events.max())})')
