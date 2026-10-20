@@ -63,3 +63,7 @@ For source fairness, count **all 452 signals for every policy** (do not conditio
 1. Report all three variant counts with separation of touch/proxy-fill/actually executable unknown; do not conclude maker profitability from `eligible` status alone.
 2. Investigate if both reverse and third-touch positive EV remain after realistic USDT-M fee tier, order placement latency, threshold sensitivity, depth/queue simulation and a new untouched sample.
 3. Independently validate maker fill probabilities with historical depth or tiny measured post-only paper/live order probes with explicit risk consent, rather than inventing fill outcomes from trades.
+
+## LA-A03c-0.1.2 — Input signal-close join correction (2026-10-20)
+
+The real user-run notebook failed with `KeyError: bar_close` in `TapeStudy.__post_init__`. The A03b `03b_1to1_events.csv` contains entry/exit observations but **not** the closing price of the second rejection candle. A02b `02b_touch_features.csv` has this causally known `bar_close` for the exact 452 candidate IDs. A03c now performs a validated one-to-one left join on `a02_candidate_row`, checks per-event symbol, side, signal timestamp, level price and close validity, and stops on any mismatch instead of substituting `entry_print` or prices after signal time. Both earlier input tables remain read-only and unchanged; stale traceback cleared in notebook. Regression tests now use the *actual disparate CSV schemas*, plus negative join/missing-close cases. This correction does not modify strategy rules.
