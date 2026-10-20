@@ -118,7 +118,6 @@ class TestMicro(unittest.TestCase):
         self.assertEqual(stat.status.tolist(),['SCANNED'])
         self.assertEqual(len(captured[0][1]),6)
 
-if __name__=='__main__':unittest.main()
 
 # Additional pipeline coverage: real output contracts with fake in-memory archive batches.
 class TestPipeline(unittest.TestCase):
@@ -212,3 +211,6 @@ class TestRegressionContracts(unittest.TestCase):
             self.assertEqual(coverage.status.iloc[0],'INCOMPLETE_CALENDAR_DAYS')
             summary=pd.read_csv(dst/'05b_phase_summary.csv')
             self.assertTrue(summary.empty)
+
+if __name__=='__main__':
+    unittest.main()
