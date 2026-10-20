@@ -1,0 +1,123 @@
+{
+  "version": "LA-A03-0.1.0",
+  "status": "EXPLORATORY_EXECUTION_SIMULATION_NOT_CONFIRMED_STRATEGY",
+  "source_events": 452,
+  "simulated_policy_rows": 1356,
+  "policy_modes": [
+    "FIXED",
+    "BREAKEVEN",
+    "TRAIL_1M"
+  ],
+  "coverage": [
+    {
+      "symbol": "BTCUSDT",
+      "mode": "BREAKEVEN",
+      "events": 212,
+      "closed_trades": 196,
+      "no_entry_or_no_target": 16,
+      "censored": 0,
+      "no_entry_tape": 0,
+      "stop_exits": 173,
+      "target_exits": 20,
+      "timeouts": 3,
+      "flow_quality_flagged": 1,
+      "mean_net_r_descriptive": -2.1434786099127883,
+      "median_net_r_descriptive": -2.7425899355003036,
+      "positive_net_r_share_descriptive": 0.10204081632653061,
+      "mean_gross_r_descriptive": 0.18171439771137493
+    },
+    {
+      "symbol": "BTCUSDT",
+      "mode": "FIXED",
+      "events": 212,
+      "closed_trades": 196,
+      "no_entry_or_no_target": 16,
+      "censored": 0,
+      "no_entry_tape": 0,
+      "stop_exits": 166,
+      "target_exits": 24,
+      "timeouts": 6,
+      "flow_quality_flagged": 1,
+      "mean_net_r_descriptive": -2.2531054319811568,
+      "median_net_r_descriptive": -3.254843939078156,
+      "positive_net_r_share_descriptive": 0.1377551020408163,
+      "mean_gross_r_descriptive": 0.0661143693946812
+    },
+    {
+      "symbol": "BTCUSDT",
+      "mode": "TRAIL_1M",
+      "events": 212,
+      "closed_trades": 196,
+      "no_entry_or_no_target": 16,
+      "censored": 0,
+      "no_entry_tape": 0,
+      "stop_exits": 181,
+      "target_exits": 15,
+      "timeouts": 0,
+      "flow_quality_flagged": 1,
+      "mean_net_r_descriptive": -2.0250905351201403,
+      "median_net_r_descriptive": -2.517067532881314,
+      "positive_net_r_share_descriptive": 0.09693877551020408,
+      "mean_gross_r_descriptive": 0.30606923264179925
+    },
+    {
+      "symbol": "ETHUSDT",
+      "mode": "BREAKEVEN",
+      "events": 240,
+      "closed_trades": 219,
+      "no_entry_or_no_target": 21,
+      "censored": 0,
+      "no_entry_tape": 0,
+      "stop_exits": 205,
+      "target_exits": 13,
+      "timeouts": 1,
+      "flow_quality_flagged": 2,
+      "mean_net_r_descriptive": -2.2544868495799033,
+      "median_net_r_descriptive": -2.686581039084247,
+      "positive_net_r_share_descriptive": 0.0639269406392694,
+      "mean_gross_r_descriptive": -0.05845060070931506
+    },
+    {
+      "symbol": "ETHUSDT",
+      "mode": "FIXED",
+      "events": 240,
+      "closed_trades": 219,
+      "no_entry_or_no_target": 21,
+      "censored": 0,
+      "no_entry_tape": 0,
+      "stop_exits": 191,
+      "target_exits": 21,
+      "timeouts": 7,
+      "flow_quality_flagged": 2,
+      "mean_net_r_descriptive": -2.249298891619372,
+      "median_net_r_descriptive": -3.0565206961069857,
+      "positive_net_r_share_descriptive": 0.1232876712328767,
+      "mean_gross_r_descriptive": -0.06189505318948682
+    },
+    {
+      "symbol": "ETHUSDT",
+      "mode": "TRAIL_1M",
+      "events": 240,
+      "closed_trades": 219,
+      "no_entry_or_no_target": 21,
+      "censored": 0,
+      "no_entry_tape": 0,
+      "stop_exits": 212,
+      "target_exits": 7,
+      "timeouts": 0,
+      "flow_quality_flagged": 2,
+      "mean_net_r_descriptive": -2.0218501648439786,
+      "median_net_r_descriptive": -2.544615846407966,
+      "positive_net_r_share_descriptive": 0.1278538812785388,
+      "mean_gross_r_descriptive": 0.17833677042397378
+    }
+  ],
+  "tape": {
+    "read_daily_parquet_files": 171,
+    "missing_trade_day_files": [
+      "BTCUSDT:2026-10-01",
+      "ETHUSDT:2026-10-01"
+    ]
+  },
+  "caution": "Historical prints do not prove executable fills; crypto-normalized stop/BE/targets are research proxies, not user-approved MNQ equivalents. Funding is omitted; net PnL is after ASSUMED EXECUTION COSTS ONLY. LVN targets excluded. No prospective validation."
+}

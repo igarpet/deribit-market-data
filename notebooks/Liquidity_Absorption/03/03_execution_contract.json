@@ -1,0 +1,33 @@
+{
+  "version": "LA-A03-0.1.0",
+  "config": {
+    "stop_buffer_zone_halfwidths": 1.0,
+    "break_even_initial_r": 1.0,
+    "trailing_buffer_ticks": 2,
+    "assumed_tick_btc": 0.1,
+    "assumed_tick_eth": 0.01,
+    "hold_minutes": 240,
+    "max_entry_wait_seconds": 60,
+    "target_priority": "vwap_if_displaced_else_opposing_prior_day",
+    "vwap_displacement_initial_r": 2.0,
+    "taker_fee_bp_per_side": 6.0,
+    "entry_adverse_bp": 0.5,
+    "target_exit_adverse_bp": 0.5,
+    "stop_exit_adverse_bp": 1.5,
+    "timeout_exit_adverse_bp": 0.5,
+    "flow_reconcile_flag_above_fraction": 0.01
+  },
+  "input_candidates": 452,
+  "target_LVN": "NOT_IMPLEMENTED: requires prior-time causal LVN definition; exclude from claims",
+  "entry_rule": "first aggregated trade print at/after second 1m close, within 60 seconds; assumed entry adverse cost",
+  "initial_stop": "level plus/minus 1 zone halfwidth (2bp level width in A02), rounded outward to assumed tick",
+  "break_even": "upon intratrade favorable move >= 1 times initial risk; stop to unadjusted entry print",
+  "trail_1m": "after BE: 1-left/1-right confirmed 1m swing high then higher low (long), or lower low then lower high (short); 2 assumed ticks beyond low/high; never loosen; only after confirming bar CLOSE",
+  "targets": "VWAP if displacement >= 2 initial R in favorable direction, otherwise opposing fully completed UTC prior-day extreme; no LVN",
+  "tape_model": "first crossing print, no executable bid/ask or liquidity/queue model; timestamp ties keep stable parquet order",
+  "costs": "per-side fee plus entry/exit adverse bps; target fill capped at level; stop not improved over stop price",
+  "flow_quality": "A02b >1% first or second 1m quote-volume discrepancy flagged; not outcome-selected exclusions",
+  "flow_group": "Exploratory A02b-descriptive intersection: second/first zone volume >1, opposing zone share increases, near-zone share of candle increases; NOT an eligible confirmatory classifier",
+  "funding": "NOT MODELED; net_r_assumed_costs represents transaction execution costs only, before funding",
+  "statistical_status": "EXPLORATORY_ONLY_NO_EDGE_OR_PROSPECTIVE_CONFIRMATION"
+}
