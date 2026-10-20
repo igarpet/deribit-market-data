@@ -94,8 +94,8 @@ class Client:
 # ----------------------------------------------------------------------------- trades
 def paginate_day(fetch, start_ms: int, end_ms: int) -> list[dict]:
     """All trades with start_ms <= timestamp <= end_ms. `fetch(start, end)` returns (trades asc, has_more).
-    Next page starts at the last timestamp (inclusive) and duplicates are dropped by trade_id. If a whole page
-    shares one millisecond (> PAGE trades in 1 ms), the start advances by 1 ms and a warning is printed."""
+    Next page starts at the last timestamp (inclusive) and duplicates are dropped by trade_id. If a full page cannot advance beyond the current millisecond, FAIL CLOSED instead of skipping trades.
+    The incomplete UTC day is not written, and already completed Parquet days are preserved."""
     out, seen = [], set()
     s = start_ms
     while True:
@@ -108,11 +108,16 @@ def paginate_day(fetch, start_ms: int, end_ms: int) -> list[dict]:
             break
         last = max(t["timestamp"] for t in trades)
         if last <= s:
-            if len(trades) >= PAGE:
-                print(f"    warning: >{PAGE} trades at {s} ms; some may be skipped", flush=True)
-            s += 1
-        else:
-            s = last
+            # Timestamp-only pagination cannot safely resume inside a crowded
+            # millisecond: advancing by 1 ms silently drops the page tail.
+            # Refuse to persist this incomplete day. Existing completed daily
+            # files are intentionally never overwritten on a resume.
+            raise RuntimeError(
+                f"Ambiguous Deribit history pagination at {s} ms "
+                f"(page rows={len(trades)}, has_more={more}); "
+                "stopping without writing the incomplete UTC day"
+            )
+        s = last
         if s > end_ms:
             break
     return out
