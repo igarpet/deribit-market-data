@@ -1,0 +1,24 @@
+{
+  "version": "LA-A04-0.1.1",
+  "parent": "LA-A03d-0.1.0",
+  "configuration": {
+    "hold_minutes": 240,
+    "entry_kind": "TAKER_FIRST_POST_SIGNAL",
+    "model_mode": "VD18_VOL_FIXED",
+    "landmarks_min": [
+      1,
+      5,
+      15,
+      30,
+      60
+    ],
+    "history_minutes": 30
+  },
+  "original_candidates": 452,
+  "closed_primary": 414,
+  "censored_primary": 1,
+  "landmarks": 2260,
+  "usable_risk_set_landmarks": 1691,
+  "missing_minute_windows": 0,
+  "status": "EXPLORATORY_OUTCOME_CONDITIONED_NOT_CAUSAL_NOT_PREDICTIVE"
+}
