@@ -389,8 +389,8 @@ def partial_spearman(x, y, z) -> float:
     return float((ex_ * ey).sum() / d) if d > 0 else np.nan
 
 
-def day_boot(df: pd.DataFrame, stat, B: int, seed: int) -> tuple[float, float, float]:
-    """(statistic, one-sided 95% lower bound, bootstrap P(stat <= 0)) resampling signal days."""
+def day_boot(df: pd.DataFrame, stat, B: int, seed: int, q: float = 0.05) -> tuple[float, float, float]:
+    """(statistic, one-sided (1-q) lower bound, bootstrap P(stat <= 0)) resampling signal days."""
     df = df.reset_index(drop=True)
     est = stat(df)
     groups = df.groupby("day").indices
@@ -405,7 +405,7 @@ def day_boot(df: pd.DataFrame, stat, B: int, seed: int) -> tuple[float, float, f
         vals.append(stat(df.iloc[ix]))
     v = np.asarray(vals, float)
     v = v[np.isfinite(v)]
-    return est, float(np.quantile(v, 0.05)), float((v <= 0).mean())
+    return est, float(np.quantile(v, q)), float((v <= 0).mean())
 
 
 def h1_test(X: pd.DataFrame, L: int, spec: Spec) -> pd.DataFrame:
@@ -661,3 +661,156 @@ def synthetic_ext(ext: Path, history: Path, n: int = 120, seed: int = 0, planted
     b = pd.DataFrame(rows)
     (Path(ext) / "03b").mkdir(parents=True, exist_ok=True)
     b.to_csv(Path(ext) / "03b" / "03b_1to1_events.csv", index=False)
+
+
+# ============================================================================= LA 028: bar-by-bar 1-minute CVD
+MINUTE_VERSION = "LA-W01-M-0.1.0"
+FWD_H = (1, 5, 15)
+EVENTS = ("ALL_OPEN_MINUTES", "STRONG_TOWARD", "STRONG_AGAINST", "ABSORB_FOR", "ABSORB_AGAINST")
+
+
+@dataclass(frozen=True)
+class MinuteSpec:
+    hi_q: float = 0.95          # strong 1m delta bar toward the target: flow_n >= MINING context q95
+    lo_q: float = 0.05          # strong bar against: flow_n <= MINING context q05
+    boot_b: int = 500
+    econ_q: float = 0.025       # one-sided 97.5% lower bound (Bonferroni over the two economic events)
+    seed: int = SEED
+
+
+def minute_registration(ms: MinuteSpec = MinuteSpec()) -> dict:
+    return {"version": MINUTE_VERSION, **asdict(ms), "fwd_minutes": FWD_H, "events": EVENTS,
+            "M1": "partial rank corr of the 1m delta bar (flow_n) with remaining_R from the bar close, given "
+                  "progress (px_R) and the same bar's price change; MINING > 0 and CONFIRM lower 95% > 0",
+            "M2": "add-on unit at ABSORB_FOR and at STRONG_TOWARD bars: CONFIRM mean net R > 0 and one-sided 97.5% "
+                  "day-bootstrap lower bound > 0",
+            "status": "AMENDMENT_AFTER_W01_RESULTS_PRE_REGISTERED_BEFORE_MINUTE_RESULTS"}
+
+
+def partial_spearman_multi(x, y, Z) -> float:
+    rx, ry = _rank(x), _rank(y)
+    Z = np.column_stack([_rank(z) for z in Z])
+    A = np.c_[np.ones(len(rx)), Z]
+    ex_ = rx - A @ np.linalg.lstsq(A, rx, rcond=None)[0]
+    ey = ry - A @ np.linalg.lstsq(A, ry, rcond=None)[0]
+    d = np.sqrt((ex_ ** 2).sum() * (ey ** 2).sum())
+    return float((ex_ * ey).sum() / d) if d > 0 else np.nan
+
+
+def minute_rows(F: pd.DataFrame, P: pd.DataFrame) -> pd.DataFrame:
+    """One row per trade-minute t (rel 0..239) completed while the trade is open. Outcome from the bar close:
+    rem_R = final_R - px_R(t). Forward market moves (gross bp, toward the target) over the next 1/5/15 minutes."""
+    W = 2 * WINDOW + 1
+    P = P[P.a02_candidate_row.isin(F.a02_candidate_row)].sort_values(["a02_candidate_row", "rel"])
+    cnt = P.groupby("a02_candidate_row").size()
+    ids = cnt.index[cnt.eq(W)]
+    P = P[P.a02_candidate_row.isin(ids)]
+    n = len(ids)
+    mat = {c: P[c].to_numpy(float).reshape(n, W) for c in ("px_R", "flow_n", "vol_n", "large_n")}
+    f = F.set_index("a02_candidate_row").loc[ids]
+    t = np.arange(0, WINDOW)                                    # rel minutes 0..239 (fwd needs t+h <= 240)
+    c = WINDOW + t
+    px = mat["px_R"][:, c]
+    out = {"a02_candidate_row": np.repeat(ids.to_numpy(), len(t)), "rel": np.tile(t, n),
+           "d1": mat["flow_n"][:, c].ravel(), "p1": (px - mat["px_R"][:, c - 1]).ravel(), "prog": px.ravel(),
+           "large1": mat["large_n"][:, c].ravel(), "vol1": mat["vol_n"][:, c].ravel()}
+    R = f.R_bp.to_numpy(float)[:, None]
+    for h in FWD_H:
+        cc = np.minimum(c + h, W - 1)
+        fw = (mat["px_R"][:, cc] - px) * R
+        fw[:, (c + h) > W - 1] = np.nan
+        out[f"fwd{h}_bp"] = fw.ravel()
+    out["rem_R"] = (f.final_R.to_numpy(float)[:, None] - px).ravel()
+    open_ = (t[None, :] + 1) <= f.exit_rel_min.to_numpy(float)[:, None]
+    D = pd.DataFrame(out)[open_.ravel()]
+    D = D.merge(F[["a02_candidate_row", "cost_R", "R_bp", "split", "day", "symbol", "reason"]], on="a02_candidate_row")
+    D["addon_net_R"] = D.rem_R - D.cost_R
+    return D.reset_index(drop=True)
+
+
+def minute_thresholds(F: pd.DataFrame, P: pd.DataFrame, ms: MinuteSpec) -> tuple[float, float]:
+    mine = F.loc[F.split.eq("MINING"), "a02_candidate_row"]
+    c = P[P.a02_candidate_row.isin(mine) & P.rel.between(*PRE_PHASES["context"])].flow_n.to_numpy(float)
+    return float(np.nanquantile(c, ms.lo_q)), float(np.nanquantile(c, ms.hi_q))
+
+
+def event_mask(D: pd.DataFrame, lo: float, hi: float) -> dict:
+    return {"ALL_OPEN_MINUTES": np.ones(len(D), bool),
+            "STRONG_TOWARD": (D.d1 >= hi).to_numpy(),
+            "STRONG_AGAINST": (D.d1 <= lo).to_numpy(),
+            "ABSORB_FOR": ((D.d1 <= lo) & (D.p1 >= 0)).to_numpy(),        # opponents hit, price held/moved our way
+            "ABSORB_AGAINST": ((D.d1 >= hi) & (D.p1 <= 0)).to_numpy()}    # our side hit, price failed
+
+
+def minute_study(F: pd.DataFrame, P: pd.DataFrame, out: Path, ms: MinuteSpec = MinuteSpec(), log=print) -> dict:
+    out = Path(out)
+    out.mkdir(parents=True, exist_ok=True)
+    D = minute_rows(F, P)
+    lo, hi = minute_thresholds(F, P, ms)
+    if log:
+        log("trade-minutes", len(D), "| 1m delta thresholds (minutes of normal volume)", round(lo, 3), round(hi, 3))
+    # M1: partial rank correlation, all open minutes
+    m1 = []
+    for sp in ("MINING", "CONFIRM", "INSAMPLE"):
+        d = D[D.split.eq(sp)]
+        if len(d) < 100:
+            continue
+        est, lo95, p = day_boot(d, lambda q: partial_spearman_multi(q.d1, q.rem_R, [q.prog, q.p1]), ms.boot_b, ms.seed)
+        r = {"split": sp, "trade_minutes": len(d), "trades": int(d.a02_candidate_row.nunique()),
+             "partial_rho_d1_rem": est, "lo95": lo95, "p_boot_le0": p,
+             "raw_rho_d1_p1": float(pd.Series(d.d1.to_numpy()).corr(pd.Series(d.p1.to_numpy()), method="spearman"))}
+        for h in FWD_H:
+            dd = d.dropna(subset=[f"fwd{h}_bp"])
+            r[f"partial_rho_d1_fwd{h}"] = partial_spearman_multi(dd.d1, dd[f"fwd{h}_bp"], [dd.p1])
+        m1.append(r)
+    M1 = pd.DataFrame(m1)
+    # events
+    masks = event_mask(D, lo, hi)
+    ev = []
+    for name, mk in masks.items():
+        for sp in ("MINING", "CONFIRM", "INSAMPLE"):
+            d = D[mk & D.split.eq(sp).to_numpy()]
+            if len(d) < 30:
+                continue
+            r = {"event": name, "split": sp, "bars": len(d), "trades": int(d.a02_candidate_row.nunique()),
+                 "mean_rem_R": float(d.rem_R.mean()), "share_rem_pos": float((d.rem_R > 0).mean())}
+            if name != "ALL_OPEN_MINUTES":
+                m, l, _ = day_boot(d, lambda q: float(q.addon_net_R.mean()), ms.boot_b, ms.seed, ms.econ_q)
+                r.update({"addon_net_R": m, "addon_net_lo975": l})
+            for h in FWD_H:
+                r[f"fwd{h}_bp_mean"] = float(d[f"fwd{h}_bp"].mean())
+            m5, l5, _ = day_boot(d.dropna(subset=["fwd5_bp"]), lambda q: float(q.fwd5_bp.mean()), ms.boot_b, ms.seed)
+            r.update({"fwd5_bp_lo95": l5})
+            ev.append(r)
+    EV = pd.DataFrame(ev)
+    # by time since entry, and by 1m delta decile (descriptive)
+    D["age"] = pd.cut(D.rel, [-1, 4, 14, 59, 240], labels=["0-4", "5-14", "15-59", "60+"])
+    by_age = []
+    for name in ("STRONG_TOWARD", "STRONG_AGAINST", "ABSORB_FOR", "ABSORB_AGAINST"):
+        g = D[masks[name] & D.split.ne("INSAMPLE").to_numpy()].groupby(["split", "age"], observed=True)
+        t = g.agg(bars=("rem_R", "size"), mean_rem_R=("rem_R", "mean"), fwd5_bp=("fwd5_bp", "mean")).reset_index()
+        t.insert(0, "event", name)
+        by_age.append(t)
+    BA = pd.concat(by_age, ignore_index=True)
+    D["d1_decile"] = D.groupby("split").d1.transform(lambda x: pd.qcut(x.rank(method="first"), 10, labels=False))
+    DEC = D.groupby(["split", "d1_decile"]).agg(bars=("d1", "size"), d1=("d1", "median"), p1=("p1", "median"),
+                                                 mean_rem_R=("rem_R", "mean"), fwd1_bp=("fwd1_bp", "mean"),
+                                                 fwd5_bp=("fwd5_bp", "mean"), fwd15_bp=("fwd15_bp", "mean")).reset_index()
+    M1.to_csv(out / "W01M_partial_corr.csv", index=False)
+    EV.to_csv(out / "W01M_events.csv", index=False)
+    BA.to_csv(out / "W01M_events_by_age.csv", index=False)
+    DEC.to_csv(out / "W01M_deciles.csv", index=False)
+    mc = M1.set_index("split")
+    e = EV.set_index(["event", "split"])
+
+    def econ(name):
+        k = (name, "CONFIRM")
+        return bool(k in e.index and e.loc[k, "addon_net_R"] > 0 and e.loc[k, "addon_net_lo975"] > 0)
+
+    res = {"version": MINUTE_VERSION, "thresholds_flow_n": {"lo": lo, "hi": hi}, "trade_minutes": int(len(D)),
+           "M1_supported": bool("MINING" in mc.index and "CONFIRM" in mc.index
+                                and mc.loc["MINING", "partial_rho_d1_rem"] > 0 and mc.loc["CONFIRM", "lo95"] > 0),
+           "M1": M1.round(4).to_dict("records"),
+           "M2_ABSORB_FOR_pass": econ("ABSORB_FOR"), "M2_STRONG_TOWARD_pass": econ("STRONG_TOWARD")}
+    (out / "W01M_decision.json").write_text(json.dumps(res, indent=1, default=str))
+    return res

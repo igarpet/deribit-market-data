@@ -74,6 +74,36 @@ class TestW01(unittest.TestCase):
                       "W01_curves_exit.csv", "W01_decision.json"):
                 self.assertTrue((T / "out" / f).exists())
 
+    def test_minute_rows_open_filter_and_outcome(self):
+        rel = np.arange(-w.WINDOW, w.WINDOW + 1)
+        F = pd.DataFrame({"a02_candidate_row": [1], "entry_ms": [0], "exit_ms": [10 * 60_000], "exit_rel_min": [10.0],
+                          "final_R": [1.0], "cost_R": [0.1], "R_bp": [50.0], "split": "MINING", "reason": "TARGET",
+                          "day": pd.Timestamp("2025-01-01", tz="UTC"), "symbol": "BTCUSDT"})
+        P = pd.DataFrame({"a02_candidate_row": 1, "rel": rel, "px_R": 0.1 * rel, "flow_n": rel.astype(float),
+                          "vol_n": 1.0, "large_n": 0.0})
+        D = w.minute_rows(F, P)
+        self.assertEqual(D.rel.tolist(), list(range(10)))              # minutes 0..9 complete before exit at 10
+        r3 = D[D.rel == 3].iloc[0]
+        self.assertAlmostEqual(r3.rem_R, 1.0 - 0.3)
+        self.assertAlmostEqual(r3.p1, 0.1)
+        self.assertAlmostEqual(r3.fwd5_bp, 0.5 * 50)
+        self.assertAlmostEqual(r3.addon_net_R, 0.6)
+
+    def test_partial_multi_matches_single(self):
+        rng = np.random.default_rng(3)
+        x, y, z = rng.normal(size=(3, 500))
+        self.assertAlmostEqual(w.partial_spearman_multi(x, y, [z]), w.partial_spearman(x, y, z), places=10)
+
+    def test_minute_study_synthetic(self):
+        with tempfile.TemporaryDirectory() as t:
+            T = Path(t)
+            w.synthetic_ext(T / "EXT", T / "hist", n=160)
+            F, P = w.build(T / "EXT", T / "hist", T / "local", log=None)
+            r = w.minute_study(F, P, T / "out", w.MinuteSpec(boot_b=50), log=None)
+            self.assertGreater(r["M1"][1]["partial_rho_d1_rem"], 0.0)     # planted winner flow -> positive
+            for f in ("W01M_partial_corr.csv", "W01M_events.csv", "W01M_deciles.csv", "W01M_decision.json"):
+                self.assertTrue((T / "out" / f).exists())
+
 
 if __name__ == "__main__":
     unittest.main()
