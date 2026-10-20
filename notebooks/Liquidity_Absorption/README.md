@@ -61,3 +61,9 @@ jupyter lab
 ```
 
 In Jupyter open `notebooks/Liquidity_Absorption/05b_deribit_millisecond_microstructure.ipynb` and **Restart & Run All**. The notebook runs focused daily QA for the original July–September 2026 signal windows and then the tick-resolution study. This can scan large existing Parquet files twice; it doesn't redownload. Share committed lightweight `05b/` results and executed notebook for review; keep oversized `05b_sparse_trade_buckets.csv.gz` in the local archive rather than forcing it through GitHub's file-size limit. Protocol: `discussions/Liquidity_Absorption/019_chatgpt_deribit_history_validator_and_a05b_microstudy.md`.
+
+# LA 07 — W01: anatomy of the A03b 1:1 trades (winners vs losers)
+
+`07_winner_anatomy_1to1.ipynb`, engine `src/data_engineering/modeling/liquidity_absorption_w01.py`, tests `tests/test_liquidity_absorption_w01.py`, protocol `discussions/Liquidity_Absorption/027_claude_w01_winner_anatomy_preregistration.md`, outputs `07/`.
+
+Every EXT A03b 1:1 trade with a −240…+240 min per-minute panel from Deribit prints (price/high/low, taker flow, large-print flow, volume), A06 context (liquidations, premium, basis, ATM IV, skew, option flow) and the 18:00 ET session profile at entry. Binding H1: CVD toward the target in the first 15 min predicts the rest of the trade beyond price progress (landmark design, MINING < 2025-07-01, CONFIRM after). Also: landmark exit rules (+15 min losing cut, low-CVD cut), burst onset study, pre-entry and landmark feature screens. Needs EXT outputs; the panel parquet goes to `DERIBIT_DATA_ROOT\la_w01\`. `LAW01_SYNTHETIC=1` for a smoke run.
