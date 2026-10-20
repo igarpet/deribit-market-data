@@ -12,7 +12,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.data_engineering.modeling.liquidity_absorption_stage_a03c import (
     Config, TapeStudy, MODES, CLOSED, scan_tapes, equity, _summaries,
-    _fee_sensitivity, utc_ms,
+    _fee_sensitivity, utc_ms, validate_inputs,
 )
 
 T = utc_ms("2026-07-02T00:10:00+00:00")
@@ -230,8 +230,17 @@ class TestA03c(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); b=root/"notebooks"/"Liquidity_Absorption"/"03b";b.mkdir(parents=True)
             (b/"03b_decision.json").write_text('{"version":"LA-A03b-0.1.0","source_events":452}')
-            e.to_csv(b/"03b_1to1_events.csv",index=False)
+            # Mimic real GitHub input schema: A03b lacks bar_close, A02b has it.
+            e.drop(columns="bar_close").to_csv(b/"03b_1to1_events.csv",index=False)
+            ref=root/"notebooks"/"Liquidity_Absorption"/"02b"
+            ref.mkdir(parents=True)
+            (ref/"02b_decision.json").write_text('{"version":"LA-A02b-0.1.0","candidate_count":452}')
+            e[["a02_candidate_row","symbol","side","signal_time_utc","level_price","bar_close"]].to_csv(
+                ref/"02b_touch_features.csv",index=False)
             before=(b/"03b_1to1_events.csv").read_bytes()
+            loaded=validate_inputs(root)
+            self.assertEqual(len(loaded),452)
+            self.assertTrue(loaded.bar_close.eq(100.15).all())
             fp=root/"aggTrades"/"BTCUSDT"/"BTCUSDT-aggTrades-2026-07-02.parquet";fp.parent.mkdir(parents=True);fp.touch()
             with patch.dict(sys.modules,{"pyarrow":parent,"pyarrow.parquet":fake}):
                 result=run(root,root,root/"03c")
@@ -242,6 +251,36 @@ class TestA03c(unittest.TestCase):
                          "03c_fee_sensitivity.csv","03c_contract.json","03c_decision.json",
                          "03c_net_equity.png","03c_gross_equity.png"):
                 self.assertTrue((root/"03c"/name).exists(), name)
+
+    def test_a03b_a02b_join_rejects_wrong_candidate_side(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/"notebooks"/"Liquidity_Absorption"
+            b=root/"03b"; b.mkdir(parents=True)
+            a=root/"02b"; a.mkdir()
+            src=pd.DataFrame([dict(event(ident=i), target_rr_initial=1.0, reason="TARGET") for i in range(452)])
+            src.drop(columns="bar_close").to_csv(b/"03b_1to1_events.csv",index=False)
+            (b/"03b_decision.json").write_text('{"version":"LA-A03b-0.1.0","source_events":452}')
+            (a/"02b_decision.json").write_text('{"version":"LA-A02b-0.1.0","candidate_count":452}')
+            ref=src[["a02_candidate_row","symbol","side","signal_time_utc","level_price","bar_close"]].copy()
+            ref.loc[0,"side"]="short"  # Same ID but different signal identity is unsafe.
+            ref.to_csv(a/"02b_touch_features.csv",index=False)
+            with self.assertRaisesRegex(ValueError, "identity mismatch: side"):
+                validate_inputs(Path(td))
+
+    def test_a03b_a02b_join_rejects_missing_signal_close(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/"notebooks"/"Liquidity_Absorption"
+            b=root/"03b"; b.mkdir(parents=True)
+            a=root/"02b"; a.mkdir()
+            src=pd.DataFrame([dict(event(ident=i), target_rr_initial=1.0, reason="TARGET") for i in range(452)])
+            src.drop(columns="bar_close").to_csv(b/"03b_1to1_events.csv",index=False)
+            (b/"03b_decision.json").write_text('{"version":"LA-A03b-0.1.0","source_events":452}')
+            (a/"02b_decision.json").write_text('{"version":"LA-A02b-0.1.0","candidate_count":452}')
+            ref=src[["a02_candidate_row","symbol","side","signal_time_utc","level_price","bar_close"]].copy()
+            ref.loc[1,"bar_close"]=float("nan")
+            ref.to_csv(a/"02b_touch_features.csv",index=False)
+            with self.assertRaisesRegex(ValueError, "close prices are missing"):
+                validate_inputs(Path(td))
 
     def test_equity_and_fee_sensitivity_have_no_required_full_tape(self):
         a=TapeStudy(event(),"MAKER_TOUCH_3RD",Config())
