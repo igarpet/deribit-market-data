@@ -151,3 +151,64 @@ class TestPipeline(unittest.TestCase):
         self.assertNotIn('level_price',b.columns)
         self.assertNotIn('binance_entry_price',b.columns)
         self.assertFalse(phase.signed_price_change_bp.notna().all())
+
+
+class TestRegressionContracts(unittest.TestCase):
+    def test_notebook_every_code_cell_compiles(self):
+        import json
+        f=ROOT/'notebooks'/'Liquidity_Absorption'/'05b_deribit_millisecond_microstructure.ipynb'
+        nb=json.loads(f.read_text(encoding='utf-8'))
+        for index,cell in enumerate(nb['cells']):
+            if cell['cell_type']=='code':
+                with self.subTest(cell=index):
+                    compile(''.join(cell['source']),f'{f.name}:cell-{index}','exec')
+
+    def test_no_trades_summary_can_be_read_as_csv(self):
+        from unittest.mock import patch
+        anchor=pd.DataFrame([event()])
+        with tempfile.TemporaryDirectory() as td:
+            target=Path(td)/'05b'
+            with patch.object(m,'load_anchors',return_value=anchor):
+                outcome=m.build_results(Path(td),Path(td),target,batch_source=lambda path:[])
+            self.assertEqual(outcome['anchor_rows'],1)
+            group=pd.read_csv(target/'05b_phase_summary.csv')
+            raw=pd.read_csv(target/'05b_event_phases.csv')
+            self.assertEqual(len(group),0)
+            self.assertIn('feasibility_band',group.columns)
+            self.assertEqual(len(raw),0)
+            self.assertIn('complete_calendar_days',raw.columns)
+
+    def test_phase_summary_contains_near_far_and_all_groups(self):
+        from unittest.mock import patch
+        anchors=[]
+        for i,ratio in enumerate((.5,2.0)):
+            z=event('SIGNAL',i)
+            z['target_to_sigma60']=ratio
+            anchors.append(z)
+        with tempfile.TemporaryDirectory() as td:
+            target=Path(td)/'05b'
+            with patch.object(m,'load_anchors',return_value=pd.DataFrame(anchors)):
+                m.build_results(Path(td),Path(td),target,batch_source=lambda path:[ticks()])
+            g=pd.read_csv(target/'05b_phase_summary.csv')
+            self.assertEqual(set(g.feasibility_band),{
+                'TARGET_LE_1SIGMA60','TARGET_GT_1SIGMA60','ALL'})
+            self.assertTrue((g.n_events==1).any())
+            self.assertEqual(g[g.feasibility_band=='ALL'].n_events.max(),2)
+
+    def test_missing_adjacent_day_excludes_event_from_summary(self):
+        from unittest.mock import patch
+        a=event('SIGNAL')
+        a['anchor_ms']=int(pd.Timestamp('2026-07-02T00:00:00Z').timestamp()*1000)
+        f=lambda path: [ticks([a['anchor_ms']-500,a['anchor_ms']+500])] if path.stem=='2026-07-02' else None
+        with tempfile.TemporaryDirectory() as td:
+            dst=Path(td)/'05b'
+            with patch.object(m,'load_anchors',return_value=pd.DataFrame([a])):
+                m.build_results(Path(td),Path(td),dst,batch_source=f)
+            # In a synthetic source, a missing day is observed in day status;
+            # a file-existence precheck must not mistakenly bless completeness.
+            status=pd.read_csv(dst/'05b_day_scan_status.csv')
+            self.assertIn('MISSING_DAY',set(status.status))
+            coverage=pd.read_csv(dst/'05b_anchor_coverage.csv')
+            self.assertEqual(coverage.status.iloc[0],'INCOMPLETE_CALENDAR_DAYS')
+            summary=pd.read_csv(dst/'05b_phase_summary.csv')
+            self.assertTrue(summary.empty)
