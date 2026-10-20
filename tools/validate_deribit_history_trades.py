@@ -154,7 +154,8 @@ def audit_frames(chunks, currency: str, kind: str, day: date, exact_ids: bool = 
                  'bad_direction','empty_instrument_name','wrong_currency_instrument',
                  'null_timestamp','null_trade_id','missing_or_nonintegral_seq',
                  'out_of_order_chunk_boundary','out_of_order_in_batch',
-                 'duplicate_trade_id_exact','duplicate_adjacent_id_lower_bound']
+                 'duplicate_trade_id_exact','duplicate_adjacent_id_lower_bound',
+                 'unexpected_option_in_future_file']
     is_bad = any(bool(bad.get(k,0)) for k in must_fail)
     # A daily currency file may contain several futures and the perp; missing
     # perp prints is a coverage warning, not a justification to manufacture data.
