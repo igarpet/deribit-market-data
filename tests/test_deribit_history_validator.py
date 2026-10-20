@@ -88,6 +88,12 @@ class TestValidator(unittest.TestCase):
         self.assertEqual(z['checks']['bad_price'],1)
         self.assertEqual(z['checks']['bad_direction'],1)
 
+    def test_option_in_future_archive_is_fatal_schema_error(self):
+        x=prints([1782864000001],names=['BTC-27DEC24-100000-C'])
+        z=mod.audit_frames([x],'BTC','future',date(2026,7,1))
+        self.assertEqual(z['status'],'FAIL')
+        self.assertEqual(z['checks']['unexpected_option_in_future_file'],1)
+
     def test_missing_future_day_never_imputed(self):
         p=ROOT/'never-historical-file-should-exist.parquet'
         z=mod.audit_path(p,'BTC','future',date(2026,7,1))
