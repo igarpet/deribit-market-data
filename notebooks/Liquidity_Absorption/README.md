@@ -96,3 +96,14 @@ jupyter lab
 ```
 
 Open the 09 notebook in your `deribit-data` kernel and **Restart & Run All**, then commit the notebook and generated `09/` reports to `main`. Protocol: [`030_chatgpt_a09_observable_level_lifecycle_protocol.md`](../../discussions/Liquidity_Absorption/030_chatgpt_a09_observable_level_lifecycle_protocol.md). A09 is **retrospective descriptive research**, not an independently confirmed entry filter, trading strategy, or actual A03c maker fill.
+
+## LA10 — unselected, causally observable level universe
+
+Open `10_unselected_level_universe.ipynb` after `git pull`. It studies **every active A02 reference episode** (BTC/ETH prior-day support/resistance and most recently confirmed five-minute pivots), including levels with **no valid rejection touch**, **only an initial rejection**, or a **confirmed second-touch signal**. The reference clock respects the 10-minute pivot confirmation delay or prior-day next-midnight availability. A second study clock starts at the first recognized touch and records invalidation, reference replacement, 90-minute retest expiry, valid second touch or archive-end censoring. **A hard replay gate requires the generated signal events to match all 452 frozen A02 events exactly**, otherwise the run aborts and publishes no results. No trader P&L or maker fills are inferred for untouched levels.
+
+```bat
+python -m unittest discover -s tests -p "test_liquidity_absorption_stage_a10*.py" -v
+jupyter lab
+```
+
+Restart and run `notebooks/Liquidity_Absorption/10_unselected_level_universe.ipynb`; push the executed notebook and `10/` CSV/JSON/PNG artifacts to GitHub `main`. Requires existing local `BTCUSDT_um_1m.parquet` / `ETHUSDT_um_1m.parquet` through `BINANCE_UM_DIR`, and original `02/` frozen outputs. This is a descriptive *denominator* study, not a matching-adjusted or prospective predictive test. See `discussions/Liquidity_Absorption/032_chatgpt_la10_unselected_level_universe_protocol.md` for risk-set/censoring limitations and next matching protocol.
