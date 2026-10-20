@@ -1,0 +1,23 @@
+{
+  "version": "LA-A03d-0.1.0",
+  "status": "EXPLORATORY_FROZEN_MODEL_RISK_BRIDGE_NO_EDGE_CLAIM",
+  "n_events": 452,
+  "n_forecasts": 452,
+  "n_rows": 4520,
+  "n_taker_sims": 904,
+  "n_maker_sims": 1808,
+  "taker_tape": {
+    "read_daily_parquet_files": 171,
+    "missing_trade_day_files": [
+      "BTCUSDT:2026-10-01",
+      "ETHUSDT:2026-10-01"
+    ]
+  },
+  "maker_tape": {
+    "trade_daily_files_read": 170,
+    "missing_daily_files": [
+      "BTCUSDT:2026-10-01",
+      "ETHUSDT:2026-10-01"
+    ]
+  }
+}

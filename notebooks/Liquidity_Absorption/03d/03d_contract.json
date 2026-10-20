@@ -1,0 +1,35 @@
+{
+  "version": "LA-A03d-0.1.0",
+  "risk_config": {
+    "sigma_stop_horizon_min": 60,
+    "sigma_stop_multiplier": 1.0,
+    "risk_fraction": 0.0025,
+    "reference_equity_usdt": 10000.0,
+    "max_notional_usdt": 10000.0,
+    "taker_roundtrip_cost_allowance_bp": 14.0,
+    "maker_entry_taker_exit_cost_allowance_bp": 9.0,
+    "hold_windows": [
+      60,
+      240
+    ],
+    "spot_max_stale_minutes": 0
+  },
+  "vd18": {
+    "model": "VD18-0.1.0",
+    "selection": "HAR_4 historical-VALID chosen",
+    "saved_sample_last": "2026-09-18 23:55:00+00:00",
+    "source": "notebooks\\Volatility_Dynamics\\18\\18_manifest.json",
+    "forecast_measure": "E[net terminal 5m SPOT log-return squared], not path max adverse excursion"
+  },
+  "source_events": 452,
+  "forecast_present": 452,
+  "no_forecast_events": 0,
+  "stop_rule": "farthest protective stop: beyond second-touch wick, original zone outer edge, or k x VD18 60m spot net-return sigma; rounded outward to A03 assumed tick",
+  "target": "unchanged original A03/A03b selected structural target, asserted at taker entry; maker shares frozen target",
+  "holding": "compare predeclared 60 and 240 minutes; no outcome-based hold selection",
+  "sizing": "reference position budget, bounded notional, includes assumed round-trip cost allowance; not live account equity",
+  "maker": "A03c post-signal contact/through eligibility only; may be same encounter, NEVER proven maker queue fill",
+  "caveat": "volatility predicts terminal return scale, NOT direction/MAE/first-passage; maker queue, bid/ask, funding, capital reservation absent",
+  "data": "VD18 spot for predictor; Binance UM perps for executable print proxies; no spot-perp calibration validated",
+  "status": "EXPLORATORY_FROZEN_MODEL_RISK_BRIDGE_NO_EDGE_CLAIM"
+}
