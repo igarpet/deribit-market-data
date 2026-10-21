@@ -1,0 +1,31 @@
+{
+  "version": "LA-LEVEL-UNIVERSE-10-0.1.0",
+  "status": "EXPLORATORY_SELECTED_VS_UNSELECTED_LEVEL_UNIVERSE_NOT_PREDICTIVE",
+  "original_A02_signals": 452,
+  "replayed_signals": 452,
+  "exact_signal_replay": true,
+  "level_episode_rows_all_including_warmup": 15045,
+  "primary_new_level_episodes": 14577,
+  "primary_classification_counts": {
+    "NO_VALID_TOUCH": 11137,
+    "FIRST_TOUCH_NO_SIGNAL": 3015,
+    "SECOND_TOUCH_SIGNAL": 425
+  },
+  "primary_censored_at_end": 7,
+  "first_touch_spells_including_warmup": 3967,
+  "first_touch_same_close_as_availability": 108,
+  "flags": "Future second touch is an outcome; unselected control level episodes cannot be called failed trades.",
+  "data_source": "Binance USD-M 1m candle, exact frozen A02 reference/selection rules; no tick/L2 or queue",
+  "interpretation": "Observed reference episodes; first-touch incidence uses observed/competing censored denominators, not naive all-level probability.",
+  "configuration": {
+    "primary_start": "2026-07-01",
+    "primary_end": "2026-09-30",
+    "horizons_min": [
+      5,
+      15,
+      30,
+      60,
+      90
+    ]
+  }
+}
