@@ -1,0 +1,10 @@
+{
+ "module": "Turtle_Breakout_02",
+ "version": "TB02-0.1.0",
+ "synthetic": false,
+ "window": [
+  "2020-10-15 00:00:00+00:00",
+  "2026-10-24 00:00:00+00:00"
+ ],
+ "runtime_s": 10.4
+}
