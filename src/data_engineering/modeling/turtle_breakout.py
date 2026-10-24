@@ -42,7 +42,7 @@ from dataclasses import asdict, dataclass, replace
 import numpy as np
 import pandas as pd
 
-VERSION = "TB01-0.1.0"
+VERSION = "TB01-0.2.0"   # 0.2.0 (TB 03): h4 periods and volatility-engine sizing; defaults reproduce 0.1.0
 ASSETS = ("BTC", "ETH", "SOL", "XRP")
 NY = "America/New_York"
 COMMON_START = pd.Timestamp("2020-10-15", tz="UTC")     # all four perps listed + warm-up (SOLUSDT perp 2020-09)
@@ -52,7 +52,7 @@ BAR_MIN = 5
 
 @dataclass(frozen=True)
 class Params:
-    period: str = "day"            # "day" (17:00 NY) or "hour"
+    period: str = "day"            # "day" (17:00 NY), "h4" (UTC 00/04/../20) or "hour"
     side: str = "long"             # "long", "short", "both"
     entry_n: int = 20
     exit_n: int = 10
@@ -60,6 +60,8 @@ class Params:
     stop_atr: float = 2.0
     risk_frac: float = 0.02
     max_pos_lev: float = 3.0       # notional per position <= 3 x last marked equity (binds only for tiny ATR)
+    sizing: str = "atr"            # "atr" | "engine" (engine unit sizes the position) | "engine_stop" (also the fixed stop)
+    calib_min_obs: int = 30        # engine unit = c x sigma_engine, c = expanding median of ATR / sigma_engine (causal)
     start_equity: float = 100_000.0
     fee: float = 0.0005
     slip: float = 0.0001
@@ -117,17 +119,21 @@ def period_id(end: pd.DatetimeIndex, period: str) -> np.ndarray:
     if period == "day":
         loc = (end - pd.Timedelta(seconds=1)).tz_convert(NY).tz_localize(None)
         return ((loc - pd.Timestamp("1970-01-01 17:00")) // pd.Timedelta(days=1)).to_numpy().astype(np.int64)
-    if period == "hour":
+    if period in ("hour", "h4"):
+        step = pd.Timedelta(hours=1 if period == "hour" else 4)
         return np.asarray((end - pd.Timedelta(seconds=1) - pd.Timestamp("1970-01-01", tz="UTC"))
-                          // pd.Timedelta(hours=1)).astype(np.int64)
+                          // step).astype(np.int64)
     raise ValueError(period)
+
+
+PERIOD_MIN = {"day": 1440, "h4": 240, "hour": 60}
 
 
 def period_end(pid: np.ndarray, period: str) -> pd.DatetimeIndex:
     if period == "day":
         loc = pd.Timestamp("1970-01-02 17:00") + pd.to_timedelta(pid, unit="D")
         return pd.DatetimeIndex(loc).tz_localize(NY, ambiguous="NaT", nonexistent="shift_forward").tz_convert("UTC")
-    return pd.to_datetime((pid + 1) * 3600, unit="s", utc=True)
+    return pd.to_datetime((pid + 1) * PERIOD_MIN[period] * 60, unit="s", utc=True)
 
 
 def _rma(x: np.ndarray, n: int) -> np.ndarray:
@@ -172,9 +178,27 @@ class AssetData:
     first_dn: np.ndarray
     smin: np.ndarray               # per bar: min low from the bar to the end of its period
     smax: np.ndarray
+    eng_sig: np.ndarray | None = None   # per bar: engine sd of the log return over one period, as of the bar's close
+    eng_c: np.ndarray | None = None     # per period: causal calibration c = expanding median of ATR / (sigma x price)
 
 
-def prepare_asset(name: str, b5: pd.DataFrame, fund: pd.DataFrame | None, p: Params) -> AssetData:
+def engine_sigma(end: pd.DatetimeIndex, close: np.ndarray, fits: dict, asset: str, horizon_min: int) -> np.ndarray:
+    """Frozen VD18 HAR_4 (AM-T-HAR-Blend variance level) on 5m closes at bar END; sd over horizon_min minutes
+    (log-linear interpolation of the 15/60/240 per-minute rates, flat beyond 240; vwap_drift.variance_to)."""
+    from . import vwap_drift as vd
+    z = pd.DataFrame({"close": close}, index=end)
+    r = np.log(z["close"]).diff()
+    r[pd.Series(end, index=end).diff().ne(pd.Timedelta(minutes=BAR_MIN)).to_numpy()] = np.nan
+    sq = r.pow(2)
+    for L in (30, 60, 240, 1440):
+        z[f"har_logrv_{L}"] = np.log(np.maximum(sq.rolling(L // 5, min_periods=L // 5).sum(), 1e-16))
+    z["slot"] = (end.hour * 60 + end.minute) // 5
+    V = np.column_stack([vd.predict_har(fits[h], z, asset) for h in vd.ENGINE_H])
+    return np.sqrt(vd.variance_to(np.full(len(z), float(horizon_min)), V))
+
+
+def prepare_asset(name: str, b5: pd.DataFrame, fund: pd.DataFrame | None, p: Params,
+                  engine: dict | None = None) -> AssetData:
     end = pd.DatetimeIndex(b5.index)
     o, h, l, c = (b5[x].to_numpy(float) for x in ("open", "high", "low", "close"))
     n = len(c)
@@ -192,7 +216,7 @@ def prepare_asset(name: str, b5: pd.DataFrame, fund: pd.DataFrame | None, p: Par
     last = np.r_[k[1:] != k[:-1], True]
     s[k[first]] = np.flatnonzero(first); e[k[last]] = np.flatnonzero(last)
     cnt = np.bincount(k, minlength=K)
-    expected = (1440 if p.period == "day" else 60) // BAR_MIN
+    expected = PERIOD_MIN[p.period] // BAR_MIN
     full = cnt >= p.min_bar_share * expected
     ph = np.full(K, np.nan); pl = np.full(K, np.nan); po = np.full(K, np.nan); pc = np.full(K, np.nan)
     has = s >= 0
@@ -218,8 +242,17 @@ def prepare_asset(name: str, b5: pd.DataFrame, fund: pd.DataFrame | None, p: Par
         u = pd.Series(dn).groupby(kb[dn]).min(); first_dn[u.index.to_numpy()] = u.to_numpy()
     smin = pd.Series(l[::-1]).groupby(k[::-1]).cummin().to_numpy()[::-1]
     smax = pd.Series(h[::-1]).groupby(k[::-1]).cummax().to_numpy()[::-1]
+    eng_sig = eng_c = None
+    if engine is not None:
+        eng_sig = engine_sigma(end, c, engine, name, PERIOD_MIN[p.period])
+        prev = s - 1
+        okp = (s > 0)
+        ratio = np.full(K, np.nan)
+        ratio[okp] = atr[okp] / (eng_sig[prev[okp]] * c[prev[okp]])
+        rs = pd.Series(ratio)
+        eng_c = rs.expanding(min_periods=p.calib_min_obs).median().shift(1).to_numpy()
     return AssetData(name, end, o, h, l, c, fcum, pid0, s, e, full, ph, pl, po, pc, hi_n, lo_n, lo_x, hi_x, atr,
-                     first_up, first_dn, smin, smax)
+                     first_up, first_dn, smin, smax, eng_sig, eng_c)
 
 
 # ---------------------------------------------------------------- portfolio simulation
@@ -261,6 +294,7 @@ def simulate(data: dict, p: Params, start: pd.Timestamp | None = None, end: pd.T
     gross = np.zeros(pid_hi - pid_lo + 1)
     trades = []
     elig = {a: 0 for a in names}; entries = {a: 0 for a in names}
+    eng_used = {a: 0 for a in names}; eng_fallback = {a: 0 for a in names}; capped = {a: 0 for a in names}
 
     def close(a, d, P, jx, px, reason):
         nonlocal realized
@@ -275,9 +309,23 @@ def simulate(data: dict, p: Params, start: pd.Timestamp | None = None, end: pd.T
 
     def open_(a, d, k, j, px, dirn, kind):
         atr = d.atr[k]
-        u = min(p.risk_frac * hwm / (p.stop_atr * atr), p.max_pos_lev * e_prev / px)
+        unit, stop_dist = atr, atr
+        if p.sizing != "atr":
+            sg = np.nan
+            if d.eng_sig is not None and j > 0:
+                sg = d.eng_sig[j - 1] * d.c[j - 1] * d.eng_c[k]
+            if np.isfinite(sg) and sg > 0:
+                unit = sg
+                if p.sizing == "engine_stop":
+                    stop_dist = sg
+                eng_used[a] += 1
+            else:
+                eng_fallback[a] += 1
+        u = min(p.risk_frac * hwm / (p.stop_atr * unit), p.max_pos_lev * e_prev / px)
+        if u < p.risk_frac * hwm / (p.stop_atr * unit):
+            capped[a] += 1
         P = {"dir": dirn, "je": j, "px": px, "units": u, "kind": kind,
-             "fixed": px - dirn * p.stop_atr * atr}
+             "fixed": px - dirn * p.stop_atr * stop_dist, "unit_over_atr": unit / atr}
         pos[a] = P
         entries[a] += 1
         # same-period stop after the entry bar (entry bar itself excluded unless entered at the open)
@@ -360,7 +408,8 @@ def simulate(data: dict, p: Params, start: pd.Timestamp | None = None, end: pd.T
     idx = period_end(np.arange(pid_lo, pid_hi + 1), p.period)
     E = pd.Series(eq, index=idx).dropna()
     T = pd.DataFrame(trades, columns=TRADE_COLS)
-    stats = {"eligible": elig, "entries": entries,
+    stats = {"eligible": elig, "entries": entries, "engine_used": eng_used, "engine_fallback": eng_fallback,
+             "leverage_capped": capped,
              "p_entry": {a: entries[a] / elig[a] if elig[a] else 0.0 for a in names},
              "mean_gross_leverage": float(np.nanmean(gross)), "max_gross_leverage": float(np.nanmax(gross)),
              "gross": pd.Series(gross, index=idx)}

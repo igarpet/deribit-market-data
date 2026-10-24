@@ -13,6 +13,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 | `002_claude_tb01_readout.md` | TB 01 result: `TREND_EDGE` as registered — CAGR 74.5%, Sharpe 1.57, 0/1,000 random portfolios as good; G2 not credible (never-rebalanced benchmark went below zero via funding on SOL's notional); concentration and survivorship open |
 | `003_claude_tb02_preregistration.md` | TB 02: constant-mix benchmarks B1 perp monthly, B2 perp daily, B3 spot proxy monthly; strategy must beat all three on Sharpe (21d block bootstrap) |
 
-Next turn in this branch: `004`.
+| `004_claude_tb02_readout.md` | TB 02 result: `FAILS_B1_B2_B3` — Sharpe 1.57 vs 0.94–1.21, all differences positive but every 95% interval includes 0 |
+| `005_claude_tb03_preregistration.md` | TB 03: 9 strategies = daily / 4h candles / last 4 hours × ATR / engine sizing / engine sizing + stop; per-strategy G1 (luck, net CAGR > 0) and G2 (TB 02 benchmarks), Bonferroni over 9; contrasts C1–C8 |
+
+Next turn in this branch: `006`.
 
 Procedure and numbering rules: `../README.md`.

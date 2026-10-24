@@ -61,12 +61,12 @@ def registration(bp: BParams | None = None) -> dict:
 def daily_panel(data: dict, start: pd.Timestamp, end: pd.Timestamp | None) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Daily (17:00 NY) close and cumulative funding (rate x price) per asset, aligned on period ends."""
     closes, funds = {}, {}
-    for a, d in data.items():
-        has = d.e >= 0
-        pid = np.flatnonzero(has) + d.pid0
-        idx = tb.period_end(pid, "day")
-        closes[a] = pd.Series(d.c[d.e[has]], index=idx)
-        funds[a] = pd.Series(d.fcum[d.e[has]], index=idx)
+    for a, d in data.items():                       # daily 17:00 NY closes, whatever the strategy's own timeframe
+        dpid = tb.period_id(d.end, "day")
+        last = np.r_[dpid[1:] != dpid[:-1], True]
+        idx = tb.period_end(dpid[last], "day")
+        closes[a] = pd.Series(d.c[last], index=idx)
+        funds[a] = pd.Series(d.fcum[last], index=idx)
     C = pd.DataFrame(closes).sort_index()
     F = pd.DataFrame(funds).sort_index().ffill()
     m = C.index >= start
