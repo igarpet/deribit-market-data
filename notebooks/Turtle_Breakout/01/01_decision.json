@@ -1,0 +1,93 @@
+{
+ "decision": {
+  "version": "TB01-0.1.0",
+  "status": "PREREGISTERED_TB001",
+  "real_cagr": 0.745298491464911,
+  "real_sharpe": 1.565860810872366,
+  "real_max_dd": -0.3606574409394919,
+  "null_cagr_median": 0.23945413279036876,
+  "null_share_cagr_ge_real": 0.0,
+  "sharpe_sharpe_strategy": 1.566216809697216,
+  "sharpe_sharpe_bh": 0.7660041696324557,
+  "sharpe_diff": 0.8002126400647603,
+  "sharpe_lo": 0.04269289157944509,
+  "sharpe_hi": 1.4480448819679614,
+  "G1_beats_luck": "PASS",
+  "G2_beats_buy_and_hold": "PASS",
+  "verdict": "TREND_EDGE"
+ },
+ "primary_metrics": {
+  "start": "2020-10-15",
+  "end": "2026-10-24",
+  "years": 6.023271731690623,
+  "final_equity": 2863169.1561331195,
+  "total_return": 27.631691561331195,
+  "cagr": 0.745298491464911,
+  "sharpe": 1.565860810872366,
+  "max_dd": -0.3606574409394919,
+  "trades": 180,
+  "win_rate": 0.40555555555555556,
+  "profit_factor": 2.4189196508723656,
+  "avg_hold_days": 17.582349537037036,
+  "fees": 67361.98656245299,
+  "funding": 287767.8246281793
+ },
+ "leverage": {
+  "mean": 0.4123585565814266,
+  "max": 2.235947613790971
+ },
+ "p_entry": {
+  "BTC": 0.03746177370030581,
+  "ETH": 0.03254437869822485,
+  "SOL": 0.034023668639053255,
+  "XRP": 0.026434558349451968
+ },
+ "registration": {
+  "period": "day",
+  "side": "long",
+  "entry_n": 20,
+  "exit_n": 10,
+  "atr_n": 20,
+  "stop_atr": 2.0,
+  "risk_frac": 0.02,
+  "max_pos_lev": 3.0,
+  "start_equity": 100000.0,
+  "fee": 0.0005,
+  "slip": 0.0001,
+  "funding": true,
+  "min_bar_share": 0.8,
+  "n_twin": 2000,
+  "n_null": 1000,
+  "block_days": 21,
+  "n_boot": 2000,
+  "alpha": 0.05,
+  "seed": 19831,
+  "status": "PREREGISTERED_TB001",
+  "version": "TB01-0.1.0",
+  "assets": [
+   "BTC",
+   "ETH",
+   "SOL",
+   "XRP"
+  ],
+  "common_start": "2020-10-15 00:00:00+00:00",
+  "half_split": "2023-07-01 00:00:00+00:00",
+  "trading_day": "17:00-17:00 America/New_York",
+  "atr": "Wilder RMA of true range",
+  "leverage_cap": "position notional <= max_pos_lev x last marked equity; no entries at equity <= 0",
+  "primary": "period=day, side=long, 4-asset portfolio, 2% HWM risk, fees+slippage+funding",
+  "gates": {
+   "G1": "N2 random-entry portfolios with CAGR >= real: share < 0.05",
+   "G2": "Sharpe(strategy) - Sharpe(B&H at mean leverage): 21d block bootstrap q2.5 > 0"
+  },
+  "reported": [
+   "short",
+   "both",
+   "hour",
+   "no funding",
+   "per asset N1",
+   "halves",
+   "years"
+  ]
+ }
+}

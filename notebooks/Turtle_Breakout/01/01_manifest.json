@@ -1,0 +1,16 @@
+{
+ "module": "Turtle_Breakout_01",
+ "version": "TB01-0.1.0",
+ "synthetic": false,
+ "assets": [
+  "BTC",
+  "ETH",
+  "SOL",
+  "XRP"
+ ],
+ "window": [
+  "2020-10-15 00:00:00+00:00",
+  "2026-10-24 00:00:00+00:00"
+ ],
+ "runtime_s": 245.4
+}
