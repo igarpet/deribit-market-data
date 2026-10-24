@@ -1,0 +1,13 @@
+{
+ "module": "VWAP_Drift_01",
+ "version": "VWD01-0.1.0",
+ "synthetic": false,
+ "assets": [
+  "BTC",
+  "ETH",
+  "SOL",
+  "XRP"
+ ],
+ "origins_total": 25234936,
+ "runtime_s": 37.4
+}

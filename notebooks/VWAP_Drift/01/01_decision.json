@@ -1,0 +1,125 @@
+{
+ "decision": {
+  "version": "VWD01-0.1.0",
+  "status": "PREREGISTERED_VWD001",
+  "cell": {
+   "anchor": "session",
+   "h": "240",
+   "zb": "z2_3",
+   "vol": "high",
+   "jump": 0,
+   "dev_mean": 33.10052988789108,
+   "dev_lo": 7.316586535801156,
+   "dev_n": 7993,
+   "dev_days": 261
+  },
+  "test_n": 704,
+  "test_days": 42,
+  "test_mean_bp": 33.992530645904246,
+  "test_lo": -46.142088105049496,
+  "test_hi": 103.88510300315747,
+  "placebo_mean_bp": 5.326609437888895,
+  "real_minus_placebo_hour_matched": -13.957722230715337,
+  "diff_lo": -89.33350748572654,
+  "diff_hi": 49.94896538385092,
+  "test_hit_rate": 0.11505681818181818,
+  "test_p0_mean": 0.022381129232275004,
+  "G1_vwap_specific": "FAIL",
+  "G2_tradeable": "FAIL",
+  "options_fee_floor_bp": 12.0,
+  "options_considered": false,
+  "verdict": "NO_EDGE"
+ },
+ "registration": {
+  "grid_min": 5,
+  "warmup_min": 30,
+  "entry_lag": 1,
+  "min_exp_min": 15,
+  "jump_k": 4.0,
+  "jump_lookback": 60,
+  "vol_h": 60,
+  "tradeable_bp": 7.0,
+  "option_fee_floor_bp": 12.0,
+  "min_dev_days": 30,
+  "min_dev_n": 500,
+  "min_test_days": 20,
+  "n_boot": 2000,
+  "n_boot_table": 400,
+  "s1_alpha": 0.05,
+  "seed": 20261024,
+  "status": "PREREGISTERED_VWD001",
+  "version": "VWD01-0.1.0",
+  "test_start": "2026-04-01 00:00:00+00:00",
+  "assets": [
+   "BTC",
+   "ETH",
+   "SOL",
+   "XRP"
+  ],
+  "horizons": [
+   "15",
+   "60",
+   "240",
+   "EXP"
+  ],
+  "anchors": [
+   {
+    "name": "session",
+    "kind": "real",
+    "period_min": 1440,
+    "phase_min": 480
+   },
+   {
+    "name": "session",
+    "kind": "placebo",
+    "period_min": 1440,
+    "phase_min": 120
+   },
+   {
+    "name": "session",
+    "kind": "placebo",
+    "period_min": 1440,
+    "phase_min": 840
+   },
+   {
+    "name": "session",
+    "kind": "placebo",
+    "period_min": 1440,
+    "phase_min": 1200
+   },
+   {
+    "name": "h4",
+    "kind": "real",
+    "period_min": 240,
+    "phase_min": 0
+   },
+   {
+    "name": "h4",
+    "kind": "placebo",
+    "period_min": 240,
+    "phase_min": 60
+   },
+   {
+    "name": "h4",
+    "kind": "placebo",
+    "period_min": 240,
+    "phase_min": 120
+   },
+   {
+    "name": "h4",
+    "kind": "placebo",
+    "period_min": 240,
+    "phase_min": 180
+   }
+  ],
+  "cells": "anchor(2) x horizon(4) x zb(z1_2,z2_3,z3p) x vol(3) x jump(2) = 144 real cells",
+  "selection": "DEV real cell with max day-bootstrap q2.5 of mean y (n_days >= 30, n >= 500); TEST needs >= 20 days or the verdict is INSUFFICIENT_TEST",
+  "gates": {
+   "G1": "TEST hour-matched real - placebo q2.5 > 0",
+   "G2": "TEST real mean y q2.5 > 7.0 bp"
+  },
+  "options_gate": "G1 & G2 and TEST mean > 12.0 bp + measured half-spreads/delta",
+  "secondary": "S1: vol=high, zb in {z2_3,z3p}, 8 anchor x horizon tests, Bonferroni 1-0.05/8",
+  "engine": "frozen VD18 HAR_4 (15/60/240), inputs = perp 5m closes; EXP by log-linear rate interpolation"
+ }
+}
