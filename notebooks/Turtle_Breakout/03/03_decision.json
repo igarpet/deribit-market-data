@@ -1,0 +1,257 @@
+{
+ "strategies": {
+  "daily|atr": {
+   "cagr": 0.745298491464911,
+   "sharpe": 1.565860810872366,
+   "max_dd": -0.3606574409394919,
+   "G1": "PASS",
+   "G2": "FAIL",
+   "verdict": "BEATS_LUCK_ONLY"
+  },
+  "daily|engine": {
+   "cagr": 0.41459922664744786,
+   "sharpe": 1.4247516260917938,
+   "max_dd": -0.3236169716909113,
+   "G1": "FAIL",
+   "G2": "FAIL",
+   "verdict": "NO_EDGE"
+  },
+  "daily|engine_stop": {
+   "cagr": 0.4268307694846267,
+   "sharpe": 1.4524378851912179,
+   "max_dd": -0.3207407885489304,
+   "G1": "FAIL",
+   "G2": "FAIL",
+   "verdict": "NO_EDGE"
+  },
+  "h4_candles|atr": {
+   "cagr": 1.5524513116300547,
+   "sharpe": 1.2673078743083708,
+   "max_dd": -0.763500902667985,
+   "G1": "PASS",
+   "G2": "FAIL",
+   "verdict": "BEATS_LUCK_ONLY"
+  },
+  "h4_candles|engine": {
+   "cagr": 1.04977207344376,
+   "sharpe": 1.1489060284517,
+   "max_dd": -0.643331009893487,
+   "G1": "PASS",
+   "G2": "FAIL",
+   "verdict": "BEATS_LUCK_ONLY"
+  },
+  "h4_candles|engine_stop": {
+   "cagr": 1.1141135164821332,
+   "sharpe": 1.183022489438762,
+   "max_dd": -0.70545850822109,
+   "G1": "PASS",
+   "G2": "FAIL",
+   "verdict": "BEATS_LUCK_ONLY"
+  },
+  "last_4h|atr": {
+   "cagr": -0.9959835206390288,
+   "sharpe": 0.32958568186994125,
+   "max_dd": -0.9999999999999999,
+   "G1": "FAIL",
+   "G2": "FAIL",
+   "verdict": "NO_EDGE"
+  },
+  "last_4h|engine": {
+   "cagr": -0.9959896782200309,
+   "sharpe": 0.42083233709151874,
+   "max_dd": -0.9999999999999999,
+   "G1": "FAIL",
+   "G2": "FAIL",
+   "verdict": "NO_EDGE"
+  },
+  "last_4h|engine_stop": {
+   "cagr": -0.9959896782200309,
+   "sharpe": 0.41939360931240127,
+   "max_dd": -0.9999999999999999,
+   "G1": "FAIL",
+   "G2": "FAIL",
+   "verdict": "NO_EDGE"
+  }
+ },
+ "contrasts": [
+  {
+   "contrast": "C1",
+   "a": "daily|engine",
+   "b": "daily|atr",
+   "diff": -0.14114126598702947,
+   "lo": -0.43092298579951316,
+   "hi": 0.16632055330729317,
+   "result": "NO_DIFFERENCE"
+  },
+  {
+   "contrast": "C2",
+   "a": "h4_candles|engine",
+   "b": "h4_candles|atr",
+   "diff": -0.11842876454426587,
+   "lo": -0.2961347104461218,
+   "hi": 0.029528453523875668,
+   "result": "NO_DIFFERENCE"
+  },
+  {
+   "contrast": "C3",
+   "a": "last_4h|engine",
+   "b": "last_4h|atr",
+   "diff": 0.09126740017017371,
+   "lo": -0.11066675306065939,
+   "hi": 0.32629725562087303,
+   "result": "NO_DIFFERENCE"
+  },
+  {
+   "contrast": "C4",
+   "a": "daily|engine_stop",
+   "b": "daily|atr",
+   "diff": -0.11344871241006604,
+   "lo": -0.4299654797725497,
+   "hi": 0.260036573258798,
+   "result": "NO_DIFFERENCE"
+  },
+  {
+   "contrast": "C5",
+   "a": "h4_candles|engine_stop",
+   "b": "h4_candles|atr",
+   "diff": -0.08430454717174785,
+   "lo": -0.31948509804335545,
+   "hi": 0.13105617411663265,
+   "result": "NO_DIFFERENCE"
+  },
+  {
+   "contrast": "C6",
+   "a": "last_4h|engine_stop",
+   "b": "last_4h|atr",
+   "diff": 0.08982834529595629,
+   "lo": -0.1277206742725294,
+   "hi": 0.36262158195477195,
+   "result": "NO_DIFFERENCE"
+  },
+  {
+   "contrast": "C7",
+   "a": "h4_candles|atr",
+   "b": "daily|atr",
+   "diff": -0.29862081264457263,
+   "lo": -1.15094318191011,
+   "hi": 0.5878722501262494,
+   "result": "NO_DIFFERENCE"
+  },
+  {
+   "contrast": "C8",
+   "a": "last_4h|atr",
+   "b": "daily|atr",
+   "diff": -1.2365561964447287,
+   "lo": -2.4039517574558835,
+   "hi": -0.02093299456645553,
+   "result": "B_BETTER"
+  }
+ ],
+ "null_scale": 1.0,
+ "registration": {
+  "n_strategies": 9,
+  "n_contrasts": 8,
+  "alpha": 0.05,
+  "block_days": 21,
+  "n_boot": 2000,
+  "seed": 20261026,
+  "bench_lev_cap": 1.0,
+  "status": "PREREGISTERED_TB005",
+  "version": "TB03-0.1.0",
+  "timeframes": {
+   "daily": {
+    "period": "day"
+   },
+   "h4_candles": {
+    "period": "h4"
+   },
+   "last_4h": {
+    "period": "hour",
+    "entry_n": 4,
+    "exit_n": 2,
+    "atr_n": 4
+   }
+  },
+  "sizings": [
+   "atr",
+   "engine",
+   "engine_stop"
+  ],
+  "n_null": {
+   "daily": 1000,
+   "h4_candles": 400,
+   "last_4h": 200
+  },
+  "contrasts": [
+   {
+    "id": "C1",
+    "a": "daily|engine",
+    "b": "daily|atr"
+   },
+   {
+    "id": "C2",
+    "a": "h4_candles|engine",
+    "b": "h4_candles|atr"
+   },
+   {
+    "id": "C3",
+    "a": "last_4h|engine",
+    "b": "last_4h|atr"
+   },
+   {
+    "id": "C4",
+    "a": "daily|engine_stop",
+    "b": "daily|atr"
+   },
+   {
+    "id": "C5",
+    "a": "h4_candles|engine_stop",
+    "b": "h4_candles|atr"
+   },
+   {
+    "id": "C6",
+    "a": "last_4h|engine_stop",
+    "b": "last_4h|atr"
+   },
+   {
+    "id": "C7",
+    "a": "h4_candles|atr",
+    "b": "daily|atr"
+   },
+   {
+    "id": "C8",
+    "a": "last_4h|atr",
+    "b": "daily|atr"
+   }
+  ],
+  "base": {
+   "period": "day",
+   "side": "long",
+   "entry_n": 20,
+   "exit_n": 10,
+   "atr_n": 20,
+   "stop_atr": 2.0,
+   "risk_frac": 0.02,
+   "max_pos_lev": 3.0,
+   "sizing": "atr",
+   "calib_min_obs": 30,
+   "start_equity": 100000.0,
+   "fee": 0.0005,
+   "slip": 0.0001,
+   "funding": true,
+   "min_bar_share": 0.8,
+   "n_twin": 2000,
+   "n_null": 1000,
+   "block_days": 21,
+   "n_boot": 2000,
+   "alpha": 0.05,
+   "seed": 19831,
+   "status": "PREREGISTERED_TB001"
+  },
+  "rules": {
+   "G1": "random-entry share CAGR >= real < alpha/9 and net CAGR > 0",
+   "G2": "Sharpe diff vs B1, B2, B3: (1-alpha/9) interval lower bound > 0, all three",
+   "contrasts": "paired Sharpe diff, (1-alpha/8) interval excludes 0"
+  }
+ }
+}
