@@ -27,6 +27,7 @@ Each research line is a **branch**: one folder here and one under `notebooks/`, 
 | Hurst Regimes (2026-10-11) | `Hurst_Regimes/` | `notebooks/Hurst_Regimes/` |
 | Breakout Trend (2026-10-13) | `Breakout_Trend/` | `notebooks/Breakout_Trend/` |
 | VWAP Events (2026-10-13, concluded VWAP 002) | `VWAP_Events/` | `notebooks/VWAP_Events/` |
+| VWAP Drift (2026-10-24) | `VWAP_Drift/` | `notebooks/VWAP_Drift/` |
 | Regime Structure (2026-10-13) | `Regime_Structure/` | `notebooks/Regime_Structure/` |
 | Signed Jumps (2026-10-16) | `Signed_Jumps/` | `notebooks/Signed_Jumps/` |
 | Predictive State HMM (2026-10-17) | `Predictive_State_HMM/` | `notebooks/Predictive_State_HMM/` |
