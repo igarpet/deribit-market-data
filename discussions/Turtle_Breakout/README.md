@@ -20,6 +20,8 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `007_claude_tb05_preregistration.md` | TB 04 in brief (model-only confirmation, TON data artefact, no persistent regimes) and TB 05: original rules on 13 candle sizes 1 min → 1 day; fractal edge (R vs random entries, z-test) and tradeable edge (net bp, taker), Bonferroni over 13; bar-close fills |
 
-Next turn in this branch: `008`.
+| `008_claude_tb06_preregistration.md` | TB 05 in brief (not fractal; daily the only tradeable timeframe) and TB 06: daily turtle on BTC/ETH with a put struck at entry (38-day tenor from TB 04 discovery) and option-only versions (ATM call, call +1 ATR); DVOL-priced; Q1/Q2 Sharpe vs perpetual |
+
+Next turn in this branch: `009`.
 
 Procedure and numbering rules: `../README.md`.
