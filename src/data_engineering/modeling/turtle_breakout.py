@@ -42,7 +42,7 @@ from dataclasses import asdict, dataclass, replace
 import numpy as np
 import pandas as pd
 
-VERSION = "TB01-0.2.0"   # 0.2.0 (TB 03): h4 periods and volatility-engine sizing; defaults reproduce 0.1.0
+VERSION = "TB01-0.3.0"   # 0.3.0 (TB 08): size_base "hwm" | "equity"; defaults reproduce 0.2.0. 0.2.0 (TB 03): h4 periods and volatility-engine sizing; defaults reproduce 0.1.0
 ASSETS = ("BTC", "ETH", "SOL", "XRP")
 NY = "America/New_York"
 COMMON_START = pd.Timestamp("2020-10-15", tz="UTC")     # all four perps listed + warm-up (SOLUSDT perp 2020-09)
@@ -60,6 +60,7 @@ class Params:
     stop_atr: float = 2.0
     risk_frac: float = 0.02
     max_pos_lev: float = 3.0       # notional per position <= 3 x last marked equity (binds only for tiny ATR)
+    size_base: str = "hwm"         # risk_frac applies to the high-water mark ("hwm", TB 01) or to the last marked equity ("equity")
     sizing: str = "atr"            # "atr" | "engine" (engine unit sizes the position) | "engine_stop" (also the fixed stop)
     calib_min_obs: int = 30        # engine unit = c x sigma_engine, c = expanding median of ATR / sigma_engine (causal)
     start_equity: float = 100_000.0
@@ -321,8 +322,9 @@ def simulate(data: dict, p: Params, start: pd.Timestamp | None = None, end: pd.T
                 eng_used[a] += 1
             else:
                 eng_fallback[a] += 1
-        u = min(p.risk_frac * hwm / (p.stop_atr * unit), p.max_pos_lev * e_prev / px)
-        if u < p.risk_frac * hwm / (p.stop_atr * unit):
+        base = hwm if p.size_base == "hwm" else e_prev
+        u = min(p.risk_frac * base / (p.stop_atr * unit), p.max_pos_lev * e_prev / px)
+        if u < p.risk_frac * base / (p.stop_atr * unit):
             capped[a] += 1
         P = {"dir": dirn, "je": j, "px": px, "units": u, "kind": kind,
              "fixed": px - dirn * p.stop_atr * stop_dist, "unit_over_atr": unit / atr}

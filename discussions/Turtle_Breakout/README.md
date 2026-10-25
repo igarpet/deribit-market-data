@@ -25,6 +25,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `009_claude_tb07_preregistration.md` | TB 06 in brief (put hedge `WORSENS`, calls `NO_DIFFERENCE`) and TB 07: what price does after losing exits (event study vs winners and random flat days) and a stop-and-reverse short at each losing exit; G1 mean R > 0, G2 vs random flat-day shorts |
 
-Next turn in this branch: `010`.
+
+| `010_claude_tb08_preregistration.md` | TB 07 in brief (`BEATS_RANDOM_SHORTS_ONLY`: reversals +0.17R, beat random shorts p 0.03, G1 fails; bear-year concentration) and TB 08: risk per trade 1%–100% on BTC vs 2%; growth difference, Holm over 99; 3× cap and equity-sizing sweeps, Kelly bootstrap |
+
+Next turn in this branch: `011`.
 
 Procedure and numbering rules: `../README.md`.
