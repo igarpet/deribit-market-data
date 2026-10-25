@@ -1,0 +1,87 @@
+{
+ "decision": {
+  "Q1_put_hedge": "WORSENS",
+  "Q2_call_only": "NO_DIFFERENCE",
+  "trades": 86,
+  "window": [
+   "2021-03-31 21:25:00+00:00",
+   "2026-10-24 00:00:00+00:00"
+  ]
+ },
+ "tests": {
+  "Q1 S1 perp+put vs S0 perp": {
+   "sharpe_a": 0.5344702393892933,
+   "sharpe_b": 0.7610583521458809,
+   "diff": -0.22658811275658763,
+   "lo": -0.41287994544623763,
+   "hi": -0.05007986504426392,
+   "ci_level": 0.975,
+   "days": 2032,
+   "result": "WORSENS"
+  },
+  "Q2 S2 call ATM vs S0 perp": {
+   "sharpe_a": 0.677943970945934,
+   "sharpe_b": 0.7610583521458809,
+   "diff": -0.08311438119994696,
+   "lo": -0.36094656568751315,
+   "hi": 0.19918692459052775,
+   "ci_level": 0.975,
+   "days": 2032,
+   "result": "NO_DIFFERENCE"
+  },
+  "S3 call +1 ATR vs S0 (reported)": {
+   "sharpe_a": 0.6373630637178282,
+   "sharpe_b": 0.7610583521458809,
+   "diff": -0.12369528842805266,
+   "lo": -0.4548033137404833,
+   "hi": 0.21132614879318976,
+   "ci_level": 0.975,
+   "days": 2032,
+   "result": "NO_DIFFERENCE"
+  },
+  "Q1 per-trade mean R, S1 - S0": {
+   "mean_diff_R": -0.1883540380903776,
+   "lo": -0.34291801949208817,
+   "hi": -0.02291634361621016,
+   "trades": 86
+  },
+  "Q2 per-trade mean R, S2 - S0": {
+   "mean_diff_R": -0.11998350713598517,
+   "lo": -0.3005081605303634,
+   "hi": 0.049418283574714936,
+   "trades": 86
+  }
+ },
+ "registration": {
+  "dte_days": 38,
+  "half_spread": 0.02,
+  "fee_rate": 0.0003,
+  "fee_cap": 0.125,
+  "delivery_rate": 0.00015,
+  "otm_atr": 1.0,
+  "n_boot": 2000,
+  "block_days": 21,
+  "alpha": 0.05,
+  "seed": 20261029,
+  "status": "PREREGISTERED_TB008",
+  "version": "TB06-0.1.0",
+  "assets": [
+   "BTC",
+   "ETH"
+  ],
+  "dte_source": "TB 04 discovery: mean hold of R>=3 trades = 37.8 d",
+  "strategies": {
+   "S0": "perp",
+   "S1": "perp + put K=entry, sold at turtle exit or settled at expiry",
+   "S2": "call K=entry, sold at turtle exit, rolled at expiry",
+   "S3": "call K=entry+1 ATR"
+  },
+  "pricing": "Black-76, sigma = DVOL as of the bar; buy at sigma(1+h), sell at sigma(1-h)",
+  "tests": {
+   "Q1": "S1 vs S0",
+   "Q2": "S2 vs S0",
+   "alpha_each": 0.025,
+   "stat": "paired Sharpe difference of daily cumulative-R curves (21d circular block bootstrap) -> IMPROVES (lower > 0) / WORSENS (upper < 0) / NO_DIFFERENCE; per-trade mean R difference (month-cluster bootstrap) and max drawdown reported"
+  }
+ }
+}
