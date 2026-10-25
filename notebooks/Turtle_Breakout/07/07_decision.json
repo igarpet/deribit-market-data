@@ -1,0 +1,72 @@
+{
+ "confirm": {
+  "reversals": 105,
+  "mean_R_rev": 0.16953357266162325,
+  "lo95": -0.13755748914986501,
+  "hi95": 0.5290761812366078,
+  "win_rate": 0.4095238095238095,
+  "mean_R_rev_gross": 0.17576382024099127,
+  "sum_R_rev": 17.801025129470442,
+  "median_hold_days": 15.753472222222221,
+  "mean_funding_bp": -0.4561005774722145,
+  "share_closed_by_next_long": 0.0,
+  "null_mean_R": -0.00975431244612826,
+  "null_sd": 0.09182505126602472,
+  "z": 1.9524942554983147,
+  "p": 0.02948525737131434,
+  "G1": "FAIL",
+  "G2": "PASS",
+  "verdict": "BEATS_RANDOM_SHORTS_ONLY"
+ },
+ "discovery": {
+  "reversals": 710,
+  "mean_R_rev": 0.03728263205073483,
+  "lo95": -0.16014923138062362,
+  "hi95": 0.25009693762553004,
+  "win_rate": 0.4126760563380282,
+  "mean_R_rev_gross": 0.04036740028148906,
+  "sum_R_rev": 26.47066875602173,
+  "median_hold_days": 12.996527777777779,
+  "mean_funding_bp": 10.919047001297244,
+  "share_closed_by_next_long": 0.0,
+  "null_mean_R": -0.030936046553151117,
+  "null_sd": 0.028081802446298588,
+  "z": 2.4292841862391823,
+  "p": 0.009995002498750625,
+  "G1": "FAIL",
+  "G2": "PASS",
+  "verdict": "BEATS_RANDOM_SHORTS_ONLY"
+ },
+ "verdict": "BEATS_RANDOM_SHORTS_ONLY",
+ "registration": {
+  "stop_atr": 2.0,
+  "side_cost": 0.0006,
+  "n_null": 2000,
+  "n_boot": 2000,
+  "alpha": 0.05,
+  "seed": 20261030,
+  "status": "PREREGISTERED_TB009",
+  "version": "TB07-0.1.0",
+  "horizons_days": [
+   1,
+   3,
+   5,
+   10
+  ],
+  "losing_exit": "long closed by a stop with net R < 0",
+  "reverse": "short at the exit fill; fixed stop +2 ATR, trailing 10-day high; closed at the next long entry",
+  "gates": {
+   "G1": "confirmation: mean R_rev > 0 with month-cluster bootstrap 95% lower bound > 0",
+   "G2": "confirmation: mean R_rev above random flat-day shorts, empirical one-sided p < 0.05 (2,000 runs)",
+   "verdict": "REVERSE_PAYS (G1 & G2) / BEATS_RANDOM_SHORTS_ONLY (G2) / NO_EDGE"
+  },
+  "reported": [
+   "discovery set, same statistics",
+   "event study vs winners and random flat days",
+   "fixed-horizon shorts",
+   "long-only vs long + reverse curves",
+   "by exit reason, by year, by asset"
+  ]
+ },
+ "synthetic": false
+}
