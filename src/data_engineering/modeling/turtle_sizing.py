@@ -25,7 +25,7 @@ import pandas as pd
 
 from . import turtle_breakout as tb
 
-VERSION = "TB08-0.1.0"
+VERSION = "TB08-0.2.0"   # 0.2.0 (TB 09): trade-list equity engine for long + stop-and-reverse; 0.1.0 functions unchanged
 FRACS = tuple(round(i / 100, 2) for i in range(1, 101))
 BASE_F = 0.02
 FLOOR = 1e-6
@@ -183,3 +183,96 @@ def kelly_boot(R: np.ndarray, sp: SParams, fracs=FRACS) -> np.ndarray:
         x = R[rng.integers(0, len(R), len(R))]
         out[i] = F[int(np.argmax(kelly_curve(x, fracs).to_numpy()))]
     return out
+
+
+# ---------------------------------------------------------------- TB 09: long + stop-and-reverse on one asset
+
+def trade_list(d: tb.AssetData, p: tb.Params, start, rp=None, with_reverse: bool = True) -> pd.DataFrame:
+    """Chronological, non-overlapping trades of one asset: TB 01 longs (entries do not depend on f) and, optionally,
+    the TB 07 reverse short at every losing long stop exit. Columns: dir, je, jx, px_in, px_out, atr, cost, kind."""
+    from . import turtle_reverse as tr
+    from . import turtle_trade_features as tf
+    rp = rp or tr.RParams()
+    _, TL, _ = tb.simulate({d.name: d}, p, start=start)                    # includes a final open trade ('end')
+    k = tb.period_id(pd.DatetimeIndex(TL.entry_time), p.period) - d.pid0
+    L = pd.DataFrame({"dir": 1, "je": TL.je.astype(int), "jx": TL.jx.astype(int), "px_in": TL.entry_px, "px_out": TL.exit_px,
+                      "atr": d.atr[k], "cost": p.fee + p.slip, "kind": "long",
+                      "end": (TL.reason == "end").to_numpy()})
+    if not with_reverse:
+        return L.sort_values("je").reset_index(drop=True)
+    T = tf.run_trades(d, p, start)
+    R = tr.reverse_trades(d, T, rp)
+    if len(R):
+        S = pd.DataFrame({"dir": -1, "je": d.end.get_indexer(pd.DatetimeIndex(R.rev_time)),
+                          "jx": d.end.get_indexer(pd.DatetimeIndex(R.rev_exit_time)), "px_in": R.rev_px, "px_out": R.rev_exit_px,
+                          "atr": R.atr_rev, "cost": rp.side_cost, "kind": "reverse", "end": False})
+        L = pd.concat([L, S], ignore_index=True)
+    L = L.sort_values(["je", "dir"]).reset_index(drop=True)
+    # positions must not overlap: each trade opens at or after the previous exit
+    assert (L.je.to_numpy()[1:] >= L.jx.to_numpy()[:-1]).all(), "overlapping trades"
+    return L
+
+
+def equity_from_trades(d: tb.AssetData, L: pd.DataFrame, p: tb.Params, f: float, start, cap: float,
+                       size_base: str = "hwm"):
+    """Daily-marked equity of a one-position-at-a-time trade list with TB 01 sizing:
+    u = min(f x base / (2 ATR), cap x E_prev / price), base = HWM or E_prev at the last period mark."""
+    pid_lo = int(tb.period_id(pd.DatetimeIndex([start + pd.Timedelta(minutes=tb.BAR_MIN)]), p.period)[0])
+    k_lo = max(0, pid_lo - d.pid0)
+    je_arr = L.je.to_numpy()
+    ev = [(int(r.jx), 0, i) for i, r in enumerate(L.itertuples())] + [(int(r.je), 1, i) for i, r in enumerate(L.itertuples())]
+    # by bar; at one bar: closes of earlier trades, then opens, then a close of a trade opened at that same bar
+    ev.sort(key=lambda x: (x[0], 1 if x[1] == 1 else (2 if je_arr[x[2]] == x[0] else 0)))
+    realized, hwm, e_prev = 0.0, p.start_equity, p.start_equity
+    units = {}; pnl_rows = []; marks = []; gross = []; capped = 0
+    ei = 0
+    for k in range(k_lo, len(d.s)):
+        if d.s[k] < 0:
+            continue
+        while ei < len(ev) and ev[ei][0] <= d.e[k]:
+            j, typ, i = ev[ei]; ei += 1
+            r = L.iloc[i]
+            if typ == 1:
+                if e_prev <= 0:
+                    continue
+                base = hwm if size_base == "hwm" else e_prev
+                want = f * base / (p.stop_atr * r.atr)
+                u = min(want, cap * e_prev / r.px_in)
+                capped += int(u < want)
+                units[i] = u
+            elif i in units and not bool(r.end):            # an 'end' trade stays open until after the last mark
+                u = units.pop(i)
+                pnl = r.dir * u * (r.px_out - r.px_in) - r.cost * u * (r.px_in + r.px_out) - r.dir * u * (d.fcum[int(r.jx)] - d.fcum[int(r.je)])
+                realized += pnl
+                pnl_rows.append({"kind": r.kind, "pnl": pnl, "exit_bar": int(r.jx)})
+        j = d.e[k]; unreal = 0.0; g = 0.0
+        for i, u in units.items():
+            r = L.iloc[i]
+            unreal += r.dir * u * (d.c[j] - r.px_in) - r.cost * u * r.px_in - r.dir * u * (d.fcum[j] - d.fcum[int(r.je)])
+            g += u * d.c[j]
+        E = p.start_equity + realized + unreal
+        marks.append((d.pid0 + k, E)); gross.append(g / E if E > 0 else np.nan)
+        hwm = max(hwm, E); e_prev = E
+    # open trade at the end: closed at the last bar, as TB 01
+    for i, u in list(units.items()):
+        r = L.iloc[i]; j = len(d.c) - 1
+        pnl = r.dir * u * (d.c[j] - r.px_in) - r.cost * u * (r.px_in + d.c[j]) - r.dir * u * (d.fcum[j] - d.fcum[int(r.je)])
+        realized += pnl; pnl_rows.append({"kind": r.kind, "pnl": pnl, "exit_bar": j})
+    pid = np.array([m[0] for m in marks])
+    Eser = pd.Series([m[1] for m in marks], index=tb.period_end(pid, p.period))
+    st = {"mean_gross_leverage": float(np.nanmean(gross)), "max_gross_leverage": float(np.nanmax(gross)),
+          "leverage_capped": {d.name: capped}}
+    return Eser, pd.DataFrame(pnl_rows), st
+
+
+def sweep_trades(d: tb.AssetData, L: pd.DataFrame, p: tb.Params, start, cap: float, size_base: str = "hwm", fracs=FRACS):
+    rows, curves = [], {}
+    for f in fracs:
+        E, T, st = equity_from_trades(d, L, p, f, start, cap, size_base)
+        D = daily_equity(E, p.start_equity)
+        curves[f] = D
+        row = {"f": f, **summarize(D, T, st, p.start_equity)}
+        if len(T):
+            row["pnl_long"] = float(T.loc[T.kind == "long", "pnl"].sum()); row["pnl_reverse"] = float(T.loc[T.kind == "reverse", "pnl"].sum())
+        rows.append(row)
+    return pd.DataFrame(rows), pd.DataFrame(curves)

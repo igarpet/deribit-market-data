@@ -102,5 +102,42 @@ class StatTests(unittest.TestCase):
         self.assertLess(q[0], 0.2); self.assertGreater(q[1], 0.2)
 
 
+class TradeListTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.b, cls.d = data(trend=0.0, seed=12)
+        cls.start = cls.b.index[0] + pd.Timedelta(days=30)
+        cls.L0 = ts.trade_list(cls.d, P, cls.start, with_reverse=False)
+        cls.L = ts.trade_list(cls.d, P, cls.start)
+
+    def test_engine_reproduces_simulate(self):
+        for f, cap, sb in ((0.02, 3.0, "hwm"), (0.1, 125.0, "hwm"), (0.3, 125.0, "hwm"), (0.2, 125.0, "equity")):
+            E1, T1, _ = ts.run_f(self.d, P, f, self.start, cap, sb)
+            E2, T2, _ = ts.equity_from_trades(self.d, self.L0, P, f, self.start, cap, sb)
+            pd.testing.assert_series_equal(tb.daily(E1), tb.daily(E2), check_freq=False)
+            self.assertAlmostEqual(T1.pnl.sum(), T2.pnl.sum(), places=4)
+
+    def test_reverse_trades_added_without_overlap(self):
+        self.assertGreater((self.L.kind == "reverse").sum(), 3)
+        self.assertTrue((self.L.je.to_numpy()[1:] >= self.L.jx.to_numpy()[:-1]).all())
+        rv = self.L[self.L.kind == "reverse"]
+        prev = self.L.shift(1)[self.L.kind == "reverse"]
+        np.testing.assert_array_equal(rv.je.to_numpy(), prev.jx.to_numpy())         # opens at the long's exit bar
+        np.testing.assert_allclose(rv.px_in.to_numpy(), prev.px_out.to_numpy())
+
+    def test_reverse_pnl_matches_tb07(self):
+        from data_engineering.modeling import turtle_reverse as tr
+        from data_engineering.modeling import turtle_trade_features as tf
+        R = tr.reverse_trades(self.d, tf.run_trades(self.d, P, self.start), tr.RParams())
+        E, T, _ = ts.equity_from_trades(self.d, self.L, P, 0.01, self.start, 125.0)
+        self.assertEqual((T.kind == "reverse").sum(), len(R))
+        _, Tf, _ = ts.equity_from_trades(self.d, self.L, P, 0.02, self.start, 125.0)
+        self.assertNotAlmostEqual(T.loc[T.kind == "reverse", "pnl"].sum(), Tf.loc[Tf.kind == "reverse", "pnl"].sum())
+
+    def test_sweep_trades_columns(self):
+        tab, C = ts.sweep_trades(self.d, self.L, P, self.start, 125.0, fracs=(0.01, 0.02))
+        self.assertIn("pnl_reverse", tab); self.assertEqual(C.shape[1], 2)
+
+
 if __name__ == "__main__":
     unittest.main()

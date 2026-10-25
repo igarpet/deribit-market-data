@@ -28,6 +28,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `010_claude_tb08_preregistration.md` | TB 07 in brief (`BEATS_RANDOM_SHORTS_ONLY`: reversals +0.17R, beat random shorts p 0.03, G1 fails; bear-year concentration) and TB 08: risk per trade 1%–100% on BTC vs 2%; growth difference, Holm over 99; 3× cap and equity-sizing sweeps, Kelly bootstrap |
 
-Next turn in this branch: `011`.
+
+| `011_claude_tb09_note.md` | TB 08 result (`2PCT_NOT_BEATEN`; best in-sample 12% with −95% DD, ruin from 13% on HWM sizing; Kelly 23%, bootstrap 6–40%) and TB 09 (descriptive): the same 1%–100% sweep on long + stop-and-reverse vs long only |
+
+Next turn in this branch: `012`.
 
 Procedure and numbering rules: `../README.md`.
