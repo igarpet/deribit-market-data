@@ -31,6 +31,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `011_claude_tb09_note.md` | TB 08 result (`2PCT_NOT_BEATEN`; best in-sample 12% with −95% DD, ruin from 13% on HWM sizing; Kelly 23%, bootstrap 6–40%) and TB 09 (descriptive): the same 1%–100% sweep on long + stop-and-reverse vs long only |
 
-Next turn in this branch: `012`.
+
+| `012_claude_tb10_preregistration.md` | TB 09 in brief (BTC: long + reverse shallower DD at every f, 16.1% vs 12.3% CAGR at 2%; not significant) and TB 10: the same comparison on all 30 coins (test set excl. BTC; sign tests + pooled sleeves); risk-portfolio design options R0–R4 |
+
+Next turn in this branch: `013`.
 
 Procedure and numbering rules: `../README.md`.

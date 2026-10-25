@@ -25,7 +25,7 @@ import pandas as pd
 
 from . import turtle_breakout as tb
 
-VERSION = "TB08-0.2.0"   # 0.2.0 (TB 09): trade-list equity engine for long + stop-and-reverse; 0.1.0 functions unchanged
+VERSION = "TB08-0.3.0"   # 0.3.0 (TB 10): cross-coin tests; 0.2.0 (TB 09): trade-list equity engine for long + stop-and-reverse; 0.1.0 functions unchanged
 FRACS = tuple(round(i / 100, 2) for i in range(1, 101))
 BASE_F = 0.02
 FLOOR = 1e-6
@@ -276,3 +276,46 @@ def sweep_trades(d: tb.AssetData, L: pd.DataFrame, p: tb.Params, start, cap: flo
             row["pnl_long"] = float(T.loc[T.kind == "long", "pnl"].sum()); row["pnl_reverse"] = float(T.loc[T.kind == "reverse", "pnl"].sum())
         rows.append(row)
     return pd.DataFrame(rows), pd.DataFrame(curves)
+
+
+# ---------------------------------------------------------------- TB 10: long vs long + reverse across coins
+
+def sign_test(k: int, n: int) -> float:
+    """One-sided P(X >= k), X ~ Binomial(n, 1/2)."""
+    return float(sum(math.comb(n, i) for i in range(k, n + 1)) / 2 ** n) if n else np.nan
+
+
+def pooled_log_returns(curves: dict) -> pd.Series:
+    """Equal-weight sleeves: each coin is its own account; the pool's daily log return is the mean over the
+    coins trading that day (coins enter when their window starts)."""
+    L = pd.DataFrame({a: np.log(c).diff() for a, c in curves.items()})
+    return L.mean(axis=1, skipna=True).dropna()
+
+
+def pooled_compare(curves_a: dict, curves_b: dict, sp: SParams) -> dict:
+    """Paired growth difference (b - a) of the pooled sleeves, circular block bootstrap."""
+    a = pooled_log_returns(curves_a); b = pooled_log_returns(curves_b)
+    i = a.index.intersection(b.index)
+    dl = (b[i] - a[i]).to_numpy()
+    idx = block_index(len(dl), sp.block_days, sp.n_boot, sp.seed + 3)
+    bs = dl[idx].mean(1) * 365.25
+    ea = np.exp(a[i].cumsum()); eb = np.exp(b[i].cumsum())
+    mdd = lambda e: float((e / e.cummax() - 1).min())
+    sh = lambda x: float(np.expm1(x).mean() / np.expm1(x).std() * math.sqrt(365))
+    return {"days": int(len(i)), "growth_a": float(a[i].mean() * 365.25), "growth_b": float(b[i].mean() * 365.25),
+            "growth_diff": float(dl.mean() * 365.25), "lo95": float(np.quantile(bs, .025)), "hi95": float(np.quantile(bs, .975)),
+            "lo_bonf": float(np.quantile(bs, sp.alpha / 3)), "max_dd_a": mdd(ea), "max_dd_b": mdd(eb),
+            "sharpe_a": sh(a[i]), "sharpe_b": sh(b[i])}
+
+
+def decide_all(per_coin: pd.DataFrame, pooled: dict, sp: SParams) -> dict:
+    """per_coin: one row per TEST coin with dd_L, dd_LR, g_L, g_LR at f = 2% (P sweep). Bonferroni over 3 at alpha."""
+    n = len(per_coin)
+    k_dd = int((per_coin.dd_LR > per_coin.dd_L).sum()); k_g = int((per_coin.g_LR > per_coin.g_L).sum())
+    p_dd, p_g = sign_test(k_dd, n), sign_test(k_g, n)
+    a = sp.alpha / 3
+    h1, h2, h3 = p_dd < a, p_g < a, pooled["lo_bonf"] > 0
+    return {"coins": n, "shallower_dd": k_dd, "p_dd": p_dd, "higher_growth": k_g, "p_growth": p_g,
+            "pooled_growth_diff": pooled["growth_diff"], "pooled_lo_bonf": pooled["lo_bonf"],
+            "H1_drawdown": "PASS" if h1 else "FAIL", "H2_growth": "PASS" if h2 else "FAIL", "H3_pooled_growth": "PASS" if h3 else "FAIL",
+            "verdict": "REVERSE_HELPS" if (h1 and h2 and h3) else ("HEDGE_ONLY" if h1 else "NO_IMPROVEMENT")}

@@ -139,5 +139,33 @@ class TradeListTests(unittest.TestCase):
         self.assertIn("pnl_reverse", tab); self.assertEqual(C.shape[1], 2)
 
 
+class CrossCoinTests(unittest.TestCase):
+    def test_sign_test(self):
+        self.assertAlmostEqual(ts.sign_test(10, 10), 1 / 1024)
+        self.assertAlmostEqual(ts.sign_test(0, 10), 1.0)
+        self.assertAlmostEqual(ts.sign_test(6, 10), 386 / 1024)
+
+    def test_pooled_identical_is_zero(self):
+        idx = pd.date_range("2022-01-01", periods=400, freq="D", tz="UTC")
+        rng = np.random.default_rng(0)
+        c = {a: pd.Series(np.exp(np.cumsum(rng.normal(0.001, 0.02, 400))), index=idx) for a in "ABC"}
+        r = ts.pooled_compare(c, c, SP)
+        self.assertAlmostEqual(r["growth_diff"], 0.0); self.assertAlmostEqual(r["lo95"], 0.0)
+        c2 = {a: s * np.exp(np.arange(400) * 0.001) for a, s in c.items()}
+        r2 = ts.pooled_compare(c, c2, SP)
+        self.assertAlmostEqual(r2["growth_diff"], 0.365, places=2); self.assertGreater(r2["lo_bonf"], 0)
+
+    def test_pooled_late_entry(self):
+        idx = pd.date_range("2022-01-01", periods=100, freq="D", tz="UTC")
+        a = pd.Series(np.exp(np.arange(100) * 0.01), index=idx); b = pd.Series(np.exp(np.arange(50) * 0.03), index=idx[50:])
+        L = ts.pooled_log_returns({"a": a, "b": b})
+        self.assertAlmostEqual(L.iloc[10], 0.01); self.assertAlmostEqual(L.iloc[-1], 0.02)
+
+    def test_decide_all(self):
+        pc = pd.DataFrame({"dd_L": [-0.3] * 12, "dd_LR": [-0.2] * 12, "g_L": [0.1] * 12, "g_LR": [0.05] * 12})
+        d = ts.decide_all(pc, {"growth_diff": -0.05, "lo_bonf": -0.1}, SP)
+        self.assertEqual(d["verdict"], "HEDGE_ONLY")
+
+
 if __name__ == "__main__":
     unittest.main()
