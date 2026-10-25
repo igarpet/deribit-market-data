@@ -1,0 +1,94 @@
+{
+ "decision": {
+  "higher_growth_than_2pct": [],
+  "lower_growth_than_2pct": [],
+  "n_higher": 0,
+  "n_lower": 0,
+  "n_no_difference": 99,
+  "in_sample_best_f": 0.12,
+  "in_sample_best_cagr": 0.8780335726378055,
+  "in_sample_best_max_dd": -0.9549975997971466,
+  "first_ruin_f": 0.13,
+  "verdict": "2PCT_NOT_BEATEN"
+ },
+ "C3": {
+  "higher_growth_than_2pct": [],
+  "lower_growth_than_2pct": [],
+  "n_higher": 0,
+  "n_lower": 0,
+  "n_no_difference": 99,
+  "in_sample_best_f": 0.11,
+  "in_sample_best_cagr": 0.5352710906714031,
+  "in_sample_best_max_dd": -0.80820254443538,
+  "first_ruin_f": null,
+  "verdict": "2PCT_NOT_BEATEN"
+ },
+ "EQ": {
+  "higher_growth_than_2pct": [],
+  "lower_growth_than_2pct": [],
+  "n_higher": 0,
+  "n_lower": 0,
+  "n_no_difference": 99,
+  "in_sample_best_f": 0.23,
+  "in_sample_best_cagr": 0.6639297853597623,
+  "in_sample_best_max_dd": -0.885429022311792,
+  "first_ruin_f": 0.8,
+  "verdict": "2PCT_NOT_BEATEN"
+ },
+ "kelly": {
+  "trades": 54,
+  "mean_R": 0.7270392083483679,
+  "win_rate": 0.3888888888888889,
+  "worst_R": -1.088006950233927,
+  "kelly_f": 0.23,
+  "half_kelly_f": 0.115,
+  "boot_q05": 0.06,
+  "boot_median": 0.22,
+  "boot_q95": 0.4,
+  "boot_share_f_le_2pct": 0.0236
+ },
+ "reproduction_2pct_cap3": {
+  "start": "2020-01-31",
+  "end": "2026-10-24",
+  "years": 6.729637234770705,
+  "final_equity": 217794.0601400527,
+  "total_return": 1.1779406014005271,
+  "cagr": 0.12261910784274166,
+  "sharpe": 0.9957423744111676,
+  "max_dd": -0.20808115623914736,
+  "trades": 54,
+  "win_rate": 0.3888888888888889,
+  "profit_factor": 2.424230673930547,
+  "avg_hold_days": 18.255015432098766,
+  "fees": 3209.669585430691,
+  "funding": 24315.4640994387
+ },
+ "registration": {
+  "max_lev_primary": 125.0,
+  "max_lev_c3": 3.0,
+  "block_days": 21,
+  "n_boot": 2000,
+  "n_kelly_boot": 5000,
+  "alpha": 0.05,
+  "seed": 20261026,
+  "status": "PREREGISTERED_TB010",
+  "version": "TB08-0.1.0",
+  "fracs": "0.01..1.00 step 0.01",
+  "base_f": 0.02,
+  "asset": "BTC",
+  "sweeps": {
+   "P": "cap 125x, HWM sizing (primary)",
+   "C3": "cap 3x (TB 01)",
+   "EQ": "cap 125x, current-equity sizing"
+  },
+  "decision": "per f: mean daily log-return difference vs 2%, 21-day block bootstrap, Holm over 99, alpha 0.05",
+  "reported": [
+   "CAGR, Sharpe, max DD, Calmar, ruin, worst trade as % of equity, mean/max leverage",
+   "Sharpe differences (Holm)",
+   "C3 and EQ sweeps",
+   "Kelly curve and bootstrap of the optimal f",
+   "equity curves for selected f"
+  ]
+ },
+ "synthetic": false
+}
