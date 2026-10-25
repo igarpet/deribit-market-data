@@ -13,6 +13,8 @@
 
 Code: `src/data_engineering/modeling/turtle_breakout.py`, `turtle_benchmarks.py`, `turtle_intraday.py`, `turtle_trade_features.py`, `turtle_fractal.py`, `turtle_options.py`. Tests: `tests/test_turtle_breakout.py`, `test_turtle_benchmarks.py`, `test_turtle_intraday.py`, `test_turtle_trade_features.py`, `test_turtle_fractal.py`, `test_turtle_options.py`. Outputs: `01/01_*` … `06/06_*`. TB 06 needs `tools/download_deribit_dvol.py`. TB 04 needs extra downloads (TB 006 §6).
 
+Running 07: `git pull`, `python -m unittest discover -s tests -p "test_turtle_reverse.py" -v`, then nbconvert `07_stop_and_reverse.ipynb` (timeout 7200); no download. Pre-registration: `discussions/Turtle_Breakout/009`.
+
 Running 02 / 03: same as 01 without the downloads, with `02_turtle_benchmarks.ipynb` / `03_turtle_intraday_engine.ipynb` (03: timeout 14400; `set TB03_NULL_SCALE=0.1` for a quick look).
 
 Data: `<BINANCE_UM_DIR>\long\<A>USDT_um_1m.parquet` and `long\basis\funding\<A>USDT_funding.parquet` (7 years; separate folder so the 2-year files of other branches are untouched). Override with `TB01_DATA_DIR`.

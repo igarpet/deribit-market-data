@@ -22,6 +22,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `008_claude_tb06_preregistration.md` | TB 05 in brief (not fractal; daily the only tradeable timeframe) and TB 06: daily turtle on BTC/ETH with a put struck at entry (38-day tenor from TB 04 discovery) and option-only versions (ATM call, call +1 ATR); DVOL-priced; Q1/Q2 Sharpe vs perpetual |
 
-Next turn in this branch: `009`.
+
+| `009_claude_tb07_preregistration.md` | TB 06 in brief (put hedge `WORSENS`, calls `NO_DIFFERENCE`) and TB 07: what price does after losing exits (event study vs winners and random flat days) and a stop-and-reverse short at each losing exit; G1 mean R > 0, G2 vs random flat-day shorts |
+
+Next turn in this branch: `010`.
 
 Procedure and numbering rules: `../README.md`.
