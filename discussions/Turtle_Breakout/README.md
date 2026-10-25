@@ -18,6 +18,8 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `006_claude_tb04_preregistration.md` | TB 03 result in brief (no strategy beats the benchmarks; engine sizing and intraday windows do not help) and TB 04: winners vs losers of the original strategy — 41 entry features (price, flow/CVD, funding, engine, OI/positioning, basis, market), discovery on 26 other perps, confirmation on BTC/ETH/SOL/XRP; path features descriptive |
 
-Next turn in this branch: `007`.
+| `007_claude_tb05_preregistration.md` | TB 04 in brief (model-only confirmation, TON data artefact, no persistent regimes) and TB 05: original rules on 13 candle sizes 1 min → 1 day; fractal edge (R vs random entries, z-test) and tradeable edge (net bp, taker), Bonferroni over 13; bar-close fills |
+
+Next turn in this branch: `008`.
 
 Procedure and numbering rules: `../README.md`.
