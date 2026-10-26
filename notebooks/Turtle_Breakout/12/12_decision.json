@@ -1,0 +1,162 @@
+{
+ "decision": {
+  "f": 0.005,
+  "selected": {
+   "long": {
+    "H": 0.02,
+    "C": 0.02
+   },
+   "long_rev": {
+    "H": 0.075,
+    "C": 0.01
+   }
+  },
+  "tests": [
+   {
+    "variant": "long",
+    "rule": "R1",
+    "calmar_diff": -0.6247237720397895,
+    "lo95": -3.0018852101627265,
+    "hi95": 0.3759872541996565,
+    "p": 0.84007996001999,
+    "p_holm": 1.0,
+    "result": "NO_DIFFERENCE"
+   },
+   {
+    "variant": "long",
+    "rule": "R2",
+    "calmar_diff": -0.34818729161666534,
+    "lo95": -1.3595365386286482,
+    "hi95": 0.1914198608232391,
+    "p": 0.8530734632683659,
+    "p_holm": 1.0,
+    "result": "NO_DIFFERENCE"
+   },
+   {
+    "variant": "long",
+    "rule": "R3",
+    "calmar_diff": -0.5380763429307454,
+    "lo95": -1.9046926405554947,
+    "hi95": 0.03968753144651601,
+    "p": 0.9615192403798101,
+    "p_holm": 1.0,
+    "result": "NO_DIFFERENCE"
+   },
+   {
+    "variant": "long_rev",
+    "rule": "R1",
+    "calmar_diff": -0.06679819105668972,
+    "lo95": -0.8283058907578746,
+    "hi95": 0.6239769400860734,
+    "p": 0.5292353823088456,
+    "p_holm": 1.0,
+    "result": "NO_DIFFERENCE"
+   },
+   {
+    "variant": "long_rev",
+    "rule": "R2",
+    "calmar_diff": -0.4883396484884085,
+    "lo95": -1.8909330231605228,
+    "hi95": 0.2597209369037667,
+    "p": 0.8750624687656172,
+    "p_holm": 1.0,
+    "result": "NO_DIFFERENCE"
+   },
+   {
+    "variant": "long_rev",
+    "rule": "R3",
+    "calmar_diff": 0.08464436377862838,
+    "lo95": -1.4533081540566455,
+    "hi95": 1.8967328869097806,
+    "p": 0.5537231384307846,
+    "p_holm": 1.0,
+    "result": "NO_DIFFERENCE"
+   }
+  ],
+  "any_ruined_in_evaluation": false,
+  "verdict": "NO_RULE_BEATS_SAME_EXPOSURE"
+ },
+ "registration": {
+  "f": 0.02,
+  "stop_atr": 2.0,
+  "pos_cap": 3.0,
+  "size_base": "equity",
+  "start_equity": 100000.0,
+  "H_grid": [
+   0.04,
+   0.06,
+   0.08,
+   0.1,
+   0.15,
+   0.2,
+   0.3
+  ],
+  "C_grid": [
+   0.02,
+   0.04,
+   0.06,
+   0.08
+  ],
+  "K": 4,
+  "min_take": 0.25,
+  "corr_win": 60,
+  "corr_min": 30,
+  "corr_fallback": 0.7,
+  "clus_win": 90,
+  "clus_min": 60,
+  "r4_min_trades": 10,
+  "r4_max": 3.0,
+  "block_days": 21,
+  "n_boot": 2000,
+  "alpha": 0.05,
+  "seed": 20261101,
+  "status": "PREREGISTERED_TB014",
+  "version": "TB11-0.2.0",
+  "rules": [
+   "R0",
+   "R1",
+   "R2",
+   "R3",
+   "R4"
+  ],
+  "discovery": [
+   "2020-01-01 00:00:00+00:00",
+   "2024-01-01 00:00:00+00:00"
+  ],
+  "evaluation_start": "2024-01-01 00:00:00+00:00",
+  "selection": "H (R1) and C (R3) maximise Calmar on DISCOVERY, per variant; ties -> smaller value",
+  "decision": "EVALUATION: Calmar(rule) - Calmar(R0m) for R1, R2, R3 x {long, long_rev}; R0m = R0 with f scaled to the rule's mean open risk in the window (same exposure, no rule); paired 21-day block bootstrap, one-sided p, Holm over 6 at alpha 0.05 -> IMPROVES / NO_DIFFERENCE",
+  "reported": [
+   "each rule vs plain R0",
+   "R4",
+   "long_rev vs long under each rule",
+   "equal-weight sleeves",
+   "full period",
+   "4-coin portfolio",
+   "growth, max DD, Sharpe, max open risk, max gross leverage, skipped/scaled entries"
+  ],
+  "f_values": [
+   0.0025,
+   0.005,
+   0.01
+  ],
+  "f_primary": 0.005,
+  "H_multiples_of_f": [
+   2,
+   3,
+   4,
+   5,
+   7.5,
+   10,
+   15
+  ],
+  "C_multiples_of_f": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "note": "evaluation window already seen in TB 11"
+ },
+ "synthetic": false
+}
