@@ -1,0 +1,73 @@
+{
+ "decision": {
+  "sp500": {
+   "f": 0.0005,
+   "A_growth": {
+    "growth": -0.089523238726922,
+    "lo": -0.15427908362911824,
+    "p": 0.9990002499375156,
+    "pass": false
+   },
+   "B_reversal": {
+    "calmar_diff": -0.2625981014283206,
+    "lo": -0.6466306132213125,
+    "p": 1.0,
+    "pass": false
+   },
+   "verdict": "FAILS"
+  },
+  "index": {
+   "f": 0.005,
+   "A_growth": {
+    "growth": 0.0074119478186935265,
+    "lo": -0.01923404144176032,
+    "p": 0.2704323919020245,
+    "pass": false
+   },
+   "B_reversal": {
+    "calmar_diff": -0.24141559901849508,
+    "lo": -0.3798487076127256,
+    "p": 0.9907523119220195,
+    "pass": false
+   },
+   "verdict": "FAILS"
+  }
+ },
+ "registration": {
+  "start": "2000-01-03",
+  "side_cost": 0.0005,
+  "side_cost_high": 0.001,
+  "borrow": 0.005,
+  "borrow_high": 0.02,
+  "gross_cap": 2.0,
+  "f_sp500": [
+   0.00025,
+   0.0005,
+   0.001
+  ],
+  "f_sp500_primary": 0.0005,
+  "f_index": [
+   0.0025,
+   0.005,
+   0.01
+  ],
+  "f_index_primary": 0.005,
+  "warmup_sessions": 30,
+  "status": "PREREGISTERED_TB016",
+  "version": "TB14-0.1.0",
+  "index_etfs": [
+   "SPY",
+   "QQQ",
+   "DIA",
+   "IWM"
+  ],
+  "universe": "thesis S&P 500 snapshot (igarpet/thesis f967975)",
+  "frozen_spec": "one account, TB 01 longs + TB 07 reverse, R0, f x equity, 3x notional per position, gross <= 2x",
+  "gates": {
+   "A": "long_rev at primary f: mean daily log growth, block-bootstrap lower bound at alpha/4 > 0",
+   "B": "Calmar(long_rev) - Calmar(long) at primary f, lower bound at alpha/4 > 0",
+   "sets": "SP500 and INDEX; Bonferroni over 4; verdict per set HOLDS / EDGE_ONLY / REVERSAL_ONLY / FAILS"
+  }
+ },
+ "synthetic": false
+}

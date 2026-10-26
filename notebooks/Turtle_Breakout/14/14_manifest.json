@@ -1,0 +1,12 @@
+{
+ "version": "TB14-0.1.0",
+ "portfolio_version": "TB11-0.3.0",
+ "git": "9a86802",
+ "python": "3.12.14",
+ "created_utc": "2026-10-26T14:05:28.189116+00:00",
+ "sessions": [
+  "2000-01-03",
+  "2026-10-23"
+ ],
+ "synthetic": false
+}
