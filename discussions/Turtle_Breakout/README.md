@@ -37,6 +37,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `013_claude_tb11_preregistration.md` | TB 10 in brief (`NO_IMPROVEMENT`: reverse shallower DD on 8/29 coins, growth 19/29 n.s.) and TB 11: one account across 30 coins, rules R0 (none), R1 heat cap, R2 correlation scaling, R3 cluster caps, R4 walk-forward weights, long and long + reverse; discovery 2020–23 picks H and C, evaluation 2024→ vs same-exposure R0m (Holm over 6) |
 
-Next turn in this branch: `014`.
+
+| `014_claude_tb12_preregistration.md` | TB 11 result (`NO_RULE_BEATS_SAME_EXPOSURE`, degenerate: 2% HWM × 30 coins ruined most runs incl. benchmarks; only R2 survived everywhere; design error acknowledged) and TB 12: same rules and test with equity sizing and base risk 0.25/0.5/1% (primary 0.5%); evaluation window already seen |
+
+Next turn in this branch: `015`.
 
 Procedure and numbering rules: `../README.md`.

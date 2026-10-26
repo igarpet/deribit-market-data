@@ -31,7 +31,7 @@ import pandas as pd
 
 from . import turtle_breakout as tb
 
-VERSION = "TB11-0.1.0"
+VERSION = "TB11-0.2.0"   # 0.2.0 (TB 12): size_base "equity" (risk, caps and open risk on the last marked equity); defaults reproduce 0.1.0
 RULES = ("R0", "R1", "R2", "R3", "R4")
 DISC = (pd.Timestamp("2020-01-01", tz="UTC"), pd.Timestamp("2024-01-01", tz="UTC"))
 EVAL_START = pd.Timestamp("2024-01-01", tz="UTC")
@@ -42,6 +42,7 @@ class PParams:
     f: float = 0.02
     stop_atr: float = 2.0
     pos_cap: float = 3.0
+    size_base: str = "hwm"          # "hwm" (TB 11) or "equity" (TB 12): base for r, H, C and open risk
     start_equity: float = 100_000.0
     H_grid: tuple = (0.04, 0.06, 0.08, 0.10, 0.15, 0.20, 0.30)
     C_grid: tuple = (0.02, 0.04, 0.06, 0.08)
@@ -198,10 +199,11 @@ def simulate(books: dict, rule: str, pp: PParams, t0: pd.Timestamp, t1: pd.Times
             if typ == 1:
                 if e_prev <= 0:
                     stats["ruined_skip"] += 1; continue
-                risk = pp.f * hwm
+                base = hwm if pp.size_base == "hwm" else e_prev
+                risk = pp.f * base
                 if rule == "R1":
                     open_r = sum(q["risk"] for q in pos.values())
-                    avail = H * hwm - open_r
+                    avail = H * base - open_r
                     if avail < pp.min_take * risk:
                         stats["skipped"] += 1; continue
                     if avail < risk:
@@ -228,7 +230,7 @@ def simulate(books: dict, rule: str, pp: PParams, t0: pd.Timestamp, t1: pd.Times
                         clus, clus_month = clusters_at(R, pid, pp), month
                     c = clus.get(a, clus.get("BTC", 0))
                     open_c = sum(q["risk"] for (a2, _), q in pos.items() if clus.get(a2, -1) == c)
-                    avail = C * hwm - open_c
+                    avail = C * base - open_c
                     if avail < pp.min_take * risk:
                         stats["skipped"] += 1; continue
                     if avail < risk:
@@ -256,7 +258,8 @@ def simulate(books: dict, rule: str, pp: PParams, t0: pd.Timestamp, t1: pd.Times
             unreal += r.dir * q["u"] * (c - r.px_in) - r.cost * q["u"] * r.px_in - r.dir * q["u"] * (fc - r.fc_in)
             g += q["u"] * c
         E = pp.start_equity + realized + unreal
-        marks.append((pend, E)); risk_open.append(sum(q["risk"] for q in pos.values()) / hwm if hwm > 0 else np.nan)
+        hb = hwm if pp.size_base == "hwm" else E
+        marks.append((pend, E)); risk_open.append(sum(q["risk"] for q in pos.values()) / hb if hb > 0 else np.nan)
         gross.append(g / E if E > 0 else np.nan)
         hwm = max(hwm, E); e_prev = E
     Eser = pd.Series([m[1] for m in marks], index=pd.DatetimeIndex([m[0] for m in marks]))

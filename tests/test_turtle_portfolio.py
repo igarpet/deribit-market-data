@@ -39,6 +39,14 @@ class SingleCoinTests(unittest.TestCase):
         self.assertGreater(len(i), 1000)
         np.testing.assert_allclose(a[i].to_numpy()[:-1], c[i].to_numpy()[:-1], rtol=1e-9)
 
+    def test_equity_sizing_equals_single_coin_engine(self):
+        pe = replace(PP, size_base="equity", f=0.01)
+        o = tp.simulate(self.books, "R0", pe, self.start)
+        E2, _, _ = ts.equity_from_trades(self.d, self.L, P, 0.01, self.start, PP.pos_cap, "equity")
+        a = tb.daily(o["equity"]); c = tb.daily(E2)
+        i = a.index.intersection(c.index)
+        np.testing.assert_allclose(a[i].to_numpy()[:-1], c[i].to_numpy()[:-1], rtol=1e-9)
+
     def test_rules_reduce_to_r0_when_slack(self):
         base = tb.daily(tp.simulate(self.books, "R0", PP, self.start)["equity"])
         for rule, kw in (("R1", {"H": 10.0}), ("R2", {}), ("R3", {"C": 10.0}), ("R4", {})):
@@ -65,6 +73,12 @@ class PortfolioTests(unittest.TestCase):
         cls.B = tp.synthetic_books(8, 1200, seed=1, with_reverse=True)
         cls.R = tp.returns_panel(cls.B)
         cls.t0 = pd.Timestamp("2021-07-15", tz="UTC")
+
+    def test_heat_cap_binds_equity_base(self):
+        pe = replace(PP, size_base="equity", f=0.005)
+        o1 = tp.simulate(self.B, "R1", pe, self.t0, H=0.01)
+        self.assertLessEqual(o1["max_open_risk"], 0.01 * 1.2)       # cap on the entry-day equity; marks move it slightly
+        self.assertGreater(o1["stats"]["skipped"], 0)
 
     def test_heat_cap_binds(self):
         o0 = tp.simulate(self.B, "R0", PP, self.t0)
