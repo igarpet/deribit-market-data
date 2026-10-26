@@ -59,10 +59,42 @@ def fetch(batch: list[str], start: str, end: str) -> pd.DataFrame:
             x = d[t]
         else:
             x = d
-        x = x.rename(columns=str.lower)[["open", "high", "low", "close", "volume"]].dropna(subset=["close"])
+        x = x.rename(columns=str.lower)
+        if not {"open", "high", "low", "close"} <= set(x.columns):
+            continue
+        x = x[[c for c in ("open", "high", "low", "close", "volume") if c in x.columns]].dropna(subset=["close"])
         if len(x):
             rows.append(x.assign(ticker=t).rename_axis("date").reset_index())
     return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
+
+
+def download(out: Path, start: str = "1999-10-01", end: str | None = None, batch: int = 50) -> Path:
+    """Download all tickers and write <out>/stocks_daily.parquet; returns the path. Raises if nothing came back."""
+    try:
+        import yfinance  # noqa: F401
+    except ImportError as e:
+        raise ImportError("yfinance is not installed in this environment: run  pip install yfinance") from e
+    out.mkdir(parents=True, exist_ok=True)
+    end = end or str(pd.Timestamp.today().date())
+    T = tickers()
+    print(f"{len(T)} tickers, {start} -> {end}", flush=True)
+    parts = []
+    for i in range(0, len(T), batch):
+        b = T[i:i + batch]
+        df = fetch(b, start, end)
+        print(f"  {i + len(b)}/{len(T)}: {df.ticker.nunique() if len(df) else 0} tickers with data", flush=True)
+        if len(df):
+            parts.append(df)
+    if not parts:
+        raise RuntimeError("Yahoo Finance returned no data (network, rate limit or yfinance version); nothing saved")
+    D = pd.concat(parts, ignore_index=True)
+    D["date"] = pd.to_datetime(D["date"]).dt.tz_localize(None)
+    target = out / "stocks_daily.parquet"
+    D.to_parquet(target, index=False)
+    rep = D.groupby("ticker").agg(rows=("close", "size"), first=("date", "min"), last=("date", "max")).reindex(T)
+    rep.to_csv(out / "download_report.csv")
+    print(f"saved {len(D):,} rows, {D.ticker.nunique()} tickers; missing: {int(rep['rows'].isna().sum())} -> {target}", flush=True)
+    return target
 
 
 def main() -> int:
@@ -74,22 +106,7 @@ def main() -> int:
     a = ap.parse_args()
     if a.out is None:
         ap.error("--out is required when DERIBIT_DATA_ROOT is not set")
-    a.out.mkdir(parents=True, exist_ok=True)
-    end = a.end or str(pd.Timestamp.today().date())
-    T = tickers()
-    print(f"{len(T)} tickers, {a.start} -> {end}")
-    parts = []
-    for i in range(0, len(T), a.batch):
-        b = T[i:i + a.batch]
-        df = fetch(b, a.start, end)
-        print(f"  {i + len(b)}/{len(T)}: {df.ticker.nunique() if len(df) else 0} tickers with data", flush=True)
-        parts.append(df)
-    D = pd.concat(parts, ignore_index=True)
-    D["date"] = pd.to_datetime(D["date"]).dt.tz_localize(None)
-    D.to_parquet(a.out / "stocks_daily.parquet", index=False)
-    rep = D.groupby("ticker").agg(rows=("close", "size"), first=("date", "min"), last=("date", "max")).reindex(T)
-    rep.to_csv(a.out / "download_report.csv")
-    print(f"saved {len(D):,} rows, {D.ticker.nunique()} tickers; missing: {rep['rows'].isna().sum()} -> {a.out}")
+    download(a.out, a.start, a.end, a.batch)
     return 0
 
 

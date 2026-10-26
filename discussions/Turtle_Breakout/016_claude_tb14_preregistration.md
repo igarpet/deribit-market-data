@@ -111,7 +111,7 @@ git commit -m "Turtle Breakout 14: run"
 git push
 ```
 
-- **Download:** about 507 tickers of daily data, a few minutes. The tool writes `D:\MarketData\Stocks\tb14\stocks_daily.parquet` and a `download_report.csv` listing any ticker Yahoo did not return.
+- **Download:** the notebook downloads the data itself on the first run if `stocks_daily.parquet` is missing (or run the tool separately); about 507 tickers of daily data, a few minutes. The tool writes `D:\MarketData\Stocks\tb14\stocks_daily.parquet` and a `download_report.csv` listing any ticker Yahoo did not return.
 - **Notebook:** trade lists for about 500 tickers and the one-account simulations take roughly 20–40 minutes.
 
 **Outputs** go to `notebooks/Turtle_Breakout/14/`: `14_decision.json`, `14_results.csv`, `14_benchmarks.csv`, `14_subperiods.csv`, `14_trades_summary.csv`, `14_coverage_{sp500,index}.csv`, `14_curves.csv.gz`, `14_manifest.json`.
