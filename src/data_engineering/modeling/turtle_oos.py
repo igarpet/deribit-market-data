@@ -141,23 +141,23 @@ def log_returns(D: pd.Series, e0: float) -> np.ndarray:
     return np.diff(np.log(np.r_[e0, D.to_numpy()]))
 
 
-def gate_growth(D: pd.Series, e0: float, op: OParams, seed: int) -> dict:
+def gate_growth(D: pd.Series, e0: float, op: OParams, seed: int, ann: float = 365.25) -> dict:
     x = log_returns(D, e0)
     idx = block_index(len(x), op.block_days, op.n_boot, seed)
-    bs = x[idx].mean(1) * 365.25
+    bs = x[idx].mean(1) * ann
     a = op.alpha / op.n_tests
     lo = float(np.quantile(bs, a))
-    return {"growth": float(x.mean() * 365.25), "lo": lo, "p": float((1 + np.sum(bs <= 0)) / (1 + len(bs))), "pass": bool(lo > 0)}
+    return {"growth": float(x.mean() * ann), "lo": lo, "p": float((1 + np.sum(bs <= 0)) / (1 + len(bs))), "pass": bool(lo > 0)}
 
 
-def gate_calmar(Da: pd.Series, Db: pd.Series, e0: float, op: OParams, seed: int) -> dict:
+def gate_calmar(Da: pd.Series, Db: pd.Series, e0: float, op: OParams, seed: int, ann: float = 365.25) -> dict:
     """Calmar(a) - Calmar(b), paired circular block bootstrap."""
     from .turtle_portfolio import calmar_paths
     x = log_returns(Da, e0); y = log_returns(Db, e0)
     n = min(len(x), len(y)); x, y = x[:n], y[:n]
-    est = float(calmar_paths(x[None])[0] - calmar_paths(y[None])[0])
+    est = float(calmar_paths(x[None], ann)[0] - calmar_paths(y[None], ann)[0])
     idx = block_index(n, op.block_days, op.n_boot, seed)
-    bs = calmar_paths(x[idx]) - calmar_paths(y[idx]); bs = bs[np.isfinite(bs)]
+    bs = calmar_paths(x[idx], ann) - calmar_paths(y[idx], ann); bs = bs[np.isfinite(bs)]
     a = op.alpha / op.n_tests
     lo = float(np.quantile(bs, a))
     return {"calmar_diff": est, "lo": lo, "p": float((1 + np.sum(bs <= 0)) / (1 + len(bs))), "pass": bool(lo > 0)}

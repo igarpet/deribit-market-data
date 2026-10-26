@@ -31,7 +31,7 @@ import pandas as pd
 
 from . import turtle_breakout as tb
 
-VERSION = "TB11-0.2.0"   # 0.2.0 (TB 12): size_base "equity" (risk, caps and open risk on the last marked equity); defaults reproduce 0.1.0
+VERSION = "TB11-0.3.0"   # 0.3.0 (TB 14): optional gross-notional cap, faster row access, ann for calmar_paths; defaults reproduce 0.2.0. 0.2.0 (TB 12): size_base "equity" (risk, caps and open risk on the last marked equity); defaults reproduce 0.1.0
 RULES = ("R0", "R1", "R2", "R3", "R4")
 DISC = (pd.Timestamp("2020-01-01", tz="UTC"), pd.Timestamp("2024-01-01", tz="UTC"))
 EVAL_START = pd.Timestamp("2024-01-01", tz="UTC")
@@ -42,6 +42,7 @@ class PParams:
     f: float = 0.02
     stop_atr: float = 2.0
     pos_cap: float = 3.0
+    gross_cap: float | None = None   # TB 14: total entry notional of open positions <= gross_cap x equity (None = off)
     size_base: str = "hwm"          # "hwm" (TB 11) or "equity" (TB 12): base for r, H, C and open risk
     start_equity: float = 100_000.0
     H_grid: tuple = (0.04, 0.06, 0.08, 0.10, 0.15, 0.20, 0.30)
@@ -176,11 +177,12 @@ def simulate(books: dict, rule: str, pp: PParams, t0: pd.Timestamp, t1: pd.Times
     p_hi_all = max(b.pid0 + len(b.close) - 1 for b in books.values())
     p_hi = p_hi_all if t1 is None else min(p_hi_all, int(tb.period_id(pd.DatetimeIndex([t1]), "day")[0]))
     ev = []
+    rows = {a: list(b.trades.itertuples(index=False)) for a, b in books.items()}
     for a, b in books.items():
         T = b.trades
         m = (T.t_in >= t0) & (T.pid_in <= p_hi) & (T.parent_t >= t0)
         for i in np.flatnonzero(m.to_numpy()):
-            r = T.iloc[i]
+            r = rows[a][i]
             ev.append((r.t_in, 1, a, i, int(r.pid_in)))
             if r.pid_out <= p_hi:
                 ev.append((r.t_out, 0 if r.t_out > r.t_in else 2, a, i, int(r.pid_out)))
@@ -190,12 +192,13 @@ def simulate(books: dict, rule: str, pp: PParams, t0: pd.Timestamp, t1: pd.Times
     marks, risk_open, gross = [], [], []
     stats = {"entries": 0, "skipped": 0, "scaled": 0, "ruined_skip": 0}
     clus, clus_month, mult, mult_q, corr_cache = {}, None, {}, None, {}
+    gross_open = 0.0
     ei = 0
     for pid in range(p_lo, p_hi + 1):
         pend = tb.period_end(np.array([pid]), "day")[0]
         while ei < len(ev) and ev[ei][4] <= pid:
             t, typ, a, i, _ = ev[ei]; ei += 1
-            b = books[a]; r = b.trades.iloc[i]
+            b = books[a]; r = rows[a][i]
             if typ == 1:
                 if e_prev <= 0:
                     stats["ruined_skip"] += 1; continue
@@ -244,15 +247,22 @@ def simulate(books: dict, rule: str, pp: PParams, t0: pd.Timestamp, t1: pd.Times
                         stats["skipped"] += 1; continue
                 u = risk / (pp.stop_atr * r.atr)
                 u = min(u, pp.pos_cap * e_prev / r.px_in)
-                pos[(a, i)] = {"u": u, "risk": u * pp.stop_atr * r.atr, "dir": int(r.dir)}
+                if pp.gross_cap is not None:
+                    avail = pp.gross_cap * e_prev - gross_open
+                    if avail < pp.min_take * u * r.px_in:
+                        stats["skipped"] += 1; continue
+                    if avail < u * r.px_in:
+                        u = avail / r.px_in; stats["scaled"] += 1
+                pos[(a, i)] = {"u": u, "risk": u * pp.stop_atr * r.atr, "dir": int(r.dir), "notional": u * r.px_in}
+                gross_open += u * r.px_in
                 stats["entries"] += 1
             elif (a, i) in pos:
                 q = pos.pop((a, i))
-                u = q["u"]
+                u = q["u"]; gross_open -= q["notional"]
                 realized += r.dir * u * (r.px_out - r.px_in) - r.cost * u * (r.px_in + r.px_out) - r.dir * u * (r.fc_out - r.fc_in)
         unreal = 0.0; g = 0.0
         for (a, i), q in pos.items():
-            b = books[a]; r = b.trades.iloc[i]
+            b = books[a]; r = rows[a][i]
             k = min(max(pid - b.pid0, 0), len(b.close) - 1)
             c, fc = b.close[k], b.fcum[k]
             unreal += r.dir * q["u"] * (c - r.px_in) - r.cost * q["u"] * r.px_in - r.dir * q["u"] * (fc - r.fc_in)
@@ -292,12 +302,12 @@ def metrics(D: pd.Series, e0: float) -> dict:
             "final_multiple": float(tot)}
 
 
-def calmar_paths(L: np.ndarray) -> np.ndarray:
-    """L: (..., n) daily log returns; Calmar of each path (start at 1)."""
+def calmar_paths(L: np.ndarray, ann: float = 365.25) -> np.ndarray:
+    """L: (..., n) daily log returns; Calmar of each path (start at 1). ann = periods per year."""
     cum = np.cumsum(L, axis=-1)
     peak = np.maximum.accumulate(np.maximum(cum, 0.0), axis=-1)
     mdd = np.expm1((cum - peak).min(axis=-1))
-    cagr = np.expm1(cum[..., -1] * 365.25 / L.shape[-1])
+    cagr = np.expm1(cum[..., -1] * ann / L.shape[-1])
     with np.errstate(divide="ignore", invalid="ignore"):
         return np.where(mdd < 0, cagr / np.abs(mdd), np.nan)
 
