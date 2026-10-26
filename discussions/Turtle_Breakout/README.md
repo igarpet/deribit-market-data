@@ -46,6 +46,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `016_claude_tb14_preregistration.md` | TB 13 closed unrun (Ivan: crypto too correlated; 1m data never downloaded) and TB 14: frozen spec on US equities — thesis S&P 500 list (survivorship-biased) and SPY/QQQ/DIA/IWM, Yahoo daily 2000→, adverse O→H→L→C fills, 5 bp, borrow, gross ≤ 2×; gates A growth, B reversal, Bonferroni over 4 |
 
-Next turn in this branch: `017`.
+
+| `017_claude_tb15_preregistration.md` | TB 14 result (one account: SP500 long 9.3%/−55%, long + reverse −8.6%/−92%; reverse shorts −0.24R; both sets `FAILS`) and TB 15: TB 01 rules (2% of HWM) on every S&P 500 stock in its own account, long and long + reverse; G1 timing vs random entries (≥ 0.10R floor from fill calibration), G2 reversal sign test |
+
+Next turn in this branch: `018`.
 
 Procedure and numbering rules: `../README.md`.

@@ -62,9 +62,10 @@ def pseudo_day(i: np.ndarray | int):
     return BASE + pd.to_timedelta(np.asarray(i), unit="D")
 
 
-def pseudo_bars(daily: pd.DataFrame, sessions: pd.DatetimeIndex) -> pd.DataFrame:
+def pseudo_bars(daily: pd.DataFrame, sessions: pd.DatetimeIndex, order: str = "adverse", seed: int = 0) -> pd.DataFrame:
     """daily: OHLC indexed by session date (tz-naive or UTC). Returns 3 pseudo-bars per session on the pseudo
-    timeline (index 'end'), ordered O->H, H->L, L->C."""
+    timeline (index 'end'). order: 'adverse' (TB 14: always O->H->L->C), 'nearest' (the extreme nearer to the
+    open comes first) or 'random' (O->H->L->C or O->L->H->C with probability 1/2, seeded)."""
     d = daily.copy()
     d.index = pd.DatetimeIndex(d.index).tz_localize(None).normalize() if d.index.tz is not None else pd.DatetimeIndex(d.index).normalize()
     ses = pd.DatetimeIndex(sessions).tz_localize(None).normalize() if sessions.tz is not None else pd.DatetimeIndex(sessions).normalize()
@@ -73,11 +74,20 @@ def pseudo_bars(daily: pd.DataFrame, sessions: pd.DatetimeIndex) -> pd.DataFrame
     pos = ses.get_indexer(d.index)
     O, Hh, Ll, Cc = (d[x].to_numpy(float) for x in ("open", "high", "low", "close"))
     H = np.maximum.reduce([Hh, O, Cc]); L = np.minimum.reduce([Ll, O, Cc])
+    if order == "adverse":
+        hf = np.ones(len(O), bool)
+    elif order == "nearest":
+        hf = (H - O) <= (O - L)
+    elif order == "random":
+        hf = np.random.default_rng(seed).random(len(O)) < 0.5
+    else:
+        raise ValueError(order)
+    X1 = np.where(hf, H, L); X2 = np.where(hf, L, H)                 # first and second extreme
     day = pseudo_day(pos)
     ends = [day + pd.Timedelta(hours=h) for h in BAR_HOURS]
-    bars = [pd.DataFrame({"open": O, "high": H, "low": O, "close": H}, index=ends[0]),
-            pd.DataFrame({"open": H, "high": H, "low": L, "close": L}, index=ends[1]),
-            pd.DataFrame({"open": L, "high": np.maximum(L, Cc), "low": L, "close": Cc}, index=ends[2])]
+    bars = [pd.DataFrame({"open": O, "high": np.maximum(O, X1), "low": np.minimum(O, X1), "close": X1}, index=ends[0]),
+            pd.DataFrame({"open": X1, "high": H, "low": L, "close": X2}, index=ends[1]),
+            pd.DataFrame({"open": X2, "high": np.maximum(X2, Cc), "low": np.minimum(X2, Cc), "close": Cc}, index=ends[2])]
     out = pd.concat(bars).sort_index()
     out.index = pd.DatetimeIndex(out.index, name="end")
     return out
@@ -133,3 +143,18 @@ def equal_weight_hold(closes: dict) -> pd.Series:
 
 def period_slices():
     return {"2000-2009": ("2000-01-01", "2009-12-31"), "2010-2019": ("2010-01-01", "2019-12-31"), "2020-": ("2020-01-01", "2100-01-01")}
+
+
+def synthetic_daily(n: int, seed: int, vol: float = 0.02, drift: float = 0.0, steps: int = 26, gap: float = 0.3,
+                    start: str = "2000-01-03") -> tuple[pd.DataFrame, pd.DatetimeIndex]:
+    """Daily OHLC taken from an intraday random-walk path (steps per session) plus an overnight gap, so highs and
+    lows are real excursions of the path (used to calibrate the daily-bar fills)."""
+    rng = np.random.default_rng(seed)
+    ses = pd.bdate_range(start, periods=n)
+    k = steps + gap * steps
+    r = rng.normal(drift / k, vol / math.sqrt(k), (n, steps)); g = rng.normal(drift * gap * steps / k, vol * math.sqrt(gap * steps / k), n)
+    lp = math.log(100.0); O = np.empty(n); H = np.empty(n); L = np.empty(n); C = np.empty(n)
+    for i in range(n):
+        o = lp + g[i]; p = o + np.cumsum(r[i])
+        O[i], H[i], L[i], C[i] = o, max(o, p.max()), min(o, p.min()), p[-1]; lp = p[-1]
+    return pd.DataFrame({"open": np.exp(O), "high": np.exp(H), "low": np.exp(L), "close": np.exp(C)}, index=ses), ses
