@@ -61,10 +61,16 @@ def default_out() -> Path | None:
     return Path(root).parent / "Binance" / "tb13" if root else None
 
 
+def _safe(url: str) -> str:
+    """Percent-encode non-ASCII characters in the URL path (some archive symbols are not ASCII)."""
+    parts = urllib.parse.urlsplit(url)
+    return urllib.parse.urlunsplit(parts._replace(path=urllib.parse.quote(parts.path, safe="/%")))
+
+
 def fetch(url: str, tries: int = 3) -> bytes | None:
     for k in range(tries):
         try:
-            with urllib.request.urlopen(url, timeout=60) as r:
+            with urllib.request.urlopen(_safe(url), timeout=60) as r:
                 return r.read()
         except urllib.error.HTTPError as e:
             if e.code == 404:
@@ -133,7 +139,7 @@ def stage_list(out: Path) -> None:
     (out / "lists").mkdir(parents=True, exist_ok=True)
     for market in ("um", "spot"):
         syms = sorted(p.rstrip("/").rsplit("/", 1)[-1] for p in s3_list(PREFIX[market], folders=True))
-        (out / "lists" / f"{market}_symbols.txt").write_text("\n".join(syms))
+        (out / "lists" / f"{market}_symbols.txt").write_text("\n".join(syms), encoding="utf-8")
         print(f"{market}: {len(syms)} symbols in the archive")
 
 
@@ -163,7 +169,7 @@ def daily_stats(market: str, sym: str, out: Path, op: to.OParams) -> dict | None
 def stage_screen(out: Path, op: to.OParams) -> None:
     res = {}
     for market, kind, cand in (("um", "new", to.new_candidate), ("spot", "spot", to.spot_candidate)):
-        syms = [s for s in (out / "lists" / f"{market}_symbols.txt").read_text().split() if cand(s)]
+        syms = [s for s in (out / "lists" / f"{market}_symbols.txt").read_text(encoding="utf-8").split() if cand(s)]
         print(f"{market}: {len(syms)} candidates; downloading daily klines ...", flush=True)
         with ThreadPoolExecutor(THREADS) as ex:
             rows = [r for r in ex.map(lambda s: daily_stats(market, s, out, op), syms) if r]
@@ -175,7 +181,7 @@ def stage_screen(out: Path, op: to.OParams) -> None:
                      "windows": {r.symbol: [r.first, r.last] for r in S[S.symbol.isin(chosen)].itertuples()}}
         print(f"{kind}: {len(elig)} eligible, {len(chosen)} chosen", flush=True)
     UNIVERSE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    UNIVERSE_FILE.write_text(json.dumps({"registration": to.registration(op), "created": str(date.today()), **res}, indent=1))
+    UNIVERSE_FILE.write_text(json.dumps({"registration": to.registration(op), "created": str(date.today()), **res}, indent=1), encoding="utf-8")
     print("universe written:", UNIVERSE_FILE)
 
 
@@ -224,7 +230,7 @@ def build_funding(sym: str, out: Path) -> None:
 
 
 def stage_download(out: Path) -> None:
-    U = json.loads(UNIVERSE_FILE.read_text())
+    U = json.loads(UNIVERSE_FILE.read_text(encoding="utf-8"))
     jobs = [("um", s, w[1]) for s, w in U["new"]["windows"].items()] + [("spot", s, w[1]) for s, w in U["spot"]["windows"].items()]
     with ThreadPoolExecutor(4) as ex:
         list(ex.map(lambda j: build_1m(j[0], j[1], out, j[2]), jobs))
