@@ -40,6 +40,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `014_claude_tb12_preregistration.md` | TB 11 result (`NO_RULE_BEATS_SAME_EXPOSURE`, degenerate: 2% HWM × 30 coins ruined most runs incl. benchmarks; only R2 survived everywhere; design error acknowledged) and TB 12: same rules and test with equity sizing and base risk 0.25/0.5/1% (primary 0.5%); evaluation window already seen |
 
-Next turn in this branch: `015`.
+
+| `015_claude_tb13_preregistration.md` | TB 12 result (no rule beats same exposure; base risk dominates; long + reverse beats long 15/15, n.s.) and TB 13: frozen spec (one account, longs + reverse, R0, 0.5% of equity) on untouched data — 60 rule-chosen new perps incl. delisted, and spot 2017–2019; gates A growth, B reversal, Bonferroni over 4 |
+
+Next turn in this branch: `016`.
 
 Procedure and numbering rules: `../README.md`.
