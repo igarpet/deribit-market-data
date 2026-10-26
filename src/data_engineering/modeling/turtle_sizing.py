@@ -194,6 +194,10 @@ def trade_list(d: tb.AssetData, p: tb.Params, start, rp=None, with_reverse: bool
     from . import turtle_trade_features as tf
     rp = rp or tr.RParams()
     _, TL, _ = tb.simulate({d.name: d}, p, start=start)                    # includes a final open trade ('end')
+    if not len(TL):                                                        # no breakout in the window (TB 14: a few stocks)
+        return pd.DataFrame({"dir": pd.Series(dtype=int), "je": pd.Series(dtype=int), "jx": pd.Series(dtype=int),
+                             "px_in": pd.Series(dtype=float), "px_out": pd.Series(dtype=float), "atr": pd.Series(dtype=float),
+                             "cost": pd.Series(dtype=float), "kind": pd.Series(dtype=object), "end": pd.Series(dtype=bool)})
     k = tb.period_id(pd.DatetimeIndex(TL.entry_time), p.period) - d.pid0
     L = pd.DataFrame({"dir": 1, "je": TL.je.astype(int), "jx": TL.jx.astype(int), "px_in": TL.entry_px, "px_out": TL.exit_px,
                       "atr": d.atr[k], "cost": p.fee + p.slip, "kind": "long",
@@ -201,7 +205,7 @@ def trade_list(d: tb.AssetData, p: tb.Params, start, rp=None, with_reverse: bool
     if not with_reverse:
         return L.sort_values("je").reset_index(drop=True)
     T = tf.run_trades(d, p, start)
-    R = tr.reverse_trades(d, T, rp)
+    R = tr.reverse_trades(d, T, rp) if len(T) else pd.DataFrame()          # only an open 'end' trade: nothing to reverse
     if len(R):
         S = pd.DataFrame({"dir": -1, "je": d.end.get_indexer(pd.DatetimeIndex(R.rev_time)),
                           "jx": d.end.get_indexer(pd.DatetimeIndex(R.rev_exit_time)), "px_in": R.rev_px, "px_out": R.rev_exit_px,

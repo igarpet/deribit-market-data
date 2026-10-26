@@ -88,6 +88,18 @@ class StrategyTests(unittest.TestCase):
         if len(same):
             self.assertTrue((same.px_out <= same.px_in).all())
 
+    def test_ticker_without_trades(self):
+        d, ses = daily_ohlc(200, seed=3, drift=-0.002, vol=0.001)              # steady decline: no 20-day high breakout
+        D = tb.prepare_asset("Z", tk.pseudo_bars(d, ses), None, P)
+        start = D.end[0] + pd.Timedelta(days=30)
+        for rev in (False, True):
+            L = ts.trade_list(D, P, start, replace(tr.RParams(), side_cost=0.0005), with_reverse=rev)
+            self.assertEqual(len(L), 0)
+            bk = tk.apply_borrow(tp.make_book(D, L, P), 0.005, ses)
+            self.assertEqual(len(bk.trades), 0)
+        o = tp.simulate({**self.books, "Z": bk}, "R0", replace(tp.PParams(), size_base="equity", f=0.005), min(b.trades.t_in.min() for b in self.books.values()))
+        self.assertGreater(o["stats"]["entries"], 0)
+
     def test_borrow_charges_shorts_only(self):
         b = self.books["S0"]
         nb = tk.apply_borrow(b, 0.05, self.ses)
