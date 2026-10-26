@@ -34,6 +34,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `012_claude_tb10_preregistration.md` | TB 09 in brief (BTC: long + reverse shallower DD at every f, 16.1% vs 12.3% CAGR at 2%; not significant) and TB 10: the same comparison on all 30 coins (test set excl. BTC; sign tests + pooled sleeves); risk-portfolio design options R0–R4 |
 
-Next turn in this branch: `013`.
+
+| `013_claude_tb11_preregistration.md` | TB 10 in brief (`NO_IMPROVEMENT`: reverse shallower DD on 8/29 coins, growth 19/29 n.s.) and TB 11: one account across 30 coins, rules R0 (none), R1 heat cap, R2 correlation scaling, R3 cluster caps, R4 walk-forward weights, long and long + reverse; discovery 2020–23 picks H and C, evaluation 2024→ vs same-exposure R0m (Holm over 6) |
+
+Next turn in this branch: `014`.
 
 Procedure and numbering rules: `../README.md`.
