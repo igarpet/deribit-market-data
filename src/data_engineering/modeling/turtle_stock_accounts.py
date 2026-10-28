@@ -28,7 +28,7 @@ from . import turtle_portfolio as tp
 from . import turtle_sizing as ts
 from . import turtle_stocks as tk
 
-VERSION = "TB15-0.1.0"
+VERSION = "TB15-0.2.0"   # 0.2.0 (TB 16): decide_paired (per-instrument t-test against the calibrated fill artefact); 0.1.0 functions unchanged
 
 
 @dataclass(frozen=True)
@@ -121,5 +121,40 @@ def decide(real_sum: float, real_n: int, null_sum: np.ndarray, null_n: np.ndarra
     return {"real_mean_R": real_sum / max(real_n, 1), "real_trades": int(real_n), "null_mean_R": float(nm.mean()), "diff_R": diff,
             "null_sd": float(nm.std(ddof=1)), "z": z, "p_G1": p1, "G1": "PASS" if g1 else "FAIL",
             "stocks": n, "reverse_better": k, "p_G2": p2, "G2": "PASS" if g2 else "FAIL",
+            "verdict": {(True, True): "EDGE_AND_REVERSAL", (True, False): "TIMING_EDGE_ONLY",
+                        (False, True): "REVERSAL_ONLY", (False, False): "NO_EDGE"}[(g1, g2)]}
+
+
+# ---------------------------------------------------------------- TB 16
+
+FILL_ARTEFACT_R = 0.045      # driftless synthetic contracts (20 sets x 41, 26 years): real - random = +0.045R per instrument (sd 0.086)
+
+
+def t_test_greater(x: np.ndarray, mu0: float) -> tuple[float, float]:
+    """One-sided test that mean(x) > mu0 (normal approximation of the t statistic; n ~ 40)."""
+    x = np.asarray(x, float); x = x[np.isfinite(x)]
+    if len(x) < 3:
+        return np.nan, np.nan
+    t = (x.mean() - mu0) / (x.std(ddof=1) / math.sqrt(len(x)))
+    return float(t), float(0.5 * math.erfc(t / math.sqrt(2)))
+
+
+def decide_paired(real_sum: float, real_n: int, null_sum: np.ndarray, null_n: np.ndarray, per_real: np.ndarray, per_null: np.ndarray,
+                  calmar_L: np.ndarray, calmar_LR: np.ndarray, ap: AParams) -> dict:
+    """G1: pooled real - random >= min_effect_R AND per-instrument differences exceed the fill artefact (t-test,
+    p < alpha/2). G2 as decide(). The conditional z-test of TB 15 ignores path noise across instruments and gave
+    false passes on 8 driftless synthetic ETFs; with ~40 instruments the paired test is calibrated (5% at 0.045)."""
+    a = ap.alpha / ap.n_tests
+    nm = null_sum / np.maximum(null_n, 1)
+    diff = real_sum / max(real_n, 1) - float(nm.mean())
+    t, p1 = t_test_greater(np.asarray(per_real) - np.asarray(per_null), FILL_ARTEFACT_R)
+    ok = np.isfinite(calmar_L) & np.isfinite(calmar_LR)
+    k = int((calmar_LR[ok] > calmar_L[ok]).sum()); n = int(ok.sum())
+    p2 = sign_test(k, n)
+    g1 = bool(np.isfinite(p1) and p1 < a and diff >= ap.min_effect_R)
+    g2 = bool(np.isfinite(p2) and p2 < a)
+    return {"real_mean_R": real_sum / max(real_n, 1), "real_trades": int(real_n), "null_mean_R": float(nm.mean()), "diff_R": diff,
+            "per_instrument_mean_diff": float(np.nanmean(np.asarray(per_real) - np.asarray(per_null))), "t": t, "p_G1": p1,
+            "G1": "PASS" if g1 else "FAIL", "instruments": n, "reverse_better": k, "p_G2": p2, "G2": "PASS" if g2 else "FAIL",
             "verdict": {(True, True): "EDGE_AND_REVERSAL", (True, False): "TIMING_EDGE_ONLY",
                         (False, True): "REVERSAL_ONLY", (False, False): "NO_EDGE"}[(g1, g2)]}

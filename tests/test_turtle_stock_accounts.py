@@ -90,6 +90,15 @@ class DecisionTests(unittest.TestCase):
         d = ta.decide(rs, rn, ns, nn, np.zeros(10), np.ones(10), AP)
         self.assertEqual(d["G1"], "FAIL"); self.assertLess(d["diff_R"], AP.min_effect_R)
 
+    def test_decide_paired(self):
+        rng = np.random.default_rng(0)
+        null = rng.normal(0.1, 0.05, 41)
+        d = ta.decide_paired(0.4 * 4000, 4000, np.full(50, 0.15 * 4000), np.full(50, 4000), null + 0.30, null, np.zeros(41), np.ones(41), AP)
+        self.assertEqual(d["G1"], "PASS"); self.assertEqual(d["verdict"], "EDGE_AND_REVERSAL")
+        art = null + ta.FILL_ARTEFACT_R + rng.normal(0, 0.086, 41)                # the artefact alone does not pass
+        d = ta.decide_paired(0.145 * 4000, 4000, np.full(50, 0.10 * 4000), np.full(50, 4000), art, null, np.ones(41), np.zeros(41), AP)
+        self.assertEqual(d["G1"], "FAIL"); self.assertEqual(d["G2"], "FAIL")
+
     def _unused(self):
         rs, rn, ns, nn = 0.0, 0, np.zeros(AP.n_null), np.zeros(AP.n_null)
         rng = np.random.default_rng(1)

@@ -1,0 +1,60 @@
+ticker,set,sector,name
+CL=F,fut,Energy,WTI crude oil
+BZ=F,fut,Energy,Brent crude oil
+NG=F,fut,Energy,Natural gas
+HO=F,fut,Energy,Heating oil
+RB=F,fut,Energy,RBOB gasoline
+GC=F,fut,Metals,Gold
+SI=F,fut,Metals,Silver
+HG=F,fut,Metals,Copper
+PL=F,fut,Metals,Platinum
+PA=F,fut,Metals,Palladium
+ZC=F,fut,Grains,Corn
+ZW=F,fut,Grains,Chicago wheat
+KE=F,fut,Grains,KC wheat
+ZS=F,fut,Grains,Soybeans
+ZM=F,fut,Grains,Soybean meal
+ZL=F,fut,Grains,Soybean oil
+KC=F,fut,Softs,Coffee
+SB=F,fut,Softs,Sugar
+CC=F,fut,Softs,Cocoa
+CT=F,fut,Softs,Cotton
+OJ=F,fut,Softs,Orange juice
+LE=F,fut,Livestock,Live cattle
+GF=F,fut,Livestock,Feeder cattle
+HE=F,fut,Livestock,Lean hogs
+ZB=F,fut,Rates,US 30y bond
+ZN=F,fut,Rates,US 10y note
+ZF=F,fut,Rates,US 5y note
+ZT=F,fut,Rates,US 2y note
+6E=F,fut,FX,Euro
+6J=F,fut,FX,Japanese yen
+6B=F,fut,FX,British pound
+6A=F,fut,FX,Australian dollar
+6C=F,fut,FX,Canadian dollar
+6S=F,fut,FX,Swiss franc
+6M=F,fut,FX,Mexican peso
+6N=F,fut,FX,New Zealand dollar
+DX=F,fut,FX,US dollar index
+ES=F,fut,Equity index,S&P 500 e-mini
+NQ=F,fut,Equity index,Nasdaq 100 e-mini
+YM=F,fut,Equity index,Dow e-mini
+RTY=F,fut,Equity index,Russell 2000 e-mini
+GLD,etf,Metals,Gold ETF
+SLV,etf,Metals,Silver ETF
+CPER,etf,Metals,Copper ETF
+USO,etf,Energy,Oil ETF
+UNG,etf,Energy,Natural gas ETF
+DBA,etf,Grains,Agriculture ETF
+DBC,etf,Energy,Commodity index ETF
+TLT,etf,Rates,20y+ Treasury ETF
+IEF,etf,Rates,7-10y Treasury ETF
+SHY,etf,Rates,1-3y Treasury ETF
+FXE,etf,FX,Euro ETF
+FXY,etf,FX,Yen ETF
+FXB,etf,FX,Pound ETF
+FXA,etf,FX,Australian dollar ETF
+FXC,etf,FX,Canadian dollar ETF
+UUP,etf,FX,US dollar ETF
+EEM,etf,Equity index,Emerging markets ETF
+EFA,etf,Equity index,Developed ex-US ETF

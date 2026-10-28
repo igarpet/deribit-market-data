@@ -49,6 +49,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `017_claude_tb15_preregistration.md` | TB 14 result (one account: SP500 long 9.3%/−55%, long + reverse −8.6%/−92%; reverse shorts −0.24R; both sets `FAILS`) and TB 15: TB 01 rules (2% of HWM) on every S&P 500 stock in its own account, long and long + reverse; G1 timing vs random entries (≥ 0.10R floor from fill calibration), G2 reversal sign test |
 
-Next turn in this branch: `018`.
+
+| `018_claude_tb16_preregistration.md` | TB 15 result (`NO_EDGE` on 500 stocks: real − random +0.018R; reverse better on 24/500; median long 1.4% CAGR vs hold 11.6%) and TB 16: TB 01 per contract on 41 Yahoo continuous futures (decision) and 18 futures-proxy ETFs (reported); G1 pooled ≥ 0.10R and paired t-test vs the +0.045R fill artefact; G2 reversal sign test |
+
+Next turn in this branch: `019`.
 
 Procedure and numbering rules: `../README.md`.
