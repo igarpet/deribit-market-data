@@ -58,6 +58,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `020_claude_tb18_preregistration.md` | TB 17 result (`TIMING_EDGE_ONLY`: BTC 2014–19 real − random +1.76R; FULL long Calmar 1.22 vs hold 0.67; edge in bull regimes, small losses in bears) and TB 18: diagnostic — are BTC days with the turtle flat mean-reverting? VR(2–20), AC, REV(1,1)/(5,5) vs permutations |
 
-Next turn in this branch: `021`.
+
+| `021_claude_tb19_preregistration.md` | TB 18 result (`MR_PRESENT` at 1 day only: FLAT AC1 −0.09, VR2 0.90, REV(1,1) −0.49%; IN days trend) and TB 19: buy the bottom-quintile FLAT day, sell next close; gates Yahoo 2014–19, Yahoo 2020–, Binance perp daily vs random FLAT-day longs (in-sample confirmation) |
+
+Next turn in this branch: `022`.
 
 Procedure and numbering rules: `../README.md`.
