@@ -1,0 +1,12 @@
+{
+ "version": "TB15-0.1.0",
+ "stocks_version": "TB14-0.1.0",
+ "git": "48c1c97",
+ "python": "3.12.14",
+ "created_utc": "2026-10-28T17:49:21.204239+00:00",
+ "sessions": [
+  "2000-01-03",
+  "2026-10-23"
+ ],
+ "synthetic": false
+}

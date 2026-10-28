@@ -1,0 +1,45 @@
+{
+ "decision": {
+  "real_mean_R": 0.11500089483860364,
+  "real_trades": 76491,
+  "null_mean_R": 0.09693524413233973,
+  "diff_R": 0.01806565070626391,
+  "null_sd": 0.003087924624447515,
+  "z": 5.850418291701722,
+  "p_G1": 2.45169148868863e-09,
+  "G1": "FAIL",
+  "stocks": 500,
+  "reverse_better": 24,
+  "p_G2": 1.0,
+  "G2": "FAIL",
+  "verdict": "NO_EDGE"
+ },
+ "registration": {
+  "risk_frac": 0.02,
+  "pos_cap": 3.0,
+  "size_base": "hwm",
+  "side_cost": 0.0005,
+  "borrow": 0.005,
+  "n_null": 50,
+  "min_effect_R": 0.1,
+  "alpha": 0.05,
+  "n_tests": 2,
+  "seed": 20261027,
+  "status": "PREREGISTERED_TB017",
+  "version": "TB15-0.1.0",
+  "rules": "TB 01 per stock: 2% of HWM per trade, 3x notional cap; reverse = TB 07",
+  "gates": {
+   "G1": "pooled mean R of real longs > random-entry longs (50 runs, z-test, p < alpha/2) and difference >= 0.10R",
+   "G2": "stocks with Calmar(long_rev) > Calmar(long): sign test p < alpha/2"
+  },
+  "reported": [
+   "per stock CAGR, max DD, Calmar, Sharpe, ruin for long, long + reverse, buy and hold",
+   "share of stocks with positive CAGR; beating buy and hold on Calmar",
+   "mean R of reverse trades",
+   "by GICS sector",
+   "per-stock timing edge sign test",
+   "1% risk"
+  ]
+ },
+ "synthetic": false
+}

@@ -1,0 +1,18 @@
+,0
+stocks,500.0
+trades long,76491.0
+trades reverse,47166.0
+mean R long (pooled),0.11500089483860364
+mean R random longs (pooled),0.09693524413233973
+mean R reverse (mean of stocks),-0.22928496215891975
+share long CAGR > 0,0.79
+share long+rev CAGR > 0,0.374
+share long Calmar > buy-and-hold,0.144
+share long Sharpe > buy-and-hold,0.07
+share long+rev CAGR > long,0.072
+share long+rev max DD shallower,0.014
+ruined long,0.0
+ruined long+rev,2.0
+share stocks real mean R > own null,0.602
+p sign test (per stock timing),2.925778259903141e-06
+median mean gross leverage (long),0.22289556919351733
