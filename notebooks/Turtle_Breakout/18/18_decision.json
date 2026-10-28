@@ -1,0 +1,59 @@
+{
+ "decision": {
+  "min_p_VR_below": 0.0004997501249375312,
+  "VR_pass": true,
+  "REV11": -0.004942726466622935,
+  "REV55": -0.0031607127362775276,
+  "min_p_REV": 0.01199400299850075,
+  "REV_pass": true,
+  "verdict": "MR_PRESENT",
+  "by_trend_reported": {
+   "flat_down": {
+    "min_p_VR_below": 0.00399800099950025,
+    "VR_pass": true,
+    "REV11": -0.005577336890679609,
+    "REV55": 0.008676551973546614,
+    "min_p_REV": 0.031484257871064465,
+    "REV_pass": false,
+    "verdict": "NO_MEAN_REVERSION"
+   },
+   "flat_range": {
+    "min_p_VR_below": 0.010994502748625687,
+    "VR_pass": true,
+    "REV11": -0.004690354652116225,
+    "REV55": -0.02376328836683808,
+    "min_p_REV": 0.05347326336831584,
+    "REV_pass": false,
+    "verdict": "NO_MEAN_REVERSION"
+   },
+   "flat_up": {
+    "min_p_VR_below": 0.4877561219390305,
+    "VR_pass": false,
+    "REV11": -0.005279123771385109,
+    "REV55": -0.006163465513308669,
+    "min_p_REV": 0.15942028985507245,
+    "REV_pass": false,
+    "verdict": "NO_MEAN_REVERSION"
+   }
+  }
+ },
+ "registration": {
+  "n_perm": 2000,
+  "rev_k": 5,
+  "rev_h": 5,
+  "z_window": 20,
+  "alpha_vr": 0.0125,
+  "alpha_rev": 0.05,
+  "seed": 20261030,
+  "status": "PREREGISTERED_TB020",
+  "version": "TB18-0.1.0",
+  "qs": [
+   2,
+   5,
+   10,
+   20
+  ],
+  "decision": "FLAT days: min_q p(VR<1) < 0.0125 AND min_k p(REV(k,k)<0) < 0.025, k = 1, 5 -> MR_PRESENT; otherwise NO_MEAN_REVERSION"
+ },
+ "synthetic": false
+}
