@@ -55,6 +55,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `019_claude_tb17_preregistration.md` | TB 16 result (`NO_EDGE` on 40 futures: +0.009R over random; ETFs +0.002R) and TB 17: TB 01 on Yahoo BTC-USD daily since 2014; decision on 2014–2019 (unused data): G1 real − random ≥ 0.48R (calibrated), G2 reversal Calmar bootstrap; regimes (bear 2014, 2018, 2022) reported |
 
-Next turn in this branch: `020`.
+
+| `020_claude_tb18_preregistration.md` | TB 17 result (`TIMING_EDGE_ONLY`: BTC 2014–19 real − random +1.76R; FULL long Calmar 1.22 vs hold 0.67; edge in bull regimes, small losses in bears) and TB 18: diagnostic — are BTC days with the turtle flat mean-reverting? VR(2–20), AC, REV(1,1)/(5,5) vs permutations |
+
+Next turn in this branch: `021`.
 
 Procedure and numbering rules: `../README.md`.
