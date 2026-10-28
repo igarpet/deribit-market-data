@@ -60,7 +60,8 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 
 | `021_claude_tb19_preregistration.md` | TB 18 result (`MR_PRESENT` at 1 day only: FLAT AC1 −0.09, VR2 0.90, REV(1,1) −0.49%; IN days trend) and TB 19: buy the bottom-quintile FLAT day, sell next close; gates Yahoo 2014–19, Yahoo 2020–, Binance perp daily vs random FLAT-day longs (in-sample confirmation) |
+| `022_claude_tb20_preregistration.md` | TB 19 result (`NO_TRADABLE_REVERSAL`: +0.4–0.6% per trade in all three windows, p 0.07–0.12) and TB 20: two FLAT-day legs held with turtle exits, no TP, no time limit — A long after a bottom-20% day, B short at a stalled 55-day high; per leg p < 0.01 in all three windows |
 
-Next turn in this branch: `022`.
+Next turn in this branch: `023`.
 
 Procedure and numbering rules: `../README.md`.
