@@ -1,0 +1,70 @@
+{
+ "decision_fut": {
+  "real_mean_R": 0.09146654847462293,
+  "real_trades": 6271,
+  "null_mean_R": 0.08290963234787001,
+  "diff_R": 0.008556916126752925,
+  "per_instrument_mean_diff": 0.01200995464973444,
+  "t": -2.242739699487265,
+  "p_G1": 0.9875431975011515,
+  "G1": "FAIL",
+  "instruments": 40,
+  "reverse_better": 10,
+  "p_G2": 0.9996602258725034,
+  "G2": "FAIL",
+  "verdict": "NO_EDGE"
+ },
+ "etf_reported": {
+  "real_mean_R": 0.03568254413475029,
+  "real_trades": 2304,
+  "null_mean_R": 0.03339475644005641,
+  "diff_R": 0.0022877876946938783,
+  "per_instrument_mean_diff": 0.0015197843841601537,
+  "t": -1.4353043480710985,
+  "p_G1": 0.9243998053587356,
+  "G1": "FAIL",
+  "instruments": 18,
+  "reverse_better": 5,
+  "p_G2": 0.98455810546875,
+  "G2": "FAIL",
+  "verdict": "NO_EDGE"
+ },
+ "registration": {
+  "risk_frac": 0.02,
+  "pos_cap": 3.0,
+  "size_base": "hwm",
+  "side_cost": 0.0005,
+  "borrow": 0.005,
+  "n_null": 50,
+  "min_effect_R": 0.1,
+  "alpha": 0.05,
+  "n_tests": 2,
+  "seed": 20261028,
+  "status": "PREREGISTERED_TB018",
+  "version": "TB15-0.2.0",
+  "rules": "TB 01 per stock: 2% of HWM per trade, 3x notional cap; reverse = TB 07",
+  "gates": {
+   "G1": "pooled mean R of real longs > random-entry longs (50 runs, z-test, p < alpha/2) and difference >= 0.10R",
+   "G2": "stocks with Calmar(long_rev) > Calmar(long): sign test p < alpha/2"
+  },
+  "reported": [
+   "per stock CAGR, max DD, Calmar, Sharpe, ruin for long, long + reverse, buy and hold",
+   "share of stocks with positive CAGR; beating buy and hold on Calmar",
+   "mean R of reverse trades",
+   "by GICS sector",
+   "per-stock timing edge sign test",
+   "1% risk"
+  ],
+  "costs": {
+   "fut": {
+    "side_cost": 0.0002,
+    "borrow": 0.0
+   },
+   "etf": {
+    "side_cost": 0.0005,
+    "borrow": 0.005
+   }
+  }
+ },
+ "synthetic": false
+}
