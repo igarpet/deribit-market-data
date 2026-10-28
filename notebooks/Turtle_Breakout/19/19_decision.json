@@ -1,0 +1,74 @@
+{
+ "decision": {
+  "G1": {
+   "source": "yahoo",
+   "from": "2014-01-01",
+   "trades": 189,
+   "mean_R": 0.02416678255244813,
+   "null_mean_R": -0.017243148353435468,
+   "null_sd": 0.029438262226244714,
+   "p": 0.0744925507449255,
+   "mean_ret_pct": 0.5702543681913508,
+   "win_rate": 0.5925925925925926,
+   "pass": false
+  },
+  "G2": {
+   "source": "yahoo",
+   "from": "2020-01-01",
+   "trades": 299,
+   "mean_R": 0.0140898681990587,
+   "null_mean_R": -0.011181447928923414,
+   "null_sd": 0.02139807911676616,
+   "p": 0.11868813118688132,
+   "mean_ret_pct": 0.42453523425669365,
+   "win_rate": 0.5518394648829431,
+   "pass": false
+  },
+  "G3": {
+   "source": "binance",
+   "from": "2019-01-01",
+   "trades": 273,
+   "mean_R": 0.013991294452208166,
+   "null_mean_R": -0.012008238225102915,
+   "null_sd": 0.02055732049340685,
+   "p": 0.10158984101589841,
+   "mean_ret_pct": 0.39414345380354476,
+   "win_rate": 0.5604395604395604,
+   "pass": false
+  },
+  "verdict": "NO_TRADABLE_REVERSAL"
+ },
+ "registration": {
+  "quantile": 0.2,
+  "lookback_flat_days": 365,
+  "min_flat_days": 100,
+  "hold": 1,
+  "side_cost": 0.0006,
+  "side_cost_high": 0.0015,
+  "risk_frac": 0.02,
+  "pos_cap": 3.0,
+  "atr_n": 20,
+  "n_null": 10000,
+  "alpha": 0.05,
+  "n_tests": 3,
+  "seed": 20261031,
+  "status": "PREREGISTERED_TB021",
+  "version": "TB19-0.1.0",
+  "gates": {
+   "G1": "Yahoo 2014-10..2019-12",
+   "G2": "Yahoo 2020-01..end",
+   "G3": "Binance perp daily 2019-09..end",
+   "each": "mean net R > random FLAT-day 1-day longs (p < alpha/3) and mean net return > 0",
+   "verdict": "REVERSAL_EDGE if all three pass, else NO_TRADABLE_REVERSAL"
+  },
+  "reported": [
+   "short leg after top-quintile days",
+   "10th / 30th percentile",
+   "2-day hold",
+   "15 bp costs",
+   "account curves; correlation with the turtle; turtle + reversal combined (half capital each)",
+   "by year"
+  ]
+ },
+ "synthetic": false
+}
