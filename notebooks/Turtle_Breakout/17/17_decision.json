@@ -1,0 +1,99 @@
+{
+ "decision": {
+  "G1": {
+   "diff_R": 1.7625833839433267,
+   "threshold_R": 0.48,
+   "empirical_p": 0.000999000999000999,
+   "pass": true
+  },
+  "G2": {
+   "calmar_diff": 0.0368171068188321,
+   "lo": -0.29831936781223256,
+   "p": 0.4303924018995251,
+   "pass": false
+  },
+  "verdict": "TIMING_EDGE_ONLY",
+  "FULL_G1_reported": {
+   "diff_R": 0.9205164055155796,
+   "threshold_R": 0.33,
+   "pass": true
+  }
+ },
+ "registration": {
+  "side_cost": 0.0006,
+  "side_cost_high": 0.0015,
+  "n_null": 1000,
+  "alpha": 0.05,
+  "n_tests": 2,
+  "seed": 20261029,
+  "status": "PREREGISTERED_TB019",
+  "version": "TB17-0.1.0",
+  "windows": {
+   "PRE": [
+    "2014-09-17",
+    "2019-12-31"
+   ],
+   "FULL": [
+    "2014-09-17",
+    null
+   ],
+   "POST": [
+    "2020-01-01",
+    null
+   ]
+  },
+  "threshold_R": {
+   "PRE": 0.48,
+   "FULL": 0.33,
+   "POST": null
+  },
+  "regimes": [
+   [
+    "2014-09-17",
+    "2015-01-14",
+    "bear 2014"
+   ],
+   [
+    "2015-01-15",
+    "2015-10-31",
+    "base 2015"
+   ],
+   [
+    "2015-11-01",
+    "2017-12-17",
+    "bull 2015-17"
+   ],
+   [
+    "2017-12-18",
+    "2018-12-15",
+    "bear 2018"
+   ],
+   [
+    "2018-12-16",
+    "2021-11-10",
+    "bull 2019-21"
+   ],
+   [
+    "2021-11-11",
+    "2022-11-21",
+    "bear 2022"
+   ],
+   [
+    "2022-11-22",
+    "2025-10-06",
+    "bull 2023-25"
+   ],
+   [
+    "2025-10-07",
+    "2100-01-01",
+    "after the 2025 top"
+   ]
+  ],
+  "rules": "TB 01: 2% of HWM, 3x cap; long and long + reverse (TB 07)",
+  "gates": {
+   "G1": "PRE: real - random mean R >= 0.48R (and reported empirical p)",
+   "G2": "PRE: Calmar(long_rev) - Calmar(long) block-bootstrap lower bound > 0"
+  }
+ },
+ "synthetic": false
+}
