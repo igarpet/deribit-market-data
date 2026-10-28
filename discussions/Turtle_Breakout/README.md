@@ -52,6 +52,9 @@ Independent branch: Binance USD-M 1m klines and funding history only.
 
 | `018_claude_tb16_preregistration.md` | TB 15 result (`NO_EDGE` on 500 stocks: real − random +0.018R; reverse better on 24/500; median long 1.4% CAGR vs hold 11.6%) and TB 16: TB 01 per contract on 41 Yahoo continuous futures (decision) and 18 futures-proxy ETFs (reported); G1 pooled ≥ 0.10R and paired t-test vs the +0.045R fill artefact; G2 reversal sign test |
 
-Next turn in this branch: `019`.
+
+| `019_claude_tb17_preregistration.md` | TB 16 result (`NO_EDGE` on 40 futures: +0.009R over random; ETFs +0.002R) and TB 17: TB 01 on Yahoo BTC-USD daily since 2014; decision on 2014–2019 (unused data): G1 real − random ≥ 0.48R (calibrated), G2 reversal Calmar bootstrap; regimes (bear 2014, 2018, 2022) reported |
+
+Next turn in this branch: `020`.
 
 Procedure and numbering rules: `../README.md`.
