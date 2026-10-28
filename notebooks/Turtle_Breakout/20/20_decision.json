@@ -1,0 +1,106 @@
+{
+ "decision": {
+  "A": {
+   "yahoo 2014-19": {
+    "trades": 125,
+    "mean_R": 0.33386354025066955,
+    "null_mean_R": 1.0755687958297229,
+    "null_sd": 0.3622954462631616,
+    "p": 0.9912008799120088,
+    "mean_ret_pct": 3.99819018309674,
+    "win_rate": 0.176,
+    "median_hold_days": 1.0,
+    "share_R_ge_3": 0.048,
+    "pass": false
+   },
+   "yahoo 2020-": {
+    "trades": 197,
+    "mean_R": 0.038177898944809455,
+    "null_mean_R": 0.4270954963009515,
+    "null_sd": 0.15401800142286476,
+    "p": 0.9976002399760024,
+    "mean_ret_pct": 0.7079763881821372,
+    "win_rate": 0.14213197969543148,
+    "median_hold_days": 1.0,
+    "share_R_ge_3": 0.02030456852791878,
+    "pass": false
+   },
+   "binance": {
+    "trades": 174,
+    "mean_R": 0.05193723550280464,
+    "null_mean_R": 0.2386842859596984,
+    "null_sd": 0.1312405145545801,
+    "p": 0.9277072292770723,
+    "mean_ret_pct": 0.5331167695151253,
+    "win_rate": 0.15517241379310345,
+    "median_hold_days": 2.0,
+    "share_R_ge_3": 0.028735632183908046,
+    "pass": false
+   },
+   "verdict": "NO_EDGE"
+  },
+  "B": {
+   "yahoo 2014-19": {
+    "trades": 2,
+    "mean_R": -0.04263997143924786,
+    "null_mean_R": 0.2077792519156369,
+    "null_sd": 1.0789160605225532,
+    "p": 0.4373562643735626,
+    "mean_ret_pct": -0.31589452380772043,
+    "win_rate": 0.0,
+    "median_hold_days": 1.0,
+    "share_R_ge_3": 0.0,
+    "pass": false
+   },
+   "yahoo 2020-": {
+    "trades": 16,
+    "mean_R": -0.055431956547178654,
+    "null_mean_R": -0.08278313863157732,
+    "null_sd": 0.23327201758098126,
+    "p": 0.41145885411458855,
+    "mean_ret_pct": -0.5566364113473438,
+    "win_rate": 0.1875,
+    "median_hold_days": 2.0,
+    "share_R_ge_3": 0.0,
+    "pass": false
+   },
+   "binance": {
+    "trades": 17,
+    "mean_R": -0.06460172863027056,
+    "null_mean_R": -0.08612453565473355,
+    "null_sd": 0.20600467544612028,
+    "p": 0.42415758424157585,
+    "mean_ret_pct": -0.6556205652916114,
+    "win_rate": 0.17647058823529413,
+    "median_hold_days": 2.0,
+    "share_R_ge_3": 0.0,
+    "pass": false
+   },
+   "verdict": "NO_EDGE"
+  }
+ },
+ "registration": {
+  "stop_atr": 2.0,
+  "trail_n": 10,
+  "atr_n": 20,
+  "risk_frac": 0.02,
+  "pos_cap": 3.0,
+  "side_cost": 0.0006,
+  "a_quantile": 0.2,
+  "a_lookback": 365,
+  "a_min_flat": 100,
+  "b_high_n": 55,
+  "b_atr_band": 1.0,
+  "b_flat_sd": 0.5,
+  "b_sd_lookback": 365,
+  "n_null": 10000,
+  "p_max": 0.01,
+  "seed": 20261101,
+  "start_equity": 100000.0,
+  "status": "PREREGISTERED_TB022",
+  "version": "TB20-0.1.0",
+  "exits": "turtle: fixed 2 ATR + 10-day trailing, no take-profit, no time limit",
+  "gates": "per leg x {Yahoo 2014-19, Yahoo 2020-, Binance perp}: mean net R > random FLAT-day entries (same exits), p < 0.01, and mean net return > 0; leg EDGE if all three pass"
+ },
+ "synthetic": false
+}
