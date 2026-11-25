@@ -1,6 +1,6 @@
 # Dealer Gamma research branch
 
-**Question:** does option-dealer hedging leave a footprint in BTC/ETH? Dealer gamma is rebuilt from the taker side of every Deribit option print since 2024-01 and tested three ways. Discussions: `../../discussions/Dealer_Gamma/` (pre-registration DG 001).
+**Question:** does option-dealer hedging leave a footprint in BTC/ETH? Dealer gamma is rebuilt from the taker side of every Deribit option print since 2024-01 and tested three ways. Discussions: `../../discussions/Dealer_Gamma/` (pre-registration DG 001). **Closed (DG 003): no hedging footprint in discovery (DG 002); holdout never run.**
 
 | Notebook | Content | Status |
 |---|---|---|

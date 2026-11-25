@@ -35,7 +35,7 @@ Each research line is a **branch**: one folder here and one under `notebooks/`, 
 | Multi-Scale HMM (2026-10-17) | `Multi_Scale_HMM/` | `notebooks/Multi_Scale_HMM/` |
 | Funding Carry (2026-10-18) | `Funding_Carry/` | `notebooks/Funding_Carry/` |
 | Jump Fade (2026-10-19) | `Jump_Fade/` | `notebooks/Jump_Fade/` |
-| Dealer Gamma (2026-11-25) | `Dealer_Gamma/` | `notebooks/Dealer_Gamma/` |
+| Dealer Gamma (2026-11-25; **closed 2026-11-25**, DG 003) | `Dealer_Gamma/` | `notebooks/Dealer_Gamma/` |
 
 A new branch gets both folders, each with a `README.md` that states its question, sequence and current status. Branches can run in parallel.
 
