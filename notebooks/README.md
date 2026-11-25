@@ -24,6 +24,7 @@ Research branches are independent experiments. They may share the common data-en
 | [Multi_Scale_HMM](./Multi_Scale_HMM/) | Can a Student-t HMM on 1h/4h/1D bars built from 1-minute perpetual data (intrabar emissions: volatility, semivariance, efficiency, wicks, jumps, flow) find momentum/reversal states that predict the next bar net of costs? Shared-sign minute null, drift benchmark (MSH 001). |
 | [Funding_Carry](./Funding_Carry/) | Delta-neutral long spot / short USD-M perpetual funding harvest on Binance (PF02 universe); trailing-funding hysteresis vs always-in; net of costs vs a 4% cash hurdle (FC 001). |
 | [Jump_Fade](./Jump_Fade/) | Passive ±1.5σ bracket at each 5m boundary, take-profit at the pre-move price, 3σ stop, 60-min time stop; 1m perp simulation; sign-flip null; Deribit costs (JF 001). |
+| [Dealer_Gamma](./Dealer_Gamma/) | Dealer gamma rebuilt from taker-signed Deribit option prints (BTC/ETH, 2024-01 →); gate vs collector OI; regime, hedge-flow and pinning tests (DG 001). |
 
 ## Output-size policy (from 2026-10-09)
 
