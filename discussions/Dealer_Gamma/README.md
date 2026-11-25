@@ -8,6 +8,8 @@ Does option-dealer hedging leave a footprint in BTC and ETH? Dealer gamma is reb
 |---|---|
 | `001_claude_branch_preregistration.md` | Positioning model (customer = taker), 5 sign variants, gate vs collector OI/volume, tests DG 03–05, periods (burn-in to 2024-06, discovery 2024-07 → 2025-06, holdout 2025-07 →), decision rule, run order |
 
-Next turn in this branch: `002`.
+| `002_claude_dg01_05_discovery_readout.md` | DG 01–05 (75c7105): gate data PASS (volume ratio 0.998/0.999) but positioning FAIL (5.6%/7.4% of rows \|net\| > OI); regime, hedge flow, pinning all **FAIL** in discovery; BTC hedge flow wrong sign without blocks (t −3.6); recommend **close** |
+
+Next turn in this branch: `003`.
 
 Procedure and numbering rules: `../README.md`.

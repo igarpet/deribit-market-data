@@ -4,11 +4,11 @@
 
 | Notebook | Content | Status |
 |---|---|---|
-| `01_data_gate.ipynb` | Validator summary; reconstructed 24h volume and \|net\| vs the collector's 24h volume and open interest (0DTE/1DTE overlap). **Gate: FAIL stops the branch** | not run |
-| `02_build_gex.ipynb` | One pass over all prints: 5-minute dealer gamma (5 variants), perpetual bars, 05:00 strike tables, settlement proxy. Cached outside the repo | not run |
-| `03_regime.ipynb` | GEX at 08:05 → next-session log RV and AC1 of 5-min returns; HAC; terciles | not run |
-| `04_hedge_flow.ipynb` | Predicted hedge −100·G·r → next-15-min signed perp taker flow; clustered SE; **decides whether hedging is established** | not run |
-| `05_pinning.ipynb` | Settlement vs dealer-long-gamma strike, mirrored placebo; daily / weekly / monthly / quarterly | not run |
+| `01_data_gate.ipynb` | Validator summary; reconstructed 24h volume and \|net\| vs the collector's 24h volume and open interest (0DTE/1DTE overlap). **Gate: FAIL stops the branch** | Run 75c7105: data PASS, positioning FAIL (DG 002) |
+| `02_build_gex.ipynb` | One pass over all prints: 5-minute dealer gamma (5 variants), perpetual bars, 05:00 strike tables, settlement proxy. Cached outside the repo | Run 75c7105: 1,058 days/currency, no missing files |
+| `03_regime.ipynb` | GEX at 08:05 → next-session log RV and AC1 of 5-min returns; HAC; terciles | **FAIL** (DG 002) |
+| `04_hedge_flow.ipynb` | Predicted hedge −100·G·r → next-15-min signed perp taker flow; clustered SE; **decides whether hedging is established** | **FAIL**, BTC wrong sign (DG 002) |
+| `05_pinning.ipynb` | Settlement vs dealer-long-gamma strike, mirrored placebo; daily / weekly / monthly / quarterly | **FAIL** (DG 002) |
 
 Code: `src/data_engineering/modeling/dealer_gamma.py`. Tests: `tests/test_dealer_gamma.py`. Outputs: `NN/NN_*`.
 Periods: burn-in to 2024-06-30, **discovery** 2024-07-01 → 2025-06-30, **holdout** 2025-07-01 → last day (only with `DG_HOLDOUT=1`).
