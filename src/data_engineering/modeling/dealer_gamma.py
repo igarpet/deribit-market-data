@@ -383,7 +383,7 @@ def load_collector(data_root: Path, ccy: str) -> pd.DataFrame:
     for sub in ("option_grid", "option_grid_1dte"):
         for f in sorted((Path(data_root) / "daily" / sub).glob("expiry=*/option_grid.parquet")):
             df = _read(f, ["snapshot_time", "instrument_name", "api_currency", "underlying", "open_interest",
-                           "volume", "expiration_timestamp"])
+                           "volume_24h", "volume", "expiration_timestamp"])
             if df is None or df.empty:
                 continue
             cur = df["api_currency"] if "api_currency" in df else df.get("underlying")
@@ -393,9 +393,10 @@ def load_collector(data_root: Path, ccy: str) -> pd.DataFrame:
     if not parts:
         return pd.DataFrame(columns=["t", "name", "oi", "vol24", "grid"])
     c = pd.concat(parts, ignore_index=True)
+    vcol = "volume_24h" if "volume_24h" in c else ("volume" if "volume" in c else None)   # collector: stats.volume
     out = pd.DataFrame({"t": _ts_ms(c["snapshot_time"]), "name": c["instrument_name"].astype(str),
                         "oi": pd.to_numeric(c["open_interest"], errors="coerce"),
-                        "vol24": pd.to_numeric(c["volume"], errors="coerce"), "grid": c["grid"]})
+                        "vol24": pd.to_numeric(c[vcol], errors="coerce") if vcol else np.nan, "grid": c["grid"]})
     return out.dropna(subset=["oi"]).drop_duplicates(["t", "name"]).reset_index(drop=True)
 
 
@@ -746,7 +747,7 @@ def synthetic_root(root: Path, days: list[str], seed: int = 0, pin_strength: flo
                 per_day[day].append(pd.DataFrame({
                     "snapshot_time": pd.to_datetime(snaps, unit="ms", utc=True), "instrument_name": name,
                     "api_currency": ccy, "underlying": ccy, "open_interest": np.abs(cs[i1]) + 2.0,
-                    "volume": ca[i1] - ca[i0], "expiration_timestamp": exp}))
+                    "volume_24h": ca[i1] - ca[i0], "expiration_timestamp": exp}))
     for day, parts in per_day.items():
         if parts:
             pd.concat(parts, ignore_index=True).to_parquet(
