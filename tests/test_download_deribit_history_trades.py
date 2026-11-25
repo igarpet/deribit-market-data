@@ -97,6 +97,63 @@ class TestHistoryDownloader(unittest.TestCase):
             dh.run_trades(Cli(), out, ["BTC"], ["option"], date(2025, 1, 1), date(2025, 1, 2))
             self.assertEqual(len(calls), n)                         # resumed: nothing re-downloaded
 
+    def test_invalid_params_day_falls_back_to_hours_then_instruments(self):
+        day = date(2026, 10, 30)
+        d0 = int(pd.Timestamp(day, tz="UTC").value // 10**6)
+        perp = _trades(300, d0 + 1000, step=200_000, inst="BTC-PERPETUAL")            # whole day
+        fut = _trades(50, d0 + 5 * 3_600_000, step=1000, inst="BTC-27NOV26", id0=5000)
+        bad = _trades(1, d0 + 5 * 3_600_000 + 10, inst="BTC-WEIRD", id0=9000)          # breaks the currency call
+        allt = sorted(perp + fut + bad, key=lambda x: (x["timestamp"], x["trade_id"]))
+        err = "{'message': 'Invalid params', 'data': {'reason': 'wrong format', 'param': 'instrument_name'}, 'code': -32602}"
+
+        class Cli:
+            calls = 0
+
+            def get(self, base, method, params):
+                self.calls += 1
+                if method == "get_instruments":
+                    if params["expired"] == "true":
+                        return [{"instrument_name": "BTC-PERPETUAL", "creation_timestamp": 0,
+                                 "expiration_timestamp": 32503680000000},
+                                {"instrument_name": "BTC-27NOV26", "creation_timestamp": 0,
+                                 "expiration_timestamp": d0 + 28 * 86_400_000},
+                                {"instrument_name": "BTC-WEIRD", "creation_timestamp": 0,
+                                 "expiration_timestamp": d0 + 86_400_000},
+                                {"instrument_name": "BTC-1OCT26", "creation_timestamp": 0,
+                                 "expiration_timestamp": d0 - 86_400_000}]
+                    return []
+                a, b = params["start_timestamp"], params["end_timestamp"]
+                if method == "get_last_trades_by_currency_and_time":
+                    if any(a <= t["timestamp"] <= b for t in bad):
+                        raise RuntimeError(f"{method} {params}: {err}")
+                    sel = [t for t in allt if a <= t["timestamp"] <= b]
+                else:
+                    if params["instrument_name"] == "BTC-WEIRD":
+                        raise RuntimeError(f"{method} {params}: {err}")
+                    sel = [t for t in allt if a <= t["timestamp"] <= b and t["instrument_name"] == params["instrument_name"]]
+                return {"trades": sel[: params["count"]], "has_more": len(sel) > params["count"]}
+
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            dh.run_trades(Cli(), out, ["BTC"], ["future"], day, day)
+            f = out / "trades" / "BTC" / "future" / "2026" / "2026-10-30.parquet"
+            df = pd.read_parquet(f)
+            self.assertEqual(len(df), len(perp) + len(fut))                 # everything but the rejected instrument
+            self.assertEqual(df.trade_id.nunique(), len(df))
+            side = f.with_name("2026-10-30.skipped.json")
+            self.assertTrue(side.exists())
+            self.assertIn("BTC-WEIRD", side.read_text())
+
+    def test_invalid_params_on_options_is_not_silently_skipped(self):
+        class Cli:
+            calls = 0
+
+            def get(self, base, method, params):
+                raise RuntimeError("get_last_trades_by_currency_and_time {}: {'code': -32602, 'message': 'Invalid params'}")
+
+        with self.assertRaises(dh.InvalidParams):
+            dh.day_trades(Cli(), "BTC", "option", date(2026, 10, 30))
+
 
 if __name__ == "__main__":
     unittest.main()

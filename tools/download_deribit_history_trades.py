@@ -28,6 +28,7 @@ run options first. Ctrl+C is safe: the day in progress is discarded and redone o
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -168,17 +169,103 @@ def to_frame(trades: list[dict]) -> pd.DataFrame:
     return parse_instruments(df).sort_values(["timestamp", "trade_id"]).reset_index(drop=True)
 
 
-def day_trades(cli: Client, currency: str, kind: str, d: date) -> pd.DataFrame:
-    s = int(datetime(d.year, d.month, d.day, tzinfo=timezone.utc).timestamp() * 1000)
-    e = s + 86_400_000 - 1
+class InvalidParams(RuntimeError):
+    """history.deribit.com answered -32602 'Invalid params' to a request we built correctly (server-side defect)."""
 
+
+def _is_invalid_params(ex: Exception) -> bool:
+    return "-32602" in str(ex) or "Invalid params" in str(ex)
+
+
+def _currency_fetch(cli: Client, currency: str, kind: str):
     def fetch(a, b):
         r = cli.get(HISTORY, "get_last_trades_by_currency_and_time",
                     {"currency": currency, "kind": kind, "start_timestamp": a, "end_timestamp": b,
                      "count": PAGE, "sorting": "asc"})
         return r.get("trades", []), bool(r.get("has_more", False))
+    return fetch
 
-    tr = paginate_day(fetch, s, e)
+
+def _instrument_fetch(cli: Client, name: str):
+    def fetch(a, b):
+        r = cli.get(HISTORY, "get_last_trades_by_instrument_and_time",
+                    {"instrument_name": name, "start_timestamp": a, "end_timestamp": b,
+                     "count": PAGE, "sorting": "asc"})
+        return r.get("trades", []), bool(r.get("has_more", False))
+    return fetch
+
+
+def instruments_alive(cli: Client, currency: str, kind: str, a: int, b: int) -> list[str]:
+    """Instruments of `kind` (expired included) listed before b and expiring after a. Cached per client."""
+    cache = cli.__dict__.setdefault("_instruments", {})
+    key = (currency, kind)
+    if key not in cache:
+        rows = {}
+        for base, expired in ((HISTORY, "true"), (MAIN, "false")):
+            try:
+                for i in cli.get(base, "get_instruments", {"currency": currency, "kind": kind, "expired": expired}):
+                    rows[i["instrument_name"]] = i
+            except RuntimeError as ex:
+                print(f"    get_instruments {base} expired={expired} failed: {ex}", flush=True)
+        if not rows:
+            raise RuntimeError(f"no {currency} {kind} instrument list available for the per-instrument fallback")
+        cache[key] = list(rows.values())
+    out = []
+    for i in cache[key]:
+        c = i.get("creation_timestamp") or 0
+        e = i.get("expiration_timestamp") or 2**62
+        if c <= b and e >= a:
+            out.append(i["instrument_name"])
+    return sorted(out)
+
+
+def fallback_window(cli: Client, currency: str, kind: str, a: int, b: int, skipped: list) -> list[dict]:
+    """Per-instrument download of [a, b]. Instruments the server also rejects are recorded in `skipped`."""
+    out = []
+    for name in instruments_alive(cli, currency, kind, a, b):
+        try:
+            out.extend(paginate_day(_instrument_fetch(cli, name), a, b))
+        except RuntimeError as ex:
+            if not _is_invalid_params(ex):
+                raise
+            skipped.append({"instrument_name": name, "start_ms": a, "end_ms": b, "error": str(ex)[:300]})
+            print(f"    SKIPPED {name} [{a}, {b}]: server rejects it", flush=True)
+    return out
+
+
+def day_trades(cli: Client, currency: str, kind: str, d: date, skipped: list | None = None) -> pd.DataFrame:
+    """One UTC day. If the currency-level request is rejected with 'Invalid params' (a history-server defect seen
+    for BTC futures on 2026-10-30), retry hour by hour; an hour still rejected is fetched instrument by instrument
+    (futures and perpetuals only: options have too many instruments)."""
+    s = int(datetime(d.year, d.month, d.day, tzinfo=timezone.utc).timestamp() * 1000)
+    e = s + 86_400_000 - 1
+    skipped = [] if skipped is None else skipped
+    try:
+        tr = paginate_day(_currency_fetch(cli, currency, kind), s, e)
+    except RuntimeError as ex:
+        if not _is_invalid_params(ex):
+            raise
+        print(f"    {currency} {kind} {d}: server rejected the day request (Invalid params); retrying by hour",
+              flush=True)
+        tr, seen = [], set()
+        for h in range(24):
+            a, b = s + h * 3_600_000, s + (h + 1) * 3_600_000 - 1
+            try:
+                part = paginate_day(_currency_fetch(cli, currency, kind), a, b)
+            except RuntimeError as ex2:
+                if not _is_invalid_params(ex2):
+                    raise
+                if kind == "option":
+                    raise InvalidParams(f"{currency} option {d} hour {h}: {ex2}") from ex2
+                print(f"    hour {h:02d} rejected too; per-instrument fallback", flush=True)
+                part = fallback_window(cli, currency, kind, a, b, skipped)
+            for t in part:
+                if t["trade_id"] not in seen:
+                    seen.add(t["trade_id"]); tr.append(t)
+        perp = sorted({x["instrument_name"] for x in skipped if x["instrument_name"].endswith("PERPETUAL")})
+        if perp:
+            raise InvalidParams(f"{currency} {kind} {d}: the server also rejects {perp}; "
+                                "stopping without writing the day (a day without the perpetual is not usable)")
     return to_frame(tr) if tr else pd.DataFrame(columns=COLS)
 
 
@@ -193,10 +280,16 @@ def run_trades(cli: Client, out: Path, currencies, kinds, start: date, end: date
                     d += timedelta(days=1); continue
                 f.parent.mkdir(parents=True, exist_ok=True)
                 c0 = cli.calls
-                df = day_trades(cli, cur, kind, d)
+                skipped: list = []
+                df = day_trades(cli, cur, kind, d, skipped)
                 tmp = f.with_suffix(".tmp")
                 df.to_parquet(tmp, index=False)
                 os.replace(tmp, f)
+                if skipped:
+                    side = f.with_name(f"{d:%Y-%m-%d}.skipped.json")
+                    side.write_text(json.dumps(skipped, indent=2), encoding="utf-8")
+                    print(f"    WARNING {cur} {kind} {d}: {len(skipped)} instrument-window(s) the server rejects; "
+                          f"day written WITHOUT them, listed in {side.name}", flush=True)
                 print(f"{cur} {kind} {d}: {len(df):>8,} trades | {cli.calls - c0} requests | "
                       f"{time.time() - t0:,.0f}s elapsed", flush=True)
                 d += timedelta(days=1)
