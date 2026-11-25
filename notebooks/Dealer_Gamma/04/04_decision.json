@@ -1,0 +1,38 @@
+{
+  "registration": {
+    "version": "DG-0.1.0",
+    "data_start": "2024-01-02",
+    "clean_from": "2024-01-16",
+    "discovery": [
+      "2024-07-01",
+      "2025-06-30"
+    ],
+    "holdout_start": "2025-07-01",
+    "pin_ref_hour": 5,
+    "pin_band": 0.05,
+    "adv_sessions": 30,
+    "primary_h": 3,
+    "primary_variant": "recon",
+    "hac_lags": 5,
+    "gate_volume_band": [
+      0.95,
+      1.05
+    ],
+    "gate_max_violation_share": 0.05,
+    "alpha_discovery": 0.05,
+    "alpha_holdout": 0.1,
+    "variants": [
+      "recon",
+      "recon_noblock",
+      "recon_clean",
+      "short_all",
+      "call_long_put_short"
+    ]
+  },
+  "decision_primary": {
+    "discovery": {
+      "('recon', 'f_fwd3')": "FAIL"
+    },
+    "holdout": "NOT_RUN"
+  }
+}
